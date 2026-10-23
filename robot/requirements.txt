@@ -1,0 +1,9 @@
+# PyTorch con CUDA (GPU NVIDIA). Instalar primero, desde el índice de PyTorch:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+# Sin GPU basta con: pip install torch torchvision
+torch
+torchvision
+pillow
+numpy
+pyyaml
+pytest

@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Datasets e imágenes (se descargan aparte, no van al repo)
+data/
+descargas/
+
+# Resultados de entrenamiento
+runs/
+*.pt
