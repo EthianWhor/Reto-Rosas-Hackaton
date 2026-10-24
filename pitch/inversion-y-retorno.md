@@ -1,4 +1,8 @@
-# Inversión y retorno — borrador v1
+# Inversión y retorno — borrador v2
+
+> **v2 (2026-10-24):** la simulación midió la velocidad del robot (~0,09 m/s, 2 h por invernadero de 0,11 ha).
+> Con eso el robot no se paga solo en una finca de 20 ha, y el negocio se presenta en **dos paquetes**
+> (sección 6): formación en toda la finca y robot piloto.
 
 > **Todas las cifras son supuestos explícitos para discutir.** Las marcadas con 📌 vienen de una fuente
 > (ver [investigacion.md](investigacion.md)). Las marcadas con 🏠 las dio la finca. Las marcadas con ❓
@@ -47,28 +51,27 @@ tiene a los lados, así que basta con recorrer **un pasillo sí y otro no**.
   lo visto y lo pronosticado.
 - **Fase 2, un robot por campo:** si cada campo mide hasta ~5 ha, se revisa **completo cada noche**.
 
-### ⚠️ La velocidad efectiva es la variable que decide el negocio
+### ⚠️ La velocidad efectiva decide el negocio, y ya está medida
 
-La simulación del equipo (rama `A`, `robot/PLAN_robot_rosas_X2.md`) recorre un invernadero de
-20 camas de 30 m (caminos de 0,8 m) **parando cada 1,25 m** para girar la cabeza y fotografiar:
-tarda ~95–130 min en ~630 m de caminos, es decir **~0,1 m/s en promedio**. Las cuentas de arriba
-suponen **0,6 m/s**, fotografiando sin parar (la cámara estéreo da 40 cuadros por segundo con 156° de
-campo de visión).
+**Medido en la simulación (2026-10-24, `robot/PLAN_robot_rosas_X2.md` 4.5):** el invernadero completo
+(20 camas de 1 m × 30 m, 21 caminos de 0,8 m: ~36,8 m × 30 m ≈ **0,11 ha**, 6.031 rosas) toma **2 h**,
+con una vuelta a la base por batería. Son 630 m de caminos en 120 min: **~0,09 m/s**. El robot se detiene
+cada 1,25 m y toma 4 fotos; de los ~14 s de cada parada, caminar es solo ~4 s. **La mejora está en las fotos,
+no en caminar:** fotografiar en movimiento (la cámara da 40 cuadros por segundo) o con menos posturas.
 
-| Velocidad efectiva | Recorrido por noche (10 h) | Área por noche | 20 ha con un robot | Payback base* |
+| Velocidad efectiva | Área por noche (10 h) | 20 ha con un robot | Payback del robot solo* | Payback de todo el sistema* |
 |---|---|---|---|---|
-| ~0,1 m/s (simulación actual, con paradas) | ~3,6 km | ~0,7 ha (todos los caminos, cama + camino de 1,8 m) | cada línea cada ~30 noches | **no se paga en un plazo razonable** |
-| 0,3 m/s (paradas cada ~5 m) | ~10,8 km | ~2,7 ha | cada ~7 noches | ~2,4 años |
-| **0,6 m/s (fotos en movimiento)** | **~21,6 km** | **~5,5 ha** | **cada ~4 noches** | **~14 meses** |
+| **~0,09 m/s (medido)** | **~0,55 ha** (≈5 invernaderos como el simulado) | cada ~36 noches | **no se paga: es un piloto** | formación sí (~3 meses); robot no |
+| 0,3 m/s (paradas cada ~5 m) | ~2,7 ha | cada ~7 noches | ~6 años | ~2,4 años |
+| 0,6 m/s (fotos en movimiento) | ~5,5 ha | cada ~4 noches | ~23 meses | **~14 meses** |
 
-\* Las palancas A y C solo aplican al área que el robot alcanza a revisar con frecuencia útil
-(cada ≤ 4 noches); la B (formación) no depende del robot. Estimación gruesa para ordenar la
-conversación, no un cálculo fino.
+\* Las filas de 0,3 y 0,6 m/s son metas que hay que medir: suponen recorrer un pasillo sí y otro no
+(cama + pasillo de 1,3 m ❓). Las palancas A (la parte del robot) y C solo aplican al área que el robot revisa con
+frecuencia útil. Estimación gruesa para ordenar la conversación, no un cálculo fino.
 
-**Qué hacer:** (1) probar en la simulación la captura en movimiento, sin paradas, y medir cuántas
-rosas se pierden; (2) mientras tanto, en el pitch presentar la fase 1 como **un robot en un campo
-piloto**, que sí se recorre completo cada noche, y el número de la finca completa como meta
-condicionada a esa prueba.
+**Qué decimos en el pitch:** "Medimos que hoy el robot va a 0,09 m/s porque se detiene a tomar fotos. Por eso
+no prometemos que el robot se pague solo: entra como **piloto en un bloque** (~0,5 ha revisadas cada noche,
+rosa por rosa) y escala cuando capture en movimiento. Lo que sí se paga desde ya es la formación."
 
 ## 3. Inversión inicial de la finca (CAPEX), fase 1: un robot
 
@@ -123,7 +126,34 @@ pantalla turnero los cortadores llegan directo a los cuadrantes y las líneas co
 - ~1 persona liberada del conteo (USD 8.400) + 3 % de eficiencia en las horas de corte (~60 cortadores → USD 15.100).
 - No se cuenta (es potencial adicional): detección temprana de plagas y enfermedades, mejor pronóstico para ventas y logística, y datos para negociar con clientes.
 
-## 6. Resultado (fase 1: un robot)
+## 6. Resultado en dos paquetes (propuesta v2, con la velocidad medida)
+
+**Supuesto de reparto ❓:** la mitad de la palanca A (calidad del corte) viene de formar mejor a las personas
+(app + VR, en toda la finca) y la otra mitad de orientarlas con el robot (solo donde el robot revisa).
+
+### Paquete 1 · Formación en toda la finca (app RoseApp + VR)
+| | Conservador | **Base** | Optimista |
+|---|---|---|---|
+| CAPEX: 3 Meta Quest + 4 tablets + pantalla y wifi | 6.600 | **6.600** | 6.600 |
+| OPEX: suscripción + tiempo del experto | 8.000 | **8.000** | 8.000 |
+| A (mitad de formación) | 10.700 | **21.400** | 42.800 |
+| B. Inducción y curva | 4.200 | **12.600** | 22.400 |
+| **Beneficio neto / año** | 6.900 | **26.000** | 57.200 |
+| **Payback** | ~11 meses | **~3 meses** | ~1,5 meses |
+
+### Paquete 2 · Robot piloto
+- CAPEX ≈ **USD 63.400** (robot, navegación, importación, sensores y luz LED del bloque); OPEX ≈ **USD 12.100**
+  (mantenimiento y técnico).
+- **Con la velocidad medida** revisa ~0,55 ha cada noche, rosa por rosa: en 20 ha eso es ~3 % de la finca, así que
+  **no se paga por sí solo**. Su valor en el piloto es otro: datos del campo que hoy no existen, miles de fotos
+  para que RosaNet supere el 88 % del operario, y validar el robot real.
+- **Si captura en movimiento a 0,6 m/s**, su parte (mitad de A + C ≈ USD 44.900 al año en el caso base) da un payback
+  de ~23 meses, y el sistema completo (los dos paquetes, USD 70.000) se paga en **~14 meses**, como en la v1.
+
+**Mensaje para la diapositiva:** *La formación se paga en ~3 meses en toda la finca. El robot entra como piloto
+y el sistema completo se paga en ~14 meses cuando el robot fotografíe en movimiento (medido hoy: 0,09 m/s).*
+
+## 6b. Resultado anterior (v1: todo junto, suponiendo 0,6 m/s)
 
 | | Conservador | **Base** | Optimista |
 |---|---|---|---|
@@ -135,9 +165,8 @@ pantalla turnero los cortadores llegan directo a los cuadrantes y las líneas co
 | **Beneficio neto / año** | 15.500 | **58.800** | 127.900 |
 | **Payback de USD 70.000** | ~4,5 años | **~14 meses** | ~7 meses |
 
-**Mensaje para la diapositiva (3 números):** *Un robot · Inversión ≈ USD 70 mil · Se paga en ~14 meses*,
-y se dice en voz alta: **"hoy 12 de cada 100 rosas se cortan fuera de punto; si bajamos a 9, el robot
-se paga en poco más de un año"**.
+Esta tabla supone que el robot va a 0,6 m/s. **La simulación midió 0,09 m/s**, así que ya no se presenta así:
+se reemplaza por la sección 6. Se deja para comparar.
 
 ## 7. Fase 2: un robot por campo
 
