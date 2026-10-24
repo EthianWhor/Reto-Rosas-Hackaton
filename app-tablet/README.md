@@ -16,11 +16,12 @@ hasta hacerlo de forma mecánica. Hecha con **Expo (SDK 58) + Expo Router + Type
 | Lo que encontró el robot: orden de corte por cuadrante y lo que estará listo mañana, según el reporte JSON de la ronda | `src/app/hoy.tsx` | Listo (con reporte de ejemplo) |
 | **Trabajador** · Mi turno de hoy: los cuadrantes que le tocan, en orden, con casilla para marcar cada uno como hecho | `src/app/mi-turno.tsx` | Listo |
 | **Admin** · Turno de hoy: quién vino, duración del turno, reparto y avance de cada persona | `src/app/turno.tsx` | Listo |
-| **Admin** · Trabajadores: agregar y quitar personas, con su PIN y su rol | `src/app/trabajadores.tsx` | Listo |
+| **Admin** · Usuarios: registrar (nombre, correo, teléfono, rol), promover, reiniciar acceso y quitar | `src/app/trabajadores.tsx`, `src/app/nuevo-usuario.tsx` | Listo |
+| **Experto** · Rosas dudosas: responde las rosas en que el robot dudó | `src/app/revisar.tsx` | Listo |
 | Aprender las 3 categorías: fotos reales de la finca + qué mirar | `src/app/aprender.tsx` | Listo |
 | Juego: clasifica el botón (muy pronto / punto óptimo / muy tarde) con explicación inmediata | `src/app/clasificar.tsx` | Listo (básico) |
 | Mi progreso: aciertos por categoría y con qué la confunde | `src/app/progreso.tsx` | Listo (básico, solo en la tablet) |
-| Sanación después del corte | `src/app/sanacion.tsx` | **Pendiente: falta el proceso de la finca** |
+| Corte y sanación: los 9 pasos, "ordena los pasos" y preguntas (¿qué está mal?, verdadero o falso) | `src/app/sanacion.tsx`, `src/data/sanacion.ts` | Listo (versión de trabajo, sale de la investigación en `contenido/corte-y-sanacion.md`; falta confirmarla con la finca) |
 
 - Las categorías y los tips (`src/data/categorias.ts`) usan las mismas claves que RosaNet
   (`robot/ml/stages.py`). Si cambian allá, cambiarlas aquí.
@@ -49,9 +50,22 @@ PIN, y sale al terminar. Por seguridad, **la sesión no se guarda**: al abrir o 
 siempre pide el PIN, y la sesión se cierra sola tras **3 minutos sin tocar la pantalla** o si la app
 pasa a segundo plano (`src/logica/operario.tsx`).
 
-- **Admin** (coordinación): marca quién vino, ajusta las horas de corte, los segundos por rosa y
-  los minutos para llegar a un cuadrante, y ve el avance de todos.
-- **Trabajador:** ve sus cuadrantes, los marca como hechos y practica (aprender, juego, progreso).
+- **Coordinación** (`admin`): marca quién vino, ajusta las horas de corte, los segundos por rosa y
+  los minutos para llegar a un cuadrante, ve el avance de todos y administra los usuarios: los crea
+  y **promueve a experto** a quien termina la capacitación.
+- **Experto** (`experto`): ve sus cuadrantes y **revisa las rosas dudosas** del robot (`src/app/revisar.tsx`);
+  cada respuesta se guarda en `etiquetas_expertos` para reentrenar a RosaNet. No ve los juegos.
+- **Aprendiz** (`aprendiz`, en capacitación): ve sus cuadrantes, aprende, practica con el juego y
+  ve su progreso.
+
+Las pantallas están protegidas por rol en `src/app/_layout.tsx` (`Stack.Protected`).
+
+**Alta y activación (nadie conoce el PIN de otro):** coordinación registra nombre, correo, teléfono y
+rol, y recibe un **código de 6 números** que se muestra una sola vez. La persona toca "¿Eres nuevo?
+Activa tu usuario", elige su nombre, escribe el código y **crea su PIN dos veces** (no se aceptan PIN
+obvios como 1111 o 1234). Con 5 códigos equivocados se bloquea; coordinación da uno nuevo con
+"Reiniciar acceso", que también sirve si alguien olvida su PIN (`src/componentes/Ingreso.tsx`,
+`src/logica/cuentas.ts`, `supabase/migraciones/003`).
 
 **Reparto** (`src/logica/turno.ts`): toma los cuadrantes con rosas en punto 3 del reporte del robot.
 Si no alcanza el tiempo, se quedan los de mayor prioridad y el resto aparece como "no caben en el
@@ -109,6 +123,6 @@ EAS no sube lo que esté en `.gitignore`, así que `assets/rosas` no debe ignora
 entran en el APK.
 
 ## Pendiente
-- Recibir de la finca el proceso de sanación (pasos, errores típicos, fotos o video).
+- Confirmar con la finca el proceso de corte y sanación (preguntas al final de `contenido/corte-y-sanacion.md`) y ajustar `src/data/sanacion.ts`.
 - Definir cuándo y dónde se usa la tablet (los celulares no están permitidos en el cultivo).
 - Más fotos de "pasado / sobreabierto".

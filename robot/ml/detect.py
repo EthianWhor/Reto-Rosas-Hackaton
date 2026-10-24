@@ -17,10 +17,21 @@ import numpy as np
 from PIL import Image
 
 DEFAULT_WEIGHTS = Path("modelos/detector_rosas.pt")
-# Medido con 30 escenas del invernadero con todas las rosas marcadas (49 rosas, IoU >= 0.5), con el
-# detector ajustado con escenas de la finca (entrenado a 960 px): a 960 px y conf 0.25 encuentra el
-# 63 % con 5 falsas alarmas; bajar a 0.05 solo sube a 67 % y da 22 falsas alarmas.
-DET_CONF, DET_IMGSZ = 0.25, 960
+# Umbral medido para cada detector, a 960 px, con 30 escenas del invernadero con todas las rosas
+# marcadas (49 rosas, IoU >= 0.5), de día y en versión "de noche" simulada (data.night_scene):
+CONF_BY_MODEL = {
+    # Noche (por defecto, el robot hace la ronda de noche): de noche encuentra 55 % con 7 falsas
+    # alarmas; de día 47 % con 3. Con umbral más bajo da muchas falsas alarmas (0.25: 32 de noche).
+    "detector_rosas.pt": 0.55,
+    # Día: de día 63 % con 5 falsas alarmas; de noche solo 22 % con 2.
+    "detector_rosas_dia.pt": 0.25,
+}
+DET_CONF, DET_IMGSZ = CONF_BY_MODEL["detector_rosas.pt"], 960
+
+
+def default_conf(weights: Path | str) -> float:
+    """Umbral recomendado para un archivo de pesos (0.25 si no se midió)."""
+    return CONF_BY_MODEL.get(Path(weights).name, 0.25)
 # Con conf baja aparecen cajas enormes sobre el techo del invernadero; una rosa vista
 # desde el pasillo nunca ocupa más de unos pocos % de la foto.
 MAX_BOX_FRACTION = 0.08
@@ -29,12 +40,14 @@ NMS_IOU = 0.5
 
 
 class RoseDetector:
-    def __init__(self, weights: Path | str = DEFAULT_WEIGHTS, conf: float = DET_CONF, imgsz: int = DET_IMGSZ,
+    def __init__(self, weights: Path | str = DEFAULT_WEIGHTS, conf: float | None = None, imgsz: int = DET_IMGSZ,
                  max_box_fraction: float = MAX_BOX_FRACTION, device: str | None = None):
+        """conf=None usa el umbral medido para ese archivo de pesos (CONF_BY_MODEL)."""
         from ultralytics import YOLO
 
         self.model = YOLO(str(weights))
-        self.conf, self.imgsz, self.max_box_fraction, self.device = conf, imgsz, max_box_fraction, device
+        self.conf = default_conf(weights) if conf is None else conf
+        self.imgsz, self.max_box_fraction, self.device = imgsz, max_box_fraction, device
 
     def detect(self, image: Image.Image | np.ndarray) -> list[dict]:
         """Devuelve [{"bbox": [x1, y1, x2, y2], "confianza": float}] en píxeles de la imagen.

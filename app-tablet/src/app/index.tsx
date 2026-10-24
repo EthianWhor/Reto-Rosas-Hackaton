@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
+import type { ComponentProps } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -7,8 +8,45 @@ import { Aparecer } from '@/componentes/animaciones';
 import { Ingreso } from '@/componentes/Ingreso';
 import { Marca } from '@/componentes/Marca';
 import { Mosaico } from '@/componentes/Mosaico';
+import { ROLES, type Rol } from '@/data/usuarios';
 import { useOperario } from '@/logica/operario';
 import { colores, espacio, fuente, texto } from '@/tema';
+
+type Opcion = {
+  titulo: string;
+  detalle?: string;
+  icono: ComponentProps<typeof Ionicons>['name'];
+  color: string;
+  destacado?: boolean;
+  etiqueta?: string;
+  ruta: Href;
+};
+
+const INFORME: Opcion = { titulo: 'Informe del robot', icono: 'hardware-chip', color: '#7E57C2', ruta: '/hoy' };
+const DUDOSAS: Opcion = { titulo: 'Rosas dudosas', detalle: 'El robot necesita tu ojo', icono: 'help-circle', color: colores.oro, ruta: '/revisar' };
+
+// Lo que ve cada rol en el inicio. El experto no ve los juegos de práctica; revisa las dudas del robot.
+const MENU: Record<Rol, Opcion[]> = {
+  admin: [
+    { titulo: 'Turno de hoy', detalle: 'Asistencia y avance', icono: 'people', color: colores.primario, destacado: true, ruta: '/turno' },
+    { titulo: 'Usuarios', icono: 'person-add', color: colores.rosa, ruta: '/trabajadores' },
+    INFORME,
+    { ...DUDOSAS, destacado: false },
+  ],
+  experto: [
+    { titulo: 'Mi turno', detalle: 'Mis cuadrantes de hoy', icono: 'checkbox', color: colores.primario, destacado: true, ruta: '/mi-turno' },
+    { ...DUDOSAS, destacado: true },
+    { ...INFORME, destacado: true, detalle: 'Rosas listas por cuadrante' },
+  ],
+  aprendiz: [
+    { titulo: 'Mi turno', detalle: 'Mis cuadrantes de hoy', icono: 'checkbox', color: colores.primario, destacado: true, ruta: '/mi-turno' },
+    { titulo: 'Practicar', detalle: '10 rosas reales', icono: 'flash', color: colores.rosa, destacado: true, ruta: '/clasificar' },
+    { titulo: 'Aprender', icono: 'book', color: '#5E9C4B', ruta: '/aprender' },
+    { titulo: 'Mi progreso', icono: 'trophy', color: colores.oro, ruta: '/progreso' },
+    INFORME,
+    { titulo: 'Sanación', icono: 'medkit', color: '#26A69A', ruta: '/sanacion' },
+  ],
+};
 
 export default function Inicio() {
   const { usuario, salir } = useOperario();
@@ -16,21 +54,8 @@ export default function Inicio() {
 
   if (!usuario) return <Ingreso />;
 
-  const admin = usuario.rol === 'admin';
-  const opciones = admin
-    ? [
-        { titulo: 'Turno de hoy', detalle: 'Asistencia, reparto y avance', icono: 'people' as const, color: colores.primario, destacado: true, ruta: '/turno' as const },
-        { titulo: 'Personas', icono: 'person-add' as const, color: colores.rosa, ruta: '/trabajadores' as const },
-        { titulo: 'Lo que vio el robot', icono: 'hardware-chip' as const, color: '#7E57C2', ruta: '/hoy' as const },
-      ]
-    : [
-        { titulo: 'Mi turno', detalle: 'Mis cuadrantes de hoy', icono: 'checkbox' as const, color: colores.primario, destacado: true, ruta: '/mi-turno' as const },
-        { titulo: 'Practicar', detalle: '10 rosas reales', icono: 'flash' as const, color: colores.rosa, destacado: true, ruta: '/clasificar' as const },
-        { titulo: 'Aprender', icono: 'book' as const, color: '#5E9C4B', ruta: '/aprender' as const },
-        { titulo: 'Mi progreso', icono: 'trophy' as const, color: colores.oro, ruta: '/progreso' as const },
-        { titulo: 'Lo que vio el robot', icono: 'hardware-chip' as const, color: '#7E57C2', ruta: '/hoy' as const },
-        { titulo: 'Sanación', icono: 'medkit' as const, color: '#26A69A', etiqueta: 'Pronto', ruta: '/sanacion' as const },
-      ];
+  const rol = ROLES[usuario.rol];
+  const opciones = MENU[usuario.rol];
 
   return (
     <ScrollView contentContainerStyle={[styles.contenido, { paddingTop: arriba + espacio.m }]}>
@@ -43,13 +68,18 @@ export default function Inicio() {
       </View>
 
       <Aparecer>
-        <Text style={styles.saludo}>Hola, {usuario.nombre}</Text>
-        {admin && <Text style={styles.rol}>Administración</Text>}
+        <Text style={styles.saludo} numberOfLines={1} adjustsFontSizeToFit>
+          Hola, {usuario.nombre.split(' ')[0]}
+        </Text>
+        <View style={[styles.rol, { backgroundColor: rol.fondo }]}>
+          <Ionicons name={rol.icono} size={14} color={rol.color} />
+          <Text style={[styles.rolTexto, { color: rol.color }]}>{rol.nombre}</Text>
+        </View>
       </Aparecer>
 
       <View style={styles.rejilla}>
         {opciones.map(({ ruta, ...o }, i) => (
-          <Aparecer key={o.titulo} retraso={80 + i * 60} estilo={'destacado' in o && o.destacado ? styles.ancho : styles.celda}>
+          <Aparecer key={o.titulo} retraso={80 + i * 60} estilo={o.destacado ? styles.ancho : styles.celda}>
             <Mosaico {...o} onPress={() => router.push(ruta)} />
           </Aparecer>
         ))}
@@ -74,8 +104,10 @@ const styles = StyleSheet.create({
   },
   salirTexto: { fontFamily: fuente.negrita, color: colores.textoSuave, fontSize: texto.pequeno },
   saludo: { fontSize: 34, fontFamily: fuente.titulo, color: colores.texto },
-  rol: { fontSize: texto.cuerpo, fontFamily: fuente.normal, color: colores.rosaOscuro },
-  rejilla: { flexDirection: 'row', flexWrap: 'wrap', gap: espacio.m },
+  rol: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, marginTop: espacio.xs },
+  rolTexto: { fontSize: 13, fontFamily: fuente.negrita },
+  rejilla: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: espacio.m },
   ancho: { width: '100%' },
-  celda: { flexGrow: 1, flexBasis: '45%', minWidth: 150 },
+  // Siempre la mitad del ancho, aunque la última quede sola, para que todas midan lo mismo.
+  celda: { width: '48%' },
 });

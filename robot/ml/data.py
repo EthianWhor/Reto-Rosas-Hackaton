@@ -111,6 +111,20 @@ def grey_margin(im: Image.Image) -> Image.Image:
     return darken_margin(im, fill=(200, 200, 200))
 
 
+def night_scene(im: Image.Image, rng: random.Random | None = None) -> Image.Image:
+    """Escena completa "de noche con linterna": cielo/plástico oscuro y bordes en penumbra.
+
+    Sin rng da la versión fija que se usa para medir; con rng varía la intensidad (aumento).
+    """
+    if rng is None:
+        sky, edge, bright = 0.08, 0.25, 0.8
+    else:
+        sky, edge, bright = rng.uniform(0.03, 0.2), rng.uniform(0.1, 0.45), rng.uniform(0.6, 1.0)
+    im = darken_margin(darken_sky(im, sky), margin=0.05, level=edge, vignette=True)
+    arr = np.asarray(im, dtype=np.float32) * bright
+    return Image.fromarray(np.clip(arr, 0, 255).astype(np.uint8))
+
+
 def night_like(im: Image.Image) -> Image.Image:
     """Aproximación de una foto nocturna con linterna: cielo y margen casi negros."""
     return darken_margin(darken_sky(im, 0.05), level=0.05, vignette=True)

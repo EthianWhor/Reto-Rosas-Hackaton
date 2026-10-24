@@ -89,6 +89,19 @@ function cuadrantesDeEjemplo(): Cuadrante[] {
   return lista;
 }
 
+// Una rosa dudosa por cada cuadrante del ejemplo que tiene alguna, con una confianza baja.
+function dudosasDeEjemplo(cuadrantes: Cuadrante[]): NonNullable<Reporte['dudosas']> {
+  return cuadrantes
+    .filter((c) => c.dudosa > 0)
+    .map((c, i) => ({
+      rosa_id: `${c.cuadrante_id}-${(c.desde_m + 2.5).toFixed(2)}-1.70`,
+      cuadrante_id: c.cuadrante_id,
+      confianza: 0.4 + ((i * 7) % 20) / 100,
+    }));
+}
+
+const CUADRANTES_EJEMPLO = cuadrantesDeEjemplo();
+
 // Reporte de ejemplo con el mismo formato, para mostrar la pantalla sin el robot conectado.
 export const REPORTE_EJEMPLO: Reporte = {
   id_ronda: 'INV1_2026-10-24_220000',
@@ -96,14 +109,11 @@ export const REPORTE_EJEMPLO: Reporte = {
   fecha: '2026-10-24',
   inicio: '2026-10-24 22:00:00',
   fin: '2026-10-24 23:41:00',
-  cuadrantes: cuadrantesDeEjemplo(),
+  cuadrantes: CUADRANTES_EJEMPLO,
   rosas_listas: [
     { rosa_id: 'INV1-C07-T3-12.35-1.84', estado: 'optimo', cama: 7, lado: 'izq', metro_en_cama: 12.35, altura_m: 1.84, diametro_cm: 5.1, confianza: 0.87 },
     { rosa_id: 'INV1-C12-T2-6.10-1.62', estado: 'optimo', cama: 12, lado: 'der', metro_en_cama: 6.1, altura_m: 1.62, diametro_cm: 4.9, confianza: 0.81 },
   ],
-  dudosas: [
-    { rosa_id: 'INV1-C07-T3-13.02-1.71', cuadrante_id: 'INV1-C07-T3', confianza: 0.52 },
-    { rosa_id: 'INV1-C15-T1-2.40-1.55', cuadrante_id: 'INV1-C15-T1', confianza: 0.48 },
-  ],
+  dudosas: dudosasDeEjemplo(CUADRANTES_EJEMPLO),
   obstaculos: ['INV1-C04-T2'],
 };

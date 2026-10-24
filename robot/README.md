@@ -85,6 +85,10 @@ python -m ml.preanotar --finca data/finca_yolo --video "descargas/General/Videos
 #    -> subir a Roboflow, corregir, exportar YOLOv8 en descargas/rosas_finca
 python -m ml.prepare_detector --finca descargas/rosas_finca --repetir 8 --yolo descargas/rose --yolo descargas/floracion --max-publico 500 --out data/detector_finca
 python -m ml.train_detector --data data/detector_finca/data.yaml --weights modelos/detector_rosas.pt --epochs 15 --imgsz 960 --batch 4 --patience 6 --name detector_finca
+
+# 3) Versión "noche": + copias nocturnas simuladas de las escenas (--noche) y fotogramas de otro invernadero
+python -m ml.prepare_detector --finca descargas/rosas_finca --repetir 6 --noche 6 --yolo descargas/rose --yolo descargas/floracion --yolo "descargas/night_roses::video" --max-publico 400 --out data/detector_noche
+python -m ml.train_detector --data data/detector_noche/data.yaml --weights modelos/detector_rosas_dia.pt --epochs 15 --imgsz 960 --batch 4 --patience 6 --name detector_noche
 ```
 
 `data/finca_yolo` (solo algunas rosas marcadas por escena) **no** se usa para el detector; las escenas

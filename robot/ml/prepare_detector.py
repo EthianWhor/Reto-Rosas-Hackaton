@@ -27,6 +27,9 @@ import random
 import shutil
 from pathlib import Path
 
+from PIL import Image
+
+from ml.data import night_scene
 from ml.prepare_data import IMAGE_EXTS, SPLIT_DIRS, read_class_names
 from ml.stages import map_class_name
 
@@ -38,7 +41,7 @@ def convert_labels(lines: list[str], names: list[str]) -> list[str]:
     for line in lines:
         parts = line.split()
         name = names[int(parts[0])] if parts else ""
-        if not parts or (name.lower() != "rosa" and map_class_name(name) is None):
+        if not parts or (name.lower() not in ("rosa", "rose") and map_class_name(name) is None):
             continue
         values = [float(v) for v in parts[1:]]
         if len(values) > 4:  # polígono -> caja
@@ -50,7 +53,14 @@ def convert_labels(lines: list[str], names: list[str]) -> list[str]:
 
 
 def merge(root: Path, out: Path, counts: dict, splits=("train", "val", "test"), repeat: int = 1,
-          max_train: int | None = None, seed: int = 0) -> None:
+          max_train: int | None = None, seed: int = 0, night: int = 0, pattern: str | None = None) -> None:
+    """Copia un dataset YOLO a una sola clase.
+
+    night > 0: además agrega copias "de noche" (data.night_scene): `night` copias variadas por
+    imagen de train y una copia fija por imagen de valid/test, para medir de día y de noche.
+    pattern: solo usa las imágenes cuyo nombre contiene ese texto.
+    """
+    rng = random.Random(seed)
     names = read_class_names(root / "data.yaml")
     for split_dir in sorted(root.iterdir()):
         split = SPLIT_DIRS.get(split_dir.name)
@@ -59,7 +69,8 @@ def merge(root: Path, out: Path, counts: dict, splits=("train", "val", "test"), 
         dest = out / OUT_SPLITS[split]
         (dest / "images").mkdir(parents=True, exist_ok=True)
         (dest / "labels").mkdir(parents=True, exist_ok=True)
-        images = sorted(i for i in (split_dir / "images").iterdir() if i.suffix.lower() in IMAGE_EXTS)
+        images = sorted(i for i in (split_dir / "images").iterdir()
+                        if i.suffix.lower() in IMAGE_EXTS and (pattern is None or pattern in i.name))
         if split == "train" and max_train and len(images) > max_train:
             images = random.Random(seed).sample(images, max_train)
         copies = repeat if split == "train" else 1
@@ -73,6 +84,15 @@ def merge(root: Path, out: Path, counts: dict, splits=("train", "val", "test"), 
                 (dest / "labels" / f"{name}.txt").write_text("\n".join(lines))
                 counts[OUT_SPLITS[split]][0] += 1
                 counts[OUT_SPLITS[split]][1] += len(lines)
+            n_night = night if split == "train" else (1 if night else 0)
+            for k in range(n_night):
+                name = f"{root.name}_{img.stem}_noche{k}"
+                with Image.open(img) as im:
+                    night_scene(im.convert("RGB"), rng if split == "train" else None).save(
+                        dest / "images" / f"{name}.jpg", quality=92)
+                (dest / "labels" / f"{name}.txt").write_text("\n".join(lines))
+                counts[OUT_SPLITS[split]][0] += 1
+                counts[OUT_SPLITS[split]][1] += len(lines)
 
 
 def main() -> None:
@@ -81,6 +101,8 @@ def main() -> None:
     p.add_argument("--finca", type=Path, help="Escenas del invernadero con todas las rosas marcadas")
     p.add_argument("--repetir", type=int, default=8, help="Veces que se repite el train de --finca")
     p.add_argument("--max-publico", type=int, help="Máximo de imágenes de train por dataset público")
+    p.add_argument("--noche", type=int, default=0,
+                   help="Copias 'de noche' por escena de train de --finca (y una fija en valid/test para medir)")
     p.add_argument("--out", type=Path, default=Path("data/detector"))
     args = p.parse_args()
 
@@ -89,12 +111,14 @@ def main() -> None:
     counts = {s: [0, 0] for s in OUT_SPLITS.values()}
     if args.finca:
         print(f"Uniendo {args.finca} (train x{args.repetir}, valid y test para medir) ...")
-        merge(args.finca, args.out, counts, repeat=args.repetir)
-    for root in args.yolo:
-        print(f"Uniendo {root} ...")
+        merge(args.finca, args.out, counts, repeat=args.repetir, night=args.noche)
+    for spec in args.yolo:
+        # "ruta::texto" usa solo las imágenes cuyo nombre contiene ese texto.
+        root, _, pattern = str(spec).partition("::")
+        print(f"Uniendo {root}" + (f" (solo '{pattern}')" if pattern else "") + " ...")
         # Con escenas de la finca, los públicos solo aportan train: se valida en el invernadero.
-        merge(root, args.out, counts, splits=("train",) if args.finca else ("train", "val", "test"),
-              max_train=args.max_publico)
+        merge(Path(root), args.out, counts, splits=("train",) if args.finca else ("train", "val", "test"),
+              max_train=args.max_publico, pattern=pattern or None)
     (args.out / "data.yaml").write_text(
         f"path: {args.out.resolve().as_posix()}\n"
         "train: train/images\nval: valid/images\ntest: test/images\n"

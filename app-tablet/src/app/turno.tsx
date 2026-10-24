@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Aparecer, BarraProgreso } from '@/componentes/animaciones';
+import { ROLES } from '@/data/usuarios';
 import { useOperario } from '@/logica/operario';
 import { fechaLarga } from '@/logica/reporte';
 import { duracion, type ConfigTurno } from '@/logica/turno';
@@ -82,7 +83,12 @@ export default function Turno() {
                 {presente && <Ionicons name="checkmark" size={26} color="#fff" />}
               </View>
               <View style={styles.filaTexto}>
-                <Text style={styles.filaTitulo}>{t.nombre}</Text>
+                <View style={styles.nombreFila}>
+                  <Text style={styles.filaTitulo} numberOfLines={1}>
+                    {t.nombre}
+                  </Text>
+                  <Text style={[styles.rol, { color: ROLES[t.rol].color, backgroundColor: ROLES[t.rol].fondo }]}>{ROLES[t.rol].nombre}</Text>
+                </View>
                 <Text style={styles.cuerpo}>
                   {!presente
                     ? 'No vino'
@@ -173,6 +179,8 @@ const styles = StyleSheet.create({
   check: { width: 44, height: 44, borderRadius: 12, borderWidth: 3, borderColor: colores.borde, justifyContent: 'center', alignItems: 'center' },
   checkSi: { backgroundColor: colores.acierto, borderColor: colores.acierto },
   filaTexto: { flex: 1 },
-  filaTitulo: { fontSize: texto.subtitulo, fontFamily: fuente.titulo, color: colores.texto },
+  filaTitulo: { fontSize: texto.subtitulo, fontFamily: fuente.titulo, color: colores.texto, flexShrink: 1 },
+  nombreFila: { flexDirection: 'row', alignItems: 'center', gap: espacio.s },
+  rol: { fontSize: 12, fontFamily: fuente.negrita, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2, overflow: 'hidden' },
   avance: { fontSize: texto.subtitulo, fontFamily: fuente.titulo, color: colores.textoSuave },
 });

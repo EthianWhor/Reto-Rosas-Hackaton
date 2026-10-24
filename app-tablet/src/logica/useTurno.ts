@@ -2,6 +2,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Reporte } from '@/data/reporte';
+import { cortaEnTurno } from '@/data/usuarios';
 import { useOperario } from '@/logica/operario';
 import { cargarReporte, type Origen } from '@/logica/reporte';
 import { supabase } from '@/logica/supabase';
@@ -22,7 +23,7 @@ import {
  */
 export function useTurno() {
   const { usuarios, token } = useOperario();
-  const trabajadores = useMemo(() => usuarios.filter((u) => u.rol === 'trabajador'), [usuarios]);
+  const trabajadores = useMemo(() => usuarios.filter(cortaEnTurno), [usuarios]);
   const [error, setError] = useState('');
   const [datos, setDatos] = useState<{
     reporte: Reporte;
