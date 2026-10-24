@@ -17,44 +17,34 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+from ml.detect import DET_CONF, DET_IMGSZ, RoseDetector
 from ml.predict import DEFAULT_THRESHOLD, RosePredictor
 from ml.prepare_data import pad_box
 from ml.stages import STAGE_LABELS
 
-# Medido en las fotos de la finca (IoU > 0.2 con las 69 rosas marcadas): a 640 px y conf 0.25
-# encuentra el 28 %; a 1280 px y conf 0.10, el 78 % (las rosas del invernadero se ven pequeñas
-# y lejanas, y el detector se entrenó con rosas de jardín de cerca).
-DET_CONF, DET_IMGSZ = 0.10, 1280
-# Con conf baja aparecen cajas enormes sobre el techo del invernadero; una rosa vista
-# desde el pasillo nunca ocupa más de unos pocos % de la foto.
-MAX_BOX_FRACTION = 0.08
 COLORS = {"1_inmaduro": "deepskyblue", "2_optimo": "lime", "3_pasado": "red", "incierta": "yellow"}
 
 
 class RoseInspector:
+    """Detector + RosaNet: una entrada por rosa encontrada en la foto."""
+
     def __init__(self, detector_weights: Path, classifier_ckpt: Path, det_conf: float = DET_CONF,
                  threshold: float = DEFAULT_THRESHOLD, pad: float = 0.15, device: str | None = None,
                  imgsz: int = DET_IMGSZ):
-        from ultralytics import YOLO
-
-        self.detector = YOLO(str(detector_weights))
+        self.detector = RoseDetector(detector_weights, conf=det_conf, imgsz=imgsz, device=device)
         self.classifier = RosePredictor(classifier_ckpt, device=device, threshold=threshold)
-        self.det_conf, self.pad, self.imgsz = det_conf, pad, imgsz
+        self.pad = pad
 
     def inspect(self, image: Image.Image) -> list[dict]:
-        """Devuelve una entrada por rosa encontrada en la foto."""
         image = image.convert("RGB")
-        # iou=0.5 (en vez de 0.7): menos cajas duplicadas sobre la misma rosa.
-        result = self.detector.predict(image, conf=self.det_conf, imgsz=self.imgsz, iou=0.5, verbose=False)[0]
-        roses, image_area = [], image.width * image.height
-        for box, det_score in zip(result.boxes.xyxy.tolist(), result.boxes.conf.tolist()):
-            if (box[2] - box[0]) * (box[3] - box[1]) > MAX_BOX_FRACTION * image_area:
-                continue
+        roses = []
+        for det in self.detector.detect(image):
+            box = det["bbox"]
             crop_box = pad_box([int(v) for v in box], *image.size, self.pad)
             pred = self.classifier.predict(image.crop(crop_box))
             roses.append({
                 "caja": [round(v) for v in box],
-                "confianza_deteccion": round(det_score, 3),
+                "confianza_deteccion": det["confianza"],
                 "categoria": pred["etapa"] if pred["seguro"] else "incierta",
                 "categoria_red": pred["etapa"],
                 "confianza": pred["confianza"],

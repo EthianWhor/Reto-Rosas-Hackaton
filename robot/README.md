@@ -62,7 +62,7 @@ que el punto óptimo de la finca: mezclarlas directo con la finca enseña un cri
 
 ```bash
 # Recortes de la finca (3 categorías) y públicos (escala propia: botón / abriendo / abierta / senescente)
-python -m ml.prepare_data --yolo data/finca_yolo --out data/finca_stages
+python -m ml.prepare_data --yolo data/finca_yolo --out data/finca_stages --pad 0.15
 python -m ml.prepare_data --escala publica --yolo descargas/rose --yolo descargas/floracion --out data/pre
 
 # Etapa 1: preentrenar desde cero con los públicos (aprende a "ver" rosas)

@@ -157,6 +157,7 @@ Fuentes de las especificaciones: generationrobots.com, robotshop.com, store.agib
 
 ### Arquitectura de operación
 Foto de escena del robot → **detector** (YOLO11n preentrenado, ajustado para una clase, "rosa") → recorte de cada rosa → **RosaNet** (CNN propia) → inmaduro / óptimo / pasado / *incierta* → reporte por sector (JSON) para el dashboard. Código en `robot/ml/pipeline.py`.
+**Cómo usar la red desde el código del robot** (API, config `modelo_equipo`, comandos y límites): `robot/CLAUDE.md`. Los modelos entrenados están en `robot/modelos/`.
 
 ### Datos usados
 | Fuente | Uso | Recortes |

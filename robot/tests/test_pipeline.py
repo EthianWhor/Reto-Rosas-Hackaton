@@ -117,6 +117,24 @@ def test_prepare_detector_merges_into_single_class(tmp_path):
     assert all(line.startswith("0 ") for f in labels for line in f.read_text().splitlines())
 
 
+def test_bundled_models_follow_the_robot_contract():
+    """Los modelos de modelos/ cargan y devuelven lo que espera el código del robot."""
+    import numpy as np
+    from pathlib import Path
+
+    from ml.detect import RoseDetector
+
+    if not Path("modelos/detector_rosas.pt").exists():
+        pytest.skip("faltan los modelos en robot/modelos")
+    image = np.zeros((480, 640, 3), dtype=np.uint8)
+    image[200:260, 300:350] = (150, 20, 40)
+    detections = RoseDetector("modelos/detector_rosas.pt", device="cpu").detect(image)
+    assert isinstance(detections, list)
+    assert all(set(d) == {"bbox", "confianza"} and len(d["bbox"]) == 4 for d in detections)
+    pred = RosePredictor("modelos/rosanet.pt", device="cpu").predict(Image.fromarray(image[180:280, 280:370]))
+    assert pred["etapa"] in STAGES and set(pred["probabilidades"]) == set(STAGES)
+
+
 def test_model_output_shape():
     model = RosaNet(num_classes=4)
     out = model(torch.randn(2, 3, IMAGE_SIZE, IMAGE_SIZE))
