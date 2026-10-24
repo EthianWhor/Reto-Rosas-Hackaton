@@ -36,7 +36,9 @@ suman, pero el jurado premia ver las piezas funcionando y conectadas.
 > a cada trabajador a dónde ir. La app y la realidad virtual entrenan a las personas para reconocer
 > el punto de corte por sí mismas.
 
-(El nombre es una propuesta. "Punto 3" es el punto de corte de la finca y el nombre lo entiende
+(La app ya se llama **RoseApp**: rosa, rojo y blanco, con práctica tipo Duolingo. "Punto 3" sigue
+como propuesta para el sistema completo; si prefieren, todo puede llamarse RoseApp.
+"Punto 3" es el punto de corte de la finca y el nombre lo entiende
 cualquier operario.)
 
 ## El ecosistema: un cerebro y tres piezas
@@ -50,7 +52,7 @@ cualquier operario.)
           ▲ datos nuevos      │ mismo criterio     │ mismo criterio
           │                   ▼                    ▼
  ┌─────────────────┐  ┌──────────────────┐  ┌──────────────────┐
- │ ROBOT X2 Ultra  │  │ APP PUNTO 3      │  │ META QUEST (VR)  │
+ │ ROBOT X2 Ultra  │  │ ROSEAPP          │  │ META QUEST (VR)  │
  │ Ronda nocturna  │→ │ Pantallas tipo   │  │ Inducción y      │
  │ línea por línea │  │ turnero + juego  │  │ evaluación con   │
  │ y por cuadrante │  │ de práctica      │  │ instructor       │
@@ -61,7 +63,7 @@ cualquier operario.)
 1. **Aprender: realidad virtual (Meta Quest).** Inducción del operario nuevo. Simula la cama, el
    recorrido, la lectura del botón, el corte y la sanación. El instructor ve y evalúa lo que hace
    el operario. Un error en VR no cuesta una rosa.
-2. **Orientar y practicar: la app Punto 3 en pantallas comunes.** No es un celular en la mano del
+2. **Orientar y practicar: RoseApp en pantallas comunes.** No es un celular en la mano del
    operario mientras corta. Es una **tablet común o una pantalla tipo turnero de banco**, fija a la
    entrada del invernadero o en el lugar de trabajo:
    - **Turnero del día:** el trabajador se identifica (nombre o código) y ve a qué cuadrante y a qué
@@ -99,13 +101,16 @@ de cada rosa → **RosaNet** (CNN propia) → inmaduro / óptimo / pasado / *inc
 | RosaNet en dos etapas (preentrenada con públicos + calibrada con la finca) | **75 % de exactitud** en rosas de la finca (validación cruzada, 64 rosas); reconoce **10 de 17 óptimas**; 4 de 5 casos difíciles | Pasó de 25 % a 75 % con solo 64 rosas de la finca. Más fotos de la finca = mejor modelo, y el robot es justamente el que las consigue |
 | Seguridad del modelo | Marca como **"incierta"** toda predicción con confianza < 60 % | No inventa: lo dudoso va a revisión de un experto |
 | Detector de rosas | mAP50 0,959 en fotos públicas; encuentra **78 %** de las rosas marcadas en las fotos del invernadero (1280 px) | Funciona, pero las rosas del invernadero son pequeñas y lejanas: hay que ajustarlo con fotos de la finca |
-| Simulación del X2 Ultra en MuJoCo (rama `A`) | Ronda nocturna completa por un invernadero (20 camas de 30 m, caminos de 0,8 m), reporte Excel + JSON por cuadrante y envío al dashboard cuando vuelve el WiFi | El sistema completo corre de punta a punta sin el robot físico |
+| RosaNet "noche" (aumento de fondo oscuro, en `main`) | Con fondo oscuro como de noche, la versión de día bajaba a **52 %** y marcaba como óptimas **~25 de 45** inmaduras. La versión noche sube a **75,5 %** y baja ese error a **~7 de 45**; de día pierde ~3,5 puntos | **Validación que convence:** detectamos que el robot se equivocaría de noche, encontramos la causa (el fondo, no la luz sobre la rosa) y lo corregimos con datos. Falta medir con fotos reales de noche |
+| Ajustes de la red (3 semillas por ajuste) | Ningún ajuste mejora más que la variación entre semillas (±4 puntos); completar "pasado" con fotos públicas sí suma +28 | **El límite ya son los datos, no el modelo.** Por eso el robot que toma fotos cada noche es la pieza clave |
+| Simulación del X2 Ultra en MuJoCo (rama `A`) | Ronda nocturna completa por un invernadero (20 camas de 30 m, caminos de 0,8 m), con el modelo real del equipo sobre fotos de la finca, reporte Excel + JSON por cuadrante y envío al dashboard cuando vuelve el WiFi. Cobertura de rosas vistas: **de 73 % a ~95 %** | El sistema completo corre de punta a punta sin el robot físico |
 | Estado nuevo **"lista mañana"** (rama `A`) | Punto 2 avanzado que llegará al punto 3 en ~1 día | Pronóstico: la finca planea el corte de mañana, no solo el de hoy |
 | Prioridad por cuadrante (rama `A`) | `puntaje = óptimas + 0,5 × lista mañana`; prioridad alta con 3 o más óptimas; orden 1, 2, 3… | Es exactamente lo que muestra la pantalla turnero: "ve primero al cuadrante INV1-C07-T3" |
 
 **Límites que decimos nosotros:** "pasado" no se aprende (solo 2 ejemplos); 7 de 45 inmaduras se
-marcan como óptimas, que es la falla más costosa (cortar en punto 2); todo el entrenamiento es con
-fotos de día; los números tienen ±10 puntos de incertidumbre por las pocas fotos.
+marcan como óptimas, que es la falla más costosa (cortar en punto 2); la noche está simulada
+oscureciendo el fondo de fotos de día y falta medir con fotos reales de noche; los números tienen
+±10 puntos de incertidumbre por las pocas fotos.
 
 ## Guion propuesto (10 min)
 
@@ -119,7 +124,7 @@ fotos de día; los números tienen ±10 puntos de incertidumbre por las pocas fo
 | 6:30 | **Por qué un robot** | Ve desde abajo, como la cámara se entrenó; trabaja de noche sin estorbar; con la luz LED del campo el color es constante; cubre el campo entero cada noche con el mismo criterio y deja fotos como evidencia; actúa (informa por voz, pantalla y LED, señala con el brazo). | Pertinencia |
 | 7:15 | **Negocio** | Un robot para empezar; un robot por campo después. Inversión, retorno y payback en una diapositiva con 3 números. | Negocio, viabilidad |
 | 8:15 | **Visión 360** | Personas primero (no reemplaza: forma y orienta), mantenimiento, datos y ética. | Impacto y ética |
-| 8:45 | **Validación y límites** | Qué supusimos y qué cambió: los datasets públicos servían (no: 25 % en la finca → entrenamiento en dos etapas → 75 %); celulares (no se permiten → pantallas comunes); drones (no guardan datos). Qué medimos y qué falta (ver "Evidencia"). | Validación |
+| 8:45 | **Validación y límites** | Qué supusimos y qué cambió: los datasets públicos servían (no: 25 % en la finca → entrenamiento en dos etapas → 75 %); la red funcionaría igual de noche (no: 52 % con fondo oscuro → aumento de fondo → 75,5 %); celulares (no se permiten → pantallas comunes); drones (no guardan datos). Qué medimos y qué falta (ver "Evidencia"). | Validación |
 | 9:30 | **Cierre** | "El experto enseña una vez. Punto 3 enseña a cientos y le dice a cada trabajador dónde cortar hoy." + qué pedimos (piloto de 8 semanas en un campo). | Pitch |
 
 ## Preguntas difíciles que el jurado probablemente hará
