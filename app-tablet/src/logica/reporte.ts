@@ -6,6 +6,8 @@ import { supabase } from '@/logica/supabase';
 // El reporte de la última ronda del robot sale de Supabase (tabla reportes; el robot lo sube con
 // robot/subir_reporte.py). Sin conexión se usa el último que descargó la tablet y, si nunca
 // descargó uno, el de ejemplo.
+// Los reportes del modo foto (id con "_DEMO_", una foto suelta en vivo) no cuentan para el turno:
+// se reparte con la última ronda por el invernadero. Sus dudosas sí salen en "Rosas dudosas".
 const CLAVE = 'reporte:ultimo:v1';
 
 export type Origen = 'robot' | 'guardado' | 'ejemplo';
@@ -14,6 +16,7 @@ export async function cargarReporte(): Promise<{ reporte: Reporte; origen: Orige
   const { data, error } = await supabase
     .from('reportes')
     .select('datos')
+    .not('id_ronda', 'like', '%DEMO%')
     .order('fecha', { ascending: false })
     .order('recibido', { ascending: false })
     .limit(1)

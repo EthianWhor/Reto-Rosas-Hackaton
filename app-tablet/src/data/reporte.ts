@@ -44,7 +44,15 @@ export type Reporte = {
   fin: string;
   cuadrantes: Cuadrante[];
   rosas_listas: RosaLista[];
-  dudosas?: { rosa_id: string; cuadrante_id?: string; foto?: string; confianza?: number }[];
+  dudosas?: {
+    rosa_id: string;
+    cuadrante_id?: string;
+    foto?: string;
+    confianza?: number;
+    /** La clase que el modelo creía más probable. */
+    clase_modelo?: string;
+    fecha_hora?: string;
+  }[];
   obstaculos: string[];
   ronda?: Record<string, string | number>;
 };

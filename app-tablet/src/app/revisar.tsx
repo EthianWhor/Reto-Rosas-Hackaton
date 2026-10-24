@@ -2,51 +2,37 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
 import { Aparecer, BarraProgreso, LluviaDePetalos } from '@/componentes/animaciones';
 import { BotonGrande } from '@/componentes/BotonGrande';
 import { CATEGORIAS } from '@/data/categorias';
-import type { Reporte } from '@/data/reporte';
-import { ROSAS } from '@/data/rosas';
 import type { CategoriaId } from '@/data/tipos';
-import { etiquetarDudosa, leerRevisadas } from '@/logica/dudosas';
+import { cargarDudosas, etiquetarDudosa, type Dudosa } from '@/logica/dudosas';
 import { useOperario } from '@/logica/operario';
-import { cargarReporte, type Origen } from '@/logica/reporte';
+import { supabase } from '@/logica/supabase';
 import { colores, espacio, fuente, sombra, texto } from '@/tema';
 
-type Dudosa = NonNullable<Reporte['dudosas']>[number];
-
-// Foto de la rosa dudosa. Cuando el robot suba sus fotos, `foto` traerá una dirección web; mientras
-// tanto (o con el reporte de ejemplo) se usa una foto real de la finca como muestra.
-function fotoDe(d: Dudosa) {
-  if (d.foto?.startsWith('http')) return { uri: d.foto };
-  let h = 0;
-  for (const ch of d.rosa_id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return ROSAS[h % ROSAS.length].imagen;
-}
-
-const cama = (cuadranteId?: string) => {
-  const m = cuadranteId?.match(/C(\d+)-T(\d+)/);
+const donde = (d: Dudosa) => {
+  if (d.enVivo) return `Foto en vivo del robot${d.fecha_hora ? ` · ${d.fecha_hora.slice(11, 16)}` : ''}`;
+  const m = d.cuadrante_id?.match(/C(\d+)-T(\d+)/);
   return m ? `Cama ${Number(m[1])} · metros ${(Number(m[2]) - 1) * 5}–${Number(m[2]) * 5}` : 'Ubicación sin dato';
 };
 
 // El robot pregunta, el experto responde: cada respuesta se guarda para reentrenar a RosaNet.
+// Solo fotos reales que subió el robot; cuando llega un reporte nuevo, la lista se actualiza sola.
 export default function Revisar() {
   const { token } = useOperario();
   const { width } = useWindowDimensions();
-  const [datos, setDatos] = useState<{ reporte: Reporte; origen: Origen; pendientes: Dudosa[]; total: number } | null>(null);
+  const [datos, setDatos] = useState<{ pendientes: Dudosa[]; total: number } | null>(null);
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [gracias, setGracias] = useState(0);
 
   const cargar = useCallback(async () => {
     try {
-      const { reporte, origen } = await cargarReporte();
-      const todas = reporte.dudosas ?? [];
-      const revisadas = await leerRevisadas(reporte.id_ronda);
-      setDatos({ reporte, origen, pendientes: todas.filter((d) => !revisadas.has(d.rosa_id)), total: todas.length });
+      setDatos(await cargarDudosas());
       setError('');
     } catch (e) {
       setError((e as Error).message);
@@ -58,6 +44,16 @@ export default function Revisar() {
       cargar();
     }, [cargar]),
   );
+
+  useEffect(() => {
+    const canal = supabase
+      .channel('dudosas')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reportes' }, () => cargar())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(canal);
+    };
+  }, [cargar]);
 
   if (!datos) {
     return (
@@ -74,7 +70,7 @@ export default function Revisar() {
     if (!actual || !token || guardando) return;
     setGuardando(true);
     try {
-      await etiquetarDudosa(token, datos!.reporte.id_ronda, actual.rosa_id, actual.cuadrante_id, categoria);
+      await etiquetarDudosa(token, actual.id_ronda, actual.rosa_id, actual.cuadrante_id, categoria);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
       setGracias((g) => g + 1);
       setDatos({ ...datos!, pendientes: datos!.pendientes.slice(1) });
@@ -93,7 +89,9 @@ export default function Revisar() {
             <Ionicons name="checkmark-done" size={60} color="#fff" />
           </View>
           <Text style={styles.titulo}>Todo revisado</Text>
-          <Text style={[styles.cuerpo, { textAlign: 'center' }]}>Gracias: tus respuestas entrenan al robot.</Text>
+          <Text style={[styles.cuerpo, { textAlign: 'center' }]}>
+            Gracias: tus respuestas entrenan al robot. Si el robot duda de otra rosa, aparece aquí sola.
+          </Text>
           <BotonGrande titulo="Volver" claro color={colores.primario} onPress={() => router.back()} />
         </Aparecer>
         <LluviaDePetalos disparo={gracias} cantidad={30} />
@@ -113,18 +111,29 @@ export default function Revisar() {
           </View>
         </View>
 
-        <Aparecer key={actual.rosa_id} estilo={styles.tarjeta}>
-          <Image source={fotoDe(actual)} style={{ width: '100%', height: Math.min(width - 48, 420) }} contentFit="cover" transition={200} />
+        <Aparecer key={actual.id_ronda + actual.rosa_id} estilo={styles.tarjeta}>
+          {actual.foto?.startsWith('http') ? (
+            <Image
+              source={{ uri: actual.foto }}
+              style={{ width: '100%', height: Math.min(width - 48, 420) }}
+              contentFit="cover"
+              transition={200}
+            />
+          ) : (
+            <View style={[styles.sinFoto, { height: Math.min(width - 48, 260) }]}>
+              <Ionicons name="image-outline" size={48} color={colores.gris} />
+              <Text style={styles.nota}>El robot no subió la foto de esta rosa</Text>
+            </View>
+          )}
           <View style={styles.info}>
             <View style={styles.pregunta}>
-              <Ionicons name="hardware-chip" size={22} color="#7E57C2" />
+              <Ionicons name={actual.enVivo ? 'radio' : 'hardware-chip'} size={22} color="#7E57C2" />
               <Text style={styles.preguntaTexto}>El robot no está seguro. ¿Cómo está esta rosa?</Text>
             </View>
             <Text style={styles.cuerpo}>
-              {cama(actual.cuadrante_id)}
+              {donde(actual)}
               {actual.confianza != null ? ` · seguro al ${Math.round(actual.confianza * 100)} %` : ''}
             </Text>
-            {datos.origen === 'ejemplo' && <Text style={styles.nota}>Foto de muestra (datos de ejemplo)</Text>}
           </View>
         </Aparecer>
 
@@ -170,6 +179,7 @@ const styles = StyleSheet.create({
   preguntaTexto: { flex: 1, fontSize: texto.cuerpo + 1, fontFamily: fuente.negrita, color: colores.texto },
   cuerpo: { fontSize: texto.cuerpo, fontFamily: fuente.normal, color: colores.textoSuave },
   nota: { fontSize: 13, fontFamily: fuente.normal, color: colores.gris },
+  sinFoto: { alignItems: 'center', justifyContent: 'center', gap: espacio.s, backgroundColor: colores.rosaSuave },
   error: { fontSize: texto.cuerpo, fontFamily: fuente.negrita, color: colores.error, textAlign: 'center' },
   opciones: { gap: espacio.m },
 });
