@@ -122,9 +122,11 @@ Primero se activa el entorno de la raíz del repo (ahí están instaladas las de
 
 ```bash
 ..\.venv\Scripts\activate
-python main.py              # ronda por todos los caminos: ubica las rosas y arma el reporte Excel + JSON en datos/salida/
+python main.py              # sale de la base, recorre los caminos en serpiente, vuelve y arma el reporte en datos/salida/
 python main.py --ventana    # lo mismo, mirando el visor de MuJoCo
 python main.py --camino 1   # solo un camino (0 = la orilla)
+python main.py --parar-despues 5   # simula batería baja: para tras 5 paradas y vuelve a la base
+python main.py --continuar         # sigue la última ronda que quedó a medias, sin repetir fotos
 python main.py --revisar    # solo revisa todo y toma una foto de prueba, sin caminar
 ```
 

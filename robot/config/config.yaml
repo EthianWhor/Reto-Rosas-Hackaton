@@ -11,12 +11,12 @@ percepcion:
   clasificador: auto         # auto | oraculo | rosanet | detector_equipo
   margen_recorte: 0.15       # el margen con el que se calibró RosaNet (robot/CLAUDE.md)
   tamano_min_px: 32          # igual que --min-size de ml/prepare_data.py
-  # De noche el fondo detrás de la rosa es oscuro y RosaNet (entrenada de día)
-  # confunde inmaduras con óptimas. Con la profundidad se pinta el fondo de un
-  # gris claro antes de pasar el recorte a la red (plan, sección 7.7).
-  # OJO: cambia lo que recibe la red; avisado al equipo del modelo.
+  # Pinta de gris claro el fondo oscuro del recorte (con la profundidad) antes de
+  # RosaNet. Hacía falta con la red de día (plan, sección 7.8). Con la red "noche"
+  # (2026-10-24, entrenada con fondo oscuro) ya no ayuda y hace perder óptimas,
+  # así que queda APAGADO (medido en la sim, plan sección 7.9).
   fondo_claro:
-    activo: true
+    activo: false
     color: [170, 175, 180]   # gris claro (en la sim 170 dio algo mejor que 205 y 235)
     mas_lejos_m: 0.25        # fondo = más de esto detrás de la rosa (o sin dato)
   # la confianza mínima ("seguro") la pone RosaNet (0,6); no se repite aquí
@@ -45,6 +45,7 @@ sim:
   largo_cama_m: 10
   camino_inicial: 1          # camino de --camino por defecto (1 = entre la cama 1 y la 2)
   caminos: null              # caminos de la ronda; null = todos (así cada cama se ve por los dos lados)
+  base_xy: [-1.2, 0.4]       # base / cargador en el pasillo principal, junto al camino 0
   altura_cama_m: 0.25
   tallos_por_metro: [8, 12]
   prob_estados:              # qué tan seguido sale cada estado en la escena
@@ -110,7 +111,7 @@ reporte:
   optimo_prioridad_alta: 3   # rosas en óptimo para que un cuadrante sea "alta"
 
 envio:
-  metodo: carpeta            # api | carpeta | correo (acordar con el dashboard)
+  metodo: carpeta            # carpeta | api | supabase (la app de la tablet lee de Supabase; claves en robot/.env)
   revisar_cada_s: 60
   espera_max_min: 60         # los reintentos esperan 1, 2, 4, 8… min, hasta este máximo
   # carpeta compartida del dashboard. ENVIO_CARPETA en robot/.env la reemplaza

@@ -98,13 +98,21 @@ def _corte_con_cama(u, v, cap: Captura, plano: Plano, camino: int) -> tuple[np.n
     return cap.cam_pos + t * direccion, t
 
 
-def asignar_cama(x: float, y: float, plano: Plano, camino: int) -> tuple[int, str, float, int] | None:
-    """(cama, lado, metro, tramo) de un punto, o None si no cae en ninguna cama."""
+def asignar_cama(x: float, y: float, plano: Plano, camino: int, rumbo: float = 0.0) -> tuple[int, str, float, int] | None:
+    """(cama, lado, metro, tramo) de un punto, o None si no cae en ninguna cama.
+
+    `lado` es de qué lado del robot estaba la cama, según hacia dónde caminaba
+    (`rumbo`): yendo hacia +x la cama de +y queda a la izquierda; volviendo
+    hacia −x (ruta en serpiente), a la derecha.
+    """
     cama = next((c for c in plano.camas if c.y_min - TOLERANCIA_CAMA_M <= y <= c.y_max + TOLERANCIA_CAMA_M), None)
     if cama is None:
         return None
     c = plano.camino(camino)
-    lado = "izq" if cama.numero == c.cama_izq else "der" if cama.numero == c.cama_der else "otra"
+    if cama.numero not in (c.cama_izq, c.cama_der):
+        lado = "otra"
+    else:
+        lado = "izq" if (cama.y_centro - c.y) * math.cos(rumbo) > 0 else "der"
     metro = min(max(x, 0.0), plano.largo_m)
     n_tramos = math.ceil(plano.largo_m / plano.tramo_m)
     return cama.numero, lado, round(metro, 3), min(tramo(metro, plano.tramo_m), n_tramos)
@@ -121,7 +129,7 @@ def ubicar(bbox, cap: Captura, plano: Plano, camino: int) -> Ubicacion | None:
         if corte is None:
             return None
         (punto, z), metodo = corte, "plano"
-    cama = asignar_cama(punto[0], punto[1], plano, camino)
+    cama = asignar_cama(punto[0], punto[1], plano, camino, cap.rumbo)
     if cama is None:
         return None
     diametro_cm = (x2 - x1) * z / cap.intrinsecos()["f"] * 100

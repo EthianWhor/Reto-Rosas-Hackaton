@@ -424,6 +424,13 @@ Cuadrante ID:  INV1-C07-T3
 - Así **no repite** caminos y no da la vuelta dentro del camino estrecho.
 - Los caminos de las orillas (0 y 20) solo ven una cama.
 
+**Hecho en la simulación (`navegacion/ruta.py`, `ronda.py`):**
+- El robot sale de la **base** (placa verde en el pasillo principal, `sim.base_xy`), entra al camino 0, lo recorre hasta el fondo, sale al pasillo del fondo, gira 90°, se corre al camino 1, gira otra vez y vuelve hacia la cabecera, y así. Al terminar vuelve a la base. Si quedó en el pasillo del fondo, regresa por el último camino sin tomar fotos.
+- Siempre camina de frente: antes de cambiar de dirección gira en el lugar, y nunca gira dentro de un camino.
+- Las fotos se nombran con el número de parada contado desde la cabecera, igual en los dos sentidos.
+- El "lado" (`izq`/`der`) del reporte depende de hacia dónde caminaba el robot: en los caminos de vuelta, la izquierda y la derecha se invierten. Cada foto guarda el `rumbo` del robot.
+- Ronda completa en la escena de prueba (3 caminos): 108 fotos, ~55 s de simulación sin ventana, cobertura ~95 % (igual que antes de la serpiente).
+
 ### 4.4 Tiempo estimado por noche
 
 | Dato | Valor |
@@ -662,6 +669,45 @@ Antes de pasar el recorte a RosaNet, el robot usa la profundidad para pintar de 
 - El tono del gris casi no cambia el resultado (170, 205 y 235 dan parecido).
 - Fuera de la simulación, con las fotos de la finca, el gris claro no hacía perder óptimas. En la simulación sí, probablemente porque los carteles son pequeños (~75 px) y planos. **Hay que validarlo con fotos reales de noche**, aunque sean pocas (rosas compradas, cuarto oscuro y una linterna).
 - Otras opciones que siguen abiertas: reentrenar con fondos oscuros (equipo del modelo), prender las luces del invernadero en la ronda (sección 6), usar el tamaño de la cabeza como segunda opinión, y exigir más confianza para "óptimo" de noche.
+
+### 7.9 RosaNet "noche" (pull del 2026-10-24)
+
+El equipo del modelo reentrenó RosaNet con **aumento de fondo oscuro** (`modelos/rosanet.pt`; la anterior quedó en `modelos/rosanet_v1_dia.pt`). Se integró a la rama `A` sin cambiar nada de lo suyo y se midió desde el robot:
+
+**Con las fotos de la finca, margen cambiado y la rosa del mismo tamaño** (inmaduras → óptimo, sobre 47):
+
+| Margen alrededor de la rosa | Red de día | Red noche |
+|---|---|---|
+| Original | 2 | 2 |
+| Negro, 8 % | 14 | **6** |
+| Negro, 12 % | 33 | **14** |
+| Gris claro, 12 % | 3 | 3 |
+
+**En la simulación** (carteles + detector + RosaNet noche, ronda en serpiente por los 3 caminos, semillas 7 y 11):
+
+| | Sin fondo claro | Con fondo claro |
+|---|---|---|
+| Inmaduras marcadas como óptimas | **1/113 y 2/104** (con la red de día eran 27 y 24) | 1/113 y 1/104 |
+| Óptimas reales marcadas como óptimas | 11/39 y 12/45 | 8/39 y 8/45 |
+| Cobertura | 88 % y 82 % | 88 % y 82 % |
+
+- **Decisión: `fondo_claro` APAGADO.** Con la red noche ya no hace falta para las inmaduras y hace perder óptimas, como predijo el equipo del modelo.
+- **Problema nuevo: la red noche es muy prudente con las óptimas, sobre todo si la rosa sale pequeña.** Con la regla de "seguro" (confianza ≥ 0,6), en las fotos de la finca:
+
+| Tamaño de la rosa | Red de día: óptimas reconocidas | Red noche: óptimas reconocidas | Red noche: óptimas → dudosa |
+|---|---|---|---|
+| Foto original | 19/20 | 11/20 | 7 |
+| 100 px | 19/20 | 7/20 | 11 |
+| 70 px (como en la sim) | 19/20 | 5/20 | 13 |
+| 50 px | 18/20 | 1/20 | 16 |
+
+  En la simulación pasa lo mismo: de 39 óptimas, 11 salen óptimas, 12 dudosas (casi todas con "óptimo" como mejor clase, confianza 0,43–0,59) y 16 inmaduras. No marca de más (el error caro), pero se le escapan muchas que había que cortar. **Para el equipo del modelo:** revisar la confianza de "óptimo" en la versión noche y entrenar también con recortes pequeños (70–100 px). **Del lado del robot**, si sigue así: acercar las fotos (rosas más grandes en píxeles) o contar en la prioridad del cuadrante las dudosas cuya mejor clase es "óptimo".
+
+### 7.10 Envío a la app de la tablet (Supabase)
+
+En el mismo pull el equipo de la app agregó `robot/subir_reporte.py`: sube el JSON del reporte a la tabla `reportes` de Supabase, y la app de la tablet lee de ahí el último reporte para el turnero. La app usa **exactamente el formato de nuestro JSON** (sección 10.4; `app-tablet/src/data/reporte.ts`), así que no hubo que cambiar el reporte.
+
+Del lado del robot se agregó `envio.metodo: supabase` (`reporte/envio.py`): usa la función `subir()` de ellos sin modificarla, dentro de la bandeja de salida con sus reintentos. Solo sube el `.json`; el Excel se queda en el robot. Necesita `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en `robot/.env` (no se sube a git). En la simulación sigue por defecto `carpeta`, porque no hay claves; **no se probó contra el Supabase real.**
 
 ### 7.5 Modo foto: para la demo en vivo
 
@@ -1177,6 +1223,13 @@ Lo que cambia (todo en `robot/real_backend.py`):
 | Foto muy oscura | Reintenta una vez; si sigue oscura la marca en `Dudosas` |
 
 Todo queda en un **log** (`datos/logs/ronda_YYYY-MM-DD.log`).
+
+**Hecho (checkpoint, `ronda.py`):** después de cada parada se guarda `datos/rondas/<id>/checkpoint.json` con las paradas hechas y la escena (semilla, tipo de rosas, caminos).
+- `python main.py --parar-despues N` simula batería baja: después de N paradas el robot sigue de frente hasta salir del camino y vuelve a la base.
+- `python main.py --continuar` (o `--continuar <id_ronda>`) sigue la última ronda a medias: retoma las detecciones ya hechas, vuelve a planear la serpiente con los caminos que faltan y salta las paradas ya hechas. No repite fotos.
+- Si se cierra el programa o la ventana a mitad de ronda, el avance también queda guardado.
+- El reporte y el envío se hacen solo cuando la ronda termina.
+- Falta: el log en archivo, y que el robot real decida volver por la batería leída del SDK (hoy solo se simula con `--parar-despues`).
 
 ---
 

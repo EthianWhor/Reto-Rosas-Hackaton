@@ -1,7 +1,7 @@
 """Cuerpo del robot en MuJoCo.
 
 Camina como en referencias/jardin_10_plantas.py: un punto guía (mocap) sostiene
-la pelvis y las piernas se animan. No tiene equilibrio real; eso lo hará el
+la pelvis y las piernas se animan. Para girar se rota el punto guía. No tiene equilibrio real; eso lo hará el
 controlador oficial de AgiBot en el robot real. Los motores siguen una pose
 objetivo con un control PD.
 """
@@ -20,6 +20,7 @@ KP, KD = 150.0, 5.0       # control PD de los motores
 PERIODO_PASO = 1.0        # segundos por ciclo de pasos (izq + der)
 ESPERA_POSTURA_S = 1.5    # tiempo para que cintura y cabeza lleguen
 CODO_DOBLADO = -0.5       # brazos pegados al cuerpo para caber en el camino de 80 cm
+VELOCIDAD_GIRO = 0.6      # rad/s al girar en el lugar
 
 
 class CuerpoSim(Cuerpo):
@@ -80,24 +81,51 @@ class CuerpoSim(Cuerpo):
         p = self.d.mocap_pos[self.guia]
         return float(p[0]), float(p[1])
 
-    def caminar_hasta(self, x: float) -> None:
-        if any(self.obj[self.id[k]] != v for k, v in NEUTRA.items()):
-            self.posar(NEUTRA)  # nunca camina girado ni inclinado
-        x0 = self.d.mocap_pos[self.guia][0]
-        dist = x - x0
-        if abs(dist) < 1e-3:
+    def rumbo(self) -> float:
+        w, _, _, z = self.d.mocap_quat[self.guia]
+        yaw = 2 * np.arctan2(z, w)
+        return float((yaw + np.pi) % (2 * np.pi) - np.pi)   # entre −π y π
+
+    def _poner_rumbo(self, yaw: float) -> None:
+        self.d.mocap_quat[self.guia] = [np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]
+
+    def orientar(self, yaw: float) -> None:
+        """Gira en el lugar (dando pasitos) hasta mirar hacia `yaw`, por el lado más corto."""
+        inicio = self.rumbo()
+        delta = (yaw - inicio + np.pi) % (2 * np.pi) - np.pi
+        if abs(delta) < 1e-3:
             return
-        t_total = abs(dist) / self.velocidad
+        t_total = abs(delta) / VELOCIDAD_GIRO
         dt = self.m.opt.timestep
         for k in range(int(t_total / dt)):
             t = k * dt
-            self.d.mocap_pos[self.guia][0] = x0 + dist * t / t_total
+            self._poner_rumbo(inicio + delta * t / t_total)
+            self._piernas(2 * np.pi * t / PERIODO_PASO, 0.15 * min(1.0, t / 0.3, (t_total - t) / 0.3))
+            self._paso()
+        self._poner_rumbo(inicio + delta)
+        self._piernas(0, 0)
+        self._esperar(0.2)
+
+    def ir_a(self, x: float, y: float) -> None:
+        if any(self.obj[self.id[k]] != v for k, v in NEUTRA.items()):
+            self.posar(NEUTRA)  # nunca camina girado ni inclinado
+        x0, y0 = self.posicion()
+        dx, dy = x - x0, y - y0
+        dist = float(np.hypot(dx, dy))
+        if dist < 1e-3:
+            return
+        self.orientar(float(np.arctan2(dy, dx)))   # siempre camina de frente
+        t_total = dist / self.velocidad
+        dt = self.m.opt.timestep
+        for k in range(int(t_total / dt)):
+            t = k * dt
+            f = t / t_total
+            self.d.mocap_pos[self.guia][:2] = [x0 + dx * f, y0 + dy * f]
             self.d.mocap_pos[self.guia][2] = ALTURA_PELVIS + 0.01 * abs(np.sin(2 * np.pi * t / PERIODO_PASO))
             amp = 0.35 * min(1.0, t / 0.5, (t_total - t) / 0.5)   # arranca y frena suave
             self._piernas(2 * np.pi * t / PERIODO_PASO, amp)
             self._paso()
-        self.d.mocap_pos[self.guia][0] = x
-        self.d.mocap_pos[self.guia][2] = ALTURA_PELVIS
+        self.d.mocap_pos[self.guia][:] = [x, y, ALTURA_PELVIS]
         self._piernas(0, 0)
         self._esperar(0.3)
 
@@ -121,6 +149,7 @@ class CuerpoSim(Cuerpo):
             fovy_grados=float(self.m.cam_fovy[self.cam]),
             robot_xy=self.posicion(),
             angulos={k: round(float(self.d.qpos[self.qadr[self.id[k]]]), 3) for k in NEUTRA},
+            rumbo=self.rumbo(),
         )
 
     def cerrar(self) -> None:

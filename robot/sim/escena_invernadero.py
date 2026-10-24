@@ -35,7 +35,7 @@ class Escena:
     d: mujoco.MjData
     plano: Plano
     verdad: list[RosaVerdad]
-    camino: int
+    camino: int | None       # None = el robot arrancó en la base
 
 
 def fovy_grados(fov_h_grados: float, ancho: int, alto: int) -> float:
@@ -59,7 +59,8 @@ def _agregar_camas(spec: mujoco.MjSpec, plano: Plano, altura: float) -> None:
             pos=[cama.largo_m / 2, cama.y_centro, altura / 2], rgba=COLOR_TIERRA)
 
 
-def armar_escena(cfg: dict, camino: int | None = None) -> Escena:
+def armar_escena(cfg: dict, camino: int | None = None, en_base: bool = False) -> Escena:
+    """Escena con el robot a la entrada de `camino` o, con `en_base`, en la base (`sim.base_xy`)."""
     spec = mujoco.MjSpec.from_file(str(ruta(cfg["sim"]["escena"])))
     plano = armar_plano(cfg)
     camino = cfg["sim"]["camino_inicial"] if camino is None else camino
@@ -75,10 +76,17 @@ def armar_escena(cfg: dict, camino: int | None = None) -> Escena:
                      diffuse=[0.9, 0.9, 0.8], cutoff=40, exponent=5, castshadow=True)
 
     # El robot y el punto guía arrancan juntos a la entrada del camino.
-    inicio = [ENTRADA_X, plano.camino(camino).y, ALTURA_PELVIS]
+    if en_base:
+        inicio = [*cfg["sim"]["base_xy"], ALTURA_PELVIS]
+        camino = None
+    else:
+        inicio = [ENTRADA_X, plano.camino(camino).y, ALTURA_PELVIS]
     spec.body("pelvis").pos = inicio
     spec.body("guia").pos = inicio
 
+    bx, by = cfg["sim"]["base_xy"]   # la base / cargador: una placa en el piso del pasillo principal
+    spec.worldbody.add_geom(name="base", type=mujoco.mjtGeom.mjGEOM_BOX, size=[0.3, 0.3, 0.005],
+                            pos=[bx, by, 0.005], rgba=[0.15, 0.45, 0.25, 1], contype=0, conaffinity=0)
     _agregar_camas(spec, plano, cfg["sim"]["altura_cama_m"])
     verdad = agregar_rosales(spec, plano, cfg, rng)
 

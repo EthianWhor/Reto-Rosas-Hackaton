@@ -142,3 +142,28 @@ def test_crear_desde_config_en_sim(tmp_path, monkeypatch):
     assert isinstance(enviador, envio.EnviadorCarpeta) and not conexion.hay()
     wifi.hay_wifi = True
     assert conexion.hay()
+
+
+def test_supabase_usa_subir_del_equipo_y_solo_el_json(base, monkeypatch):
+    import subir_reporte
+    (base / "salida" / "reporte_INV1_2026-10-24.json").write_text(
+        json.dumps({"id_ronda": "INV1_2026-10-24_220000", "invernadero": "INV1", "fecha": "2026-10-24"}),
+        encoding="utf-8")
+    subidos = []
+    monkeypatch.setattr(subir_reporte, "subir", lambda rep, url, clave: subidos.append((rep["id_ronda"], url, clave)))
+    bandeja = envio.Bandeja(base)
+    r = bandeja.intentar(envio.EnviadorSupabase("https://x.supabase.co", "clave"), envio.ConexionSimulada(True))
+    assert r["enviados"] == ["reporte_INV1_2026-10-24.json"]
+    assert subidos == [("INV1_2026-10-24_220000", "https://x.supabase.co", "clave")]
+    assert [p.name for p in bandeja.pendientes()] == ["reporte_INV1_2026-10-24.xlsx"]   # el Excel se queda
+
+
+def test_supabase_sin_claves_avisa(tmp_path, monkeypatch):
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SERVICE_ROLE_KEY", raising=False)
+    cfg = configuracion.cargar(cambios={"envio.metodo": "supabase"})
+    cfg["datos_dir"] = str(tmp_path)
+    import dotenv
+    monkeypatch.setattr(dotenv, "load_dotenv", lambda *a, **k: None)   # que no lea un robot/.env real
+    with pytest.raises(RuntimeError, match="SUPABASE"):
+        envio.crear(cfg)

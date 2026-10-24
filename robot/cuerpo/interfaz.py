@@ -21,6 +21,7 @@ class Captura:
     fovy_grados: float
     robot_xy: tuple[float, float]
     angulos: dict = field(default_factory=dict)   # ángulos reales de cintura y cabeza al tomar la foto
+    rumbo: float = 0.0                    # hacia dónde mira el cuerpo del robot (rad; 0 = +x, π = −x)
 
     @property
     def ancho(self) -> int:
@@ -46,8 +47,16 @@ class Cuerpo(ABC):
         """(x, y) del robot en el mundo."""
 
     @abstractmethod
+    def rumbo(self) -> float:
+        """Hacia dónde mira el cuerpo (rad; 0 = +x)."""
+
+    @abstractmethod
+    def ir_a(self, x: float, y: float) -> None:
+        """Gira hacia el punto y camina en línea recta hasta él, mirando hacia donde va."""
+
     def caminar_hasta(self, x: float) -> None:
         """Camina por el camino actual (a lo largo de x) hasta x."""
+        self.ir_a(x, self.posicion()[1])
 
     @abstractmethod
     def posar(self, angulos: dict) -> dict:

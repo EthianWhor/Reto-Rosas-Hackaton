@@ -17,6 +17,8 @@ veces, el dashboard lo reconoce por el nombre (lleva el id de la ronda).
 Formas de enviar (`envio.metodo`, acordar con la persona del dashboard):
 - carpeta: copia a una carpeta compartida (Drive / OneDrive sincronizado). Llegó = la copia quedó igual.
 - api: POST del archivo a la dirección del dashboard. Llegó = responde 200/201 (o 409, ya lo tenía).
+- supabase: sube el .json a la tabla `reportes` de Supabase con `subir()` de subir_reporte.py
+  (del equipo de la app). Es de donde lo lee la app de la tablet. El Excel se queda en el robot.
 - correo: todavía no está hecho.
 
 La dirección, la carpeta y la clave van en robot/.env (no se sube a git; ver .env.ejemplo).
@@ -93,6 +95,24 @@ class EnviadorCarpeta:
             raise OSError("la copia no quedó igual")
 
 
+class EnviadorSupabase:
+    """Sube el reporte JSON a Supabase (tabla `reportes`), de donde lo lee la app de la tablet.
+
+    Usa `subir()` de robot/subir_reporte.py, que es del equipo de la app: no se
+    cambia aquí. Solo sube el .json; el Excel se queda en el robot, en salida/.
+    Si ese id_ronda ya estaba, Supabase lo reemplaza (no duplica).
+    """
+
+    extensiones = (".json",)
+
+    def __init__(self, url: str, clave: str):
+        self.url, self.clave = url, clave
+
+    def enviar(self, archivo: Path) -> None:
+        from subir_reporte import subir
+        subir(json.loads(archivo.read_text(encoding="utf-8")), self.url, self.clave)
+
+
 class EnviadorApi:
     def __init__(self, url: str, token: str | None = None, timeout_s: float = 30.0):
         self.url, self.token, self.timeout = url, token, timeout_s
@@ -128,13 +148,13 @@ class Bandeja:
         temporal.write_text(json.dumps(estado, ensure_ascii=False, indent=1), encoding="utf-8")
         os.replace(temporal, self.archivo_pendientes)
 
-    def pendientes(self) -> list[Path]:
-        return sorted(p for p in self.salida.iterdir() if p.suffix in EXTENSIONES)
+    def pendientes(self, extensiones=EXTENSIONES) -> list[Path]:
+        return sorted(p for p in self.salida.iterdir() if p.suffix in extensiones)
 
     def intentar(self, enviador, conexion) -> dict:
         """Un intento sobre toda la bandeja. Devuelve {"enviados": [...], "fallidos": [...], "esperando": [...]}."""
         resumen = {"enviados": [], "fallidos": [], "esperando": [], "sin_conexion": False}
-        archivos = self.pendientes()
+        archivos = self.pendientes(getattr(enviador, "extensiones", EXTENSIONES))   # supabase: solo .json
         if not archivos:
             return resumen
         if not conexion.hay():
@@ -183,8 +203,15 @@ def crear(cfg: dict, conexion_sim: ConexionSimulada | None = None):
             raise RuntimeError("envio.metodo = api, pero falta ENVIO_URL en robot/.env")
         enviador = EnviadorApi(url, os.getenv("ENVIO_TOKEN"))
         conexion = ConexionApi(os.getenv("ENVIO_PING_URL") or url)
+    elif metodo == "supabase":
+        url, clave = os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if not url or not clave:
+            raise RuntimeError("envio.metodo = supabase, pero faltan SUPABASE_URL y "
+                               "SUPABASE_SERVICE_ROLE_KEY en robot/.env (ver subir_reporte.py)")
+        enviador = EnviadorSupabase(url, clave)
+        conexion = ConexionApi(f"{url.rstrip('/')}/rest/v1/")
     else:
-        raise NotImplementedError(f"envio.metodo = {metodo} todavía no está hecho (usar carpeta o api)")
+        raise NotImplementedError(f"envio.metodo = {metodo} todavía no está hecho (usar carpeta, api o supabase)")
     if cfg["modo"] == "sim" and conexion_sim is not None:
         conexion = _Ambas(conexion_sim, conexion)
     return bandeja, enviador, conexion

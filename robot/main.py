@@ -1,7 +1,8 @@
 """Arranca la ronda del robot (ver PLAN_robot_rosas_X2.md).
 
 Revisa qué ofrece el modelo del equipo en ml/, arma el invernadero de prueba
-(2 camas de 10 m) y recorre todos sus caminos: para cada 1,25 m,
+(2 camas de 10 m) y sale de la base a recorrer todos sus caminos en serpiente
+(ida por uno, vuelta por el siguiente) y vuelve a la base. Para cada 1,25 m,
 toma las 4 posturas, guarda las fotos (color + profundidad) en datos/rondas/,
 encuentra y ubica cada rosa (cama, metro, altura), junta las repetidas,
 compara el resultado con la verdad de la simulación, arma el reporte Excel +
@@ -12,7 +13,9 @@ Se corre desde la carpeta robot/:
     python main.py --ventana           -> lo mismo, mirando el visor de MuJoCo
     python main.py --camino 1          -> solo un camino (0 = la orilla, solo ve la cama 1)
     python main.py --revisar           -> solo revisa todo, carga la escena y toma una foto de prueba
-    python main.py --rosas cartel      -> como se verá con fotos reales (usa RosaNet si está lista)
+    python main.py --rosas cartel      -> con fotos reales de rosas: piensa con el modelo del equipo
+    python main.py --parar-despues 5   -> simula batería baja: para tras 5 paradas y vuelve a la base
+    python main.py --continuar         -> sigue la última ronda que quedó a medias
 """
 
 import argparse
@@ -38,6 +41,10 @@ def leer_argumentos(argv=None) -> argparse.Namespace:
     p.add_argument("--semilla", type=int, help="Semilla de la escena (misma semilla = mismas rosas)")
     p.add_argument("--revisar", action="store_true", help="Solo revisar y tomar una foto de prueba, sin caminar")
     p.add_argument("--ventana", action="store_true", help="Abrir el visor de MuJoCo")
+    p.add_argument("--continuar", nargs="?", const="ultima", metavar="ID_RONDA",
+                   help="Seguir una ronda que quedó a medias (sin ID: la última)")
+    p.add_argument("--parar-despues", type=int, metavar="N",
+                   help="Simular batería baja: interrumpir después de N paradas y volver a la base")
     return p.parse_args(argv)
 
 
@@ -66,30 +73,34 @@ def mostrar_resumen(rosas, resultado: dict, analizador) -> None:
     print(f"  descartadas: {analizador.descartadas}")
 
 
-def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace) -> int:
+def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=None) -> int:
     from PIL import Image
 
     import metricas
     import ronda
     from cuerpo.sim_backend import CuerpoSim
     from navegacion.plano import armar_plano
-    from percepcion.analisis import crear_analizador
+    from percepcion.analisis import Deteccion, crear_analizador
     from percepcion.dedup import juntar
     from reporte import archivos, envio
     from reporte.tabla import armar_reporte
     from sim.escena_invernadero import CAMARA, armar_escena, resolucion
 
-    caminos = [args.camino] if args.camino is not None else (
-        cfg["sim"]["caminos"] or [c.numero for c in armar_plano(cfg).caminos])
-    escena = armar_escena(cfg, caminos[0])
+    plano = armar_plano(cfg)
+    base = configuracion.ruta(cfg["datos_dir"])
+    if reanudar is not None:
+        carpeta, avance = reanudar
+        caminos = avance.caminos
+    else:
+        caminos = [args.camino] if args.camino is not None else (
+            cfg["sim"]["caminos"] or [c.numero for c in plano.caminos])
+    escena = armar_escena(cfg, en_base=not args.revisar)
     m = escena.m
     ancho, alto = resolucion(cfg)
-    print(f"Invernadero de prueba: {len(escena.plano.camas)} camas de {escena.plano.largo_m:g} m, "
-          f"{len(escena.verdad)} rosas")
-    print(f"Ronda por los caminos {caminos}: así cada cama se ve por sus dos lados")
+    print(f"Invernadero de prueba: {len(plano.camas)} camas de {plano.largo_m:g} m, {len(escena.verdad)} rosas")
+    print(f"Ruta en serpiente por los caminos {caminos}, desde la base y de vuelta")
     print(f"Cámara de la cabeza: {ancho} x {alto}, fovy {m.camera(CAMARA).fovy[0]:.1f}°, "
           f"giro de las fotos {math.degrees(cfg['recorrido']['giro_diagonal_rad']):.0f}°")
-    base = configuracion.ruta(cfg["datos_dir"])
 
     if args.revisar:
         cuerpo = CuerpoSim(escena, cfg)
@@ -108,38 +119,43 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace) -> int:
         return 0
 
     analizador = crear_analizador(cfg, eleccion, escena.plano, escena.verdad)
-    carpeta = ronda.nueva_carpeta(cfg, base)
+    if reanudar is not None:
+        # lo que ya se vio antes de la interrupción
+        archivo = carpeta / "detecciones.jsonl"
+        if archivo.exists():
+            analizador.detecciones = [Deteccion(**json.loads(l))
+                                      for l in archivo.read_text(encoding="utf-8").splitlines()]
+        print(f"Continúa la ronda {carpeta.name}: {len(avance.datos['hechas'])} paradas ya hechas")
+    else:
+        carpeta = ronda.nueva_carpeta(cfg, base)
+        carpeta.mkdir(parents=True, exist_ok=True)
+        avance = ronda.Avance.nuevo(carpeta, cfg, caminos)
+        guardar_json(carpeta / "verdad.json",
+                     {"semilla": cfg["sim"]["semilla"], "rosas": [r.a_dict() for r in escena.verdad]})
     guardar = ronda.GuardarCapturas(carpeta)
-    guardar_json(carpeta / "verdad.json",
-                 {"semilla": cfg["sim"]["semilla"], "rosas": [r.a_dict() for r in escena.verdad]})
+    camas = {c for n in caminos for c in (plano.camino(n).cama_izq, plano.camino(n).cama_der) if c is not None}
+
+    visor = None
+    if args.ventana:
+        import mujoco.viewer
+        visor = mujoco.viewer.launch_passive(escena.m, escena.d)
+    cuerpo = CuerpoSim(escena, cfg, visor)
     inicio = time.time()
-    hora_inicio = datetime.now()
-    camas: set[int] = set()
     try:
-        for i, numero in enumerate(caminos):
-            if i > 0:
-                # En la simulación el robot aparece en la entrada del siguiente camino.
-                # La ruta en serpiente (salir por el fondo y entrar al siguiente) llega después.
-                escena = armar_escena(cfg, numero)
-            camino = escena.plano.camino(numero)
-            camas |= {c for c in (camino.cama_izq, camino.cama_der) if c is not None}
-            print(f"Camino {numero}: cama {camino.cama_izq} a la izquierda, cama {camino.cama_der} a la derecha")
-            visor = None
-            if args.ventana:
-                import mujoco.viewer
-                visor = mujoco.viewer.launch_passive(escena.m, escena.d)
-            cuerpo = CuerpoSim(escena, cfg, visor)
-            try:
-                cuerpo.pararse()
-                ronda.recorrer_camino(cuerpo, cfg, escena.plano, numero, guardar, analizador)
-            finally:
-                cuerpo.cerrar()
-                if visor is not None:
-                    visor.close()
+        cuerpo.pararse()
+        completa = ronda.recorrer(cuerpo, cfg, plano, guardar, avance, analizador, args.parar_despues)
     except KeyboardInterrupt:
-        print("Ronda interrumpida.")
+        print(f"Ronda interrumpida. El avance quedó guardado: python main.py --continuar {carpeta.name}")
         return 1
-    print(f"Listo: {guardar.total} fotos en {carpeta} ({time.time() - inicio:.0f} s)")
+    finally:
+        cuerpo.cerrar()
+        if visor is not None:
+            visor.close()
+    print(f"{guardar.total} fotos en {carpeta} ({time.time() - inicio:.0f} s)")
+    if not completa:
+        print(f"Para seguir donde quedó: python main.py --continuar {carpeta.name}")
+        return 0
+    hora_inicio = datetime.strptime(avance.datos["inicio"], "%Y-%m-%d %H:%M:%S")
 
     rosas = juntar(analizador.detecciones, cfg["dedup"]["radio_m"], cfg["invernadero"]["id"])
     guardar_json(carpeta / "rosas.json", [r.a_dict() for r in rosas])
@@ -153,7 +169,7 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace) -> int:
             ("id_ronda", carpeta.name),
             ("modo", cfg["modo"]),
             ("inicio / fin", f"{hora_inicio:%Y-%m-%d %H:%M:%S} / {hora_fin:%Y-%m-%d %H:%M:%S}"),
-            ("caminos recorridos", f"{len(caminos)} de {len(escena.plano.caminos)}: {caminos}"),
+            ("caminos recorridos", f"{len(caminos)} de {len(escena.plano.caminos)}, en serpiente: {caminos}"),
             ("paradas cada (m)", cfg["recorrido"]["paso_entre_paradas_m"]),
             ("giro de las fotos (°)", round(math.degrees(cfg["recorrido"]["giro_diagonal_rad"]))),
             ("fotos tomadas", guardar.total),
@@ -203,6 +219,19 @@ def main(argv=None) -> int:
         "sim.semilla": args.semilla,
     })
     print(f"Modo: {cfg['modo']}")
+    reanudar = None
+    if args.continuar is not None:
+        import ronda
+        base = configuracion.ruta(cfg["datos_dir"])
+        carpeta = (ronda.ultima_sin_terminar(base) if args.continuar == "ultima"
+                   else base / "rondas" / args.continuar)
+        if carpeta is None or not (carpeta / "checkpoint.json").exists():
+            print("ERROR: no hay una ronda a medias para continuar.")
+            return 1
+        avance = ronda.Avance.leer(carpeta)
+        # se sigue con la misma escena con la que empezó
+        cfg["sim"]["semilla"], cfg["sim"]["rosas"] = avance.datos["semilla"], avance.datos["rosas"]
+        reanudar = (carpeta, avance)
     try:
         eleccion = mostrar_percepcion(cfg)
     except (RuntimeError, ValueError) as e:
@@ -212,7 +241,7 @@ def main(argv=None) -> int:
     if cfg["modo"] == "real":
         print("Modo real: falta llenar cuerpo/real_backend.py con el SDK AimDK_X2 (sección 14 del plan).")
         return 0
-    return correr_sim(cfg, eleccion, args)
+    return correr_sim(cfg, eleccion, args, reanudar)
 
 
 if __name__ == "__main__":
