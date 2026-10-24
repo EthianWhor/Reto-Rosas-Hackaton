@@ -264,8 +264,39 @@ Medido con validación cruzada (64 rosas, promedio de 3 semillas), "inmaduras �
 - **Decisión:** el robot hace la ronda de noche, así que el de noche queda por defecto. El de día se conserva para la demo con luz natural y para la simulación con fotos de día. El umbral se elige solo según el archivo de pesos (`CONF_BY_MODEL`).
 - **Límite:** la noche es simulada; falta medir con fotos reales de noche y la luz del robot.
 
+### Concordancia entre personas: evidencia del problema (2026-10-24)
+Una integrante del equipo que **asistió a la explicación de la finca** clasificó 178 recortes de rosas (Roboflow, clasificación) con el criterio de la finca: 52 inmaduro, 50 óptimo, 28 pasado y 48 descartar (borrosas o dudosas). En **69 de esas rosas** también había etiqueta de la finca:
+
+| La finca dijo → ella dijo | inmaduro | óptimo | pasado |
+|---|---|---|---|
+| **inmaduro** (47) | 12 | **24** | 11 |
+| **óptimo** (20) | 0 | 10 | **10** |
+| **pasado** (2) | 0 | 0 | 2 |
+
+- **Coinciden solo en 24 de 69 (35 %).** El desacuerdo es **sistemático**: ella ve las rosas un paso "más abiertas" que la finca. Cuando dice "inmaduro" siempre coincide (12/12), pero llamó "óptimas" a la mitad de las inmaduras de la finca.
+- **Para el pitch:** es una medición directa de lo que dice el reto ("dos personas pueden mirar la misma rosa y llegar a conclusiones distintas"; "el criterio vive en la experiencia de quien lo enseña"). Una explicación de la finca no basta para transmitir el criterio, y esa es la razón de ser de la AR, del juego y de la consistencia que aporta la red.
+- **Para la red:** sus etiquetas no se usan como verdad de terreno, porque enseñarían a llamar óptimas a rosas inmaduras (el error más costoso). Verdad de terreno = finca.
+
+**Prueba: entrenar RosaNet sumando sus 52 rosas** que la finca no clasificó (34 inmaduro, 15 óptimo, 3 pasado; `python -m ml.calibrate --extra data/extra_companera`). Se mide siempre contra las etiquetas de la finca, con validación cruzada.
+
+| | RosaNet actual ("noche") | + rosas de la compañera |
+|---|---|---|
+| Exactitud de día (3 semillas) | 71,9 % | 75,0 % |
+| **Óptimas reconocidas de día** (3 semillas) | 43 % | **65 %** |
+| **Óptimas reconocidas de noche** (3 semillas) | 61 % | 65 % |
+| Inmaduras → óptimo de día (3 semillas, de 45) | 6,3 | 8,0 |
+| **Inmaduras → óptimo de noche** (3 semillas, de 45) | **7,0** | 9,0 |
+| Exactitud de noche (3 semillas) | **75,5 %** | 71,4 % |
+| Semilla de producción, noche: óptimas / inmaduras → óptimo | 47 % / **6** | 53 % / 10 |
+| Casos difíciles de la finca (5 rosas) | **4/5** | 3/5 |
+
+- La mejora en óptimas es **casi toda de día** (+22 puntos). **De noche apenas suma (+4, dentro del ruido)** y aumenta el error más costoso: inmaduras llamadas óptimas.
+- La razón es que el modelo actual ya reconoce más óptimas de noche que de día (el fondo oscuro lo empuja un poco hacia "óptimo"), y las etiquetas de la compañera, corridas hacia "más abierto", lo empujan en la misma dirección.
+- **Decisión (2026-10-24):** como el robot opera de noche, **se mantiene el RosaNet actual** (`robot/modelos/rosanet.pt`). El candidato quedó solo localmente en `robot/runs/rosanet_v3/best.pt`; podría servir para uso de día, pero no se instaló.
+- **Lo que de verdad mejoraría las óptimas de noche:** más rosas óptimas **clasificadas por la finca**, y fotos reales de noche.
+
 ### Siguiente paso con más impacto
-1. **RosaNet: más rosas óptimas.** Es ahora el punto más débil: en las escenas de evaluación, de 3 óptimas marcadas por la finca, RosaNet "noche" clasificó 2 como inmaduras. Fuente rápida: las ~50 rosas que se marcaron en Roboflow y no tienen categoría (clasificarlas con el criterio de la finca, idealmente con alguien de la finca).
+1. **RosaNet: más rosas óptimas clasificadas por la finca.** Es el punto más débil. Ya se probó con rosas clasificadas por una integrante del equipo, pero su criterio está corrido hacia "más abierto" (35 % de acuerdo con la finca) y de noche no ayudó (ver "Concordancia entre personas"). Hace falta que **alguien de la finca** clasifique los 178 recortes (`robot/data/para_clasificar/rosas_para_clasificar.zip`).
 2. **Fotos de noche reales** (30-50 Freedom con linterna) para validar el modelo "noche" y el detector de noche.
 3. Más escenas del invernadero (con la cámara del robot) para el detector.
 
