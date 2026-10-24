@@ -44,7 +44,7 @@ def agregar_estructura(spec: mujoco.MjSpec, plano: Plano, cfg: dict) -> list[Obs
     sim = cfg["sim"]
     est = sim.get("estructura") or {}
     rng = random.Random(sim["semilla"] + 7)
-    mundo = spec.worldbody
+    mundo = spec.worldbody.add_body(name="estructura")   # cuerpo fijo sin choques: la física lo salta
 
     if est.get("postes", True):
         for cama in plano.camas:

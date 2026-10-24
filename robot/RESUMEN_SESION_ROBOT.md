@@ -60,6 +60,7 @@ Salidas en `robot/datos/` (no se sube a git):
 | `25bccc6` | Adaptación al detector nuevo: mira la foto sin achicarla (`percepcion.detector_tamano_nativo`) |
 | `2fdab32` | Log de cada ronda en `datos/logs/` y vuelta a la base por batería (25 %) |
 | `bdd92fe` | Análisis de las fotos en otro hilo mientras camina, con checkpoint seguro |
+| (paso 9, a medias) | Invernadero completo: física liviana, fotos con lo cercano, `--completo` (sección 4) |
 
 **Números clave (simulación):**
 - **Con oráculo (escena de prueba):** cobertura 90 %, 0 rosas falsas, 0 repetidas, error de altura < 1 cm.
@@ -70,9 +71,9 @@ Salidas en `robot/datos/` (no se sube a git):
 - **Análisis en paralelo:** la ronda pasa de 62 s a 52 s, con el mismo reporte.
 - **Batería:** una ronda de prueba gasta ~10 %. Con `--bateria 30` vuelve a las 13 paradas y con `--continuar` termina (cobertura 92 %).
 
-## 4. En curso: paso 9, invernadero a escala completa (SIN commit todavía)
+## 4. En curso: paso 9, invernadero a escala completa (subido a medias)
 
-Estos cambios ya están en la carpeta local de la usuaria, pero **no tienen commit**:
+Estos cambios ya están en la rama `A` (commit "paso 9 a medias"), pero **el paso no está terminado** (ver sección 5):
 - `sim/escena_invernadero.py`: arma **dos modelos**.
   - Uno completo, para la cámara, el sensor y el visor.
   - Uno liviano, para la física: robot, piso y camas.
@@ -104,7 +105,7 @@ Estos cambios ya están en la carpeta local de la usuaria, pero **no tienen comm
      - tamaño del reporte (120 cuadrantes) y tiempo de cómputo.
    - **Ojo:** con ~6.000 rosas, señalar cada óptima (~5 s por rosa) puede sumar horas a la ronda. Medirlo comparando `accion.tipo: senalar` contra `ninguna`, y si no cabe en la noche, proponer opciones: señalar solo en los cuadrantes de prioridad alta, bajar `accion.segundos`, o marcar con la tira LED sin apuntar.
    - Revisar si el visor (`--ventana`) muestra todas las rosas con el invernadero completo: el visor tiene su propio límite de 10.000 piezas.
-   - Correr las pruebas y **preguntar** antes de hacer el commit en `A`.
+   - Correr las pruebas y **preguntar** antes de hacer el commit con los resultados en `A`.
 2. **Paso 10: cierre para la presentación.** README del robot, guion de la demo (simulación + modo foto con webcam) y números para el pitch (cobertura, tiempo por noche, batería, obstáculos).
 3. **Al final, cuando llegue el RosaNet completo** (hacer pull y medir con `--rosas cartel`):
    - **Paso 3, reglas de decisión:**

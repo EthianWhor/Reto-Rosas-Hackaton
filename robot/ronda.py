@@ -112,6 +112,7 @@ class Avance:
     @classmethod
     def nuevo(cls, carpeta: Path, cfg: dict, caminos: list[int]) -> "Avance":
         a = cls(carpeta, {"id_ronda": carpeta.name, "semilla": cfg["sim"]["semilla"], "rosas": cfg["sim"]["rosas"],
+                          "camas": cfg["sim"]["camas"], "largo_cama_m": cfg["sim"]["largo_cama_m"],
                           "caminos": caminos, "hechas": [], "terminada": False,
                           "inicio": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
         a.guardar()

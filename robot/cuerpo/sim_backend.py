@@ -30,6 +30,9 @@ INICIO_RAYO_M = 0.25      # los rayos salen un poco delante del cuerpo
 GRUPOS_SENSOR = np.array([1, 1, 0, 0, 0, 0], dtype=np.uint8)   # el robot también dibuja en el 1: _rayo lo salta
 
 
+GRUPO_OCULTO = 5          # grupo que el renderer no dibuja
+MARGEN_FOTO_M = 2.5       # se dibuja hasta camara.distancia_max_m + esto (más lejos no se analiza)
+
 ITERACIONES_APUNTAR = 6
 ERROR_APUNTAR_RAD = 0.03     # ~1,7°: a 1 m de la rosa, menos de 2 cm del centro
 GANANCIA_INCLINACION = 0.6
@@ -41,10 +44,15 @@ def _limitar(valor: float, limites: tuple[float, float]) -> float:
 
 
 class CuerpoSim(Cuerpo):
+    """Camina con el modelo liviano (`mf`, `df`: robot, piso y camas) y usa el completo (`m`, `d`)
+    para la cámara, el sensor y el visor, copiándole antes la pose del robot (`_al_completo`)."""
+
     def __init__(self, escena: Escena, cfg: dict, visor=None):
         self.m, self.d, self.visor = escena.m, escena.d, visor
+        self.mf = escena.m_fisica if escena.m_fisica is not None else escena.m
+        self.df = escena.d_fisica if escena.d_fisica is not None else escena.d
         self.cfg = cfg
-        m = self.m
+        m = self.mf
         j = m.actuator_trnid[:, 0]
         self.qadr, self.vadr = m.jnt_qposadr[j], m.jnt_dofadr[j]
         self.lo, self.hi = m.actuator_ctrlrange[:, 0], m.actuator_ctrlrange[:, 1]
@@ -52,15 +60,32 @@ class CuerpoSim(Cuerpo):
         self.obj = np.zeros(m.nu)
         self.guia = m.body("guia").mocapid[0]
         self.cam = m.camera(CAMARA).id
-        self.del_robot = m.body_rootid == m.body("pelvis").id   # cuerpos del robot (el sensor no los ve)
-        self.puntero = m.light(PUNTERO).id
+        completo = self.m
+        self.del_robot = completo.body_rootid == completo.body("pelvis").id   # el sensor no ve al robot
+        self.puntero = completo.light(PUNTERO).id
         ancho, alto = resolucion(cfg)
-        self.render = mujoco.Renderer(m, alto, ancho)
+        # el renderer dibuja hasta max_geom piezas: con el invernadero completo faltaban rosas en la foto
+        self.render = mujoco.Renderer(completo, alto, ancho, max_geom=max(10000, completo.ngeom + 1000))
         self.velocidad = cfg["recorrido"]["velocidad_m_s"]
-        self.carteles = ids_carteles(m)   # rosas con foto real (vacío si son figuras)
+        self.carteles = ids_carteles(completo)   # rosas con foto real (vacío si son figuras)
         self.alto_obstaculo = cfg["recorrido"]["alto_obstaculo_m"]
-        self.obstaculos = [(o, m.geom(o.nombre).id) for o in escena.obstaculos]
+        self.obstaculos = [(o, completo.geom(o.nombre).id) for o in escena.obstaculos]
+        # piezas de plantas y estructura: en cada foto se dibujan solo las cercanas (con el invernadero
+        # completo, dibujar las ~52.000 tardaba 1,2 s por foto)
+        fijos = [completo.body(n).id for n in ("rosales", "estructura")]
+        self.piezas_fijas = np.flatnonzero(np.isin(completo.geom_bodyid, fijos))
+        self.radio_foto = cfg["camara"]["distancia_max_m"] + MARGEN_FOTO_M
         self.espera_frente_obstaculo = 0.0
+
+    def _al_completo(self) -> None:
+        """Copia la pose del robot del modelo de la física al completo (antes de una foto o un rayo)."""
+        if self.df is self.d:
+            return
+        self.d.qpos[:], self.d.qvel[:] = self.df.qpos, self.df.qvel
+        self.d.mocap_pos[:], self.d.mocap_quat[:] = self.df.mocap_pos, self.df.mocap_quat
+        self.d.time = self.df.time
+        mujoco.mj_kinematics(self.m, self.d)
+        mujoco.mj_camlight(self.m, self.d)
 
     # ---------- motores ----------
     def _poner(self, **angulos):
@@ -68,17 +93,18 @@ class CuerpoSim(Cuerpo):
             self.obj[self.id[nombre]] = valor
 
     def _paso(self):
-        tau = KP * (self.obj - self.d.qpos[self.qadr]) - KD * self.d.qvel[self.vadr]
-        self.d.ctrl[:] = np.clip(tau, self.lo, self.hi)
-        mujoco.mj_step(self.m, self.d)
-        if self.visor is not None and self.d.time % 0.02 < self.m.opt.timestep:  # dibuja 50 veces por segundo
+        tau = KP * (self.obj - self.df.qpos[self.qadr]) - KD * self.df.qvel[self.vadr]
+        self.df.ctrl[:] = np.clip(tau, self.lo, self.hi)
+        mujoco.mj_step(self.mf, self.df)
+        if self.visor is not None and self.df.time % 0.02 < self.mf.opt.timestep:  # dibuja 50 veces por segundo
             if not self.visor.is_running():
                 raise KeyboardInterrupt("se cerró el visor")
+            self._al_completo()
             self.visor.sync()
             time.sleep(0.015)
 
     def _esperar(self, seg: float):
-        for _ in range(int(seg / self.m.opt.timestep)):
+        for _ in range(int(seg / self.mf.opt.timestep)):
             self._paso()
 
     def _piernas(self, fase: float, amp: float):
@@ -100,16 +126,16 @@ class CuerpoSim(Cuerpo):
         self._esperar(1.0)
 
     def posicion(self) -> tuple[float, float]:
-        p = self.d.mocap_pos[self.guia]
+        p = self.df.mocap_pos[self.guia]
         return float(p[0]), float(p[1])
 
     def rumbo(self) -> float:
-        w, _, _, z = self.d.mocap_quat[self.guia]
+        w, _, _, z = self.df.mocap_quat[self.guia]
         yaw = 2 * np.arctan2(z, w)
         return float((yaw + np.pi) % (2 * np.pi) - np.pi)   # entre −π y π
 
     def _poner_rumbo(self, yaw: float) -> None:
-        self.d.mocap_quat[self.guia] = [np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]
+        self.df.mocap_quat[self.guia] = [np.cos(yaw / 2), 0, 0, np.sin(yaw / 2)]
 
     def orientar(self, yaw: float) -> None:
         """Gira en el lugar (dando pasitos) hasta mirar hacia `yaw`, por el lado más corto."""
@@ -118,7 +144,7 @@ class CuerpoSim(Cuerpo):
         if abs(delta) < 1e-3:
             return
         t_total = abs(delta) / VELOCIDAD_GIRO
-        dt = self.m.opt.timestep
+        dt = self.mf.opt.timestep
         for k in range(int(t_total / dt)):
             t = k * dt
             self._poner_rumbo(inicio + delta * t / t_total)
@@ -138,22 +164,23 @@ class CuerpoSim(Cuerpo):
             return
         self.orientar(float(np.arctan2(dy, dx)))   # siempre camina de frente
         t_total = dist / (velocidad or self.velocidad)
-        dt = self.m.opt.timestep
+        dt = self.mf.opt.timestep
         self.espera_frente_obstaculo = 0.0   # se movió: empieza otra espera
         for k in range(int(t_total / dt)):
             t = k * dt
             f = t / t_total
-            self.d.mocap_pos[self.guia][:2] = [x0 + dx * f, y0 + dy * f]
-            self.d.mocap_pos[self.guia][2] = ALTURA_PELVIS + 0.01 * abs(np.sin(2 * np.pi * t / PERIODO_PASO))
+            self.df.mocap_pos[self.guia][:2] = [x0 + dx * f, y0 + dy * f]
+            self.df.mocap_pos[self.guia][2] = ALTURA_PELVIS + 0.01 * abs(np.sin(2 * np.pi * t / PERIODO_PASO))
             amp = 0.35 * min(1.0, t / 0.5, (t_total - t) / 0.5)   # arranca y frena suave
             self._piernas(2 * np.pi * t / PERIODO_PASO, amp)
             self._paso()
-        self.d.mocap_pos[self.guia][:] = [x, y, ALTURA_PELVIS]
+        self.df.mocap_pos[self.guia][:] = [x, y, ALTURA_PELVIS]
         self._piernas(0, 0)
         self._esperar(0.3)
 
     def obstaculos_adelante(self, distancia_max: float) -> tuple[float | None, float | None]:
         """Rayos hacia adelante (como un LiDAR) en el centro del camino y a 25 cm de cada lado."""
+        self._al_completo()
         x, y = self.posicion()
         rumbo = self.rumbo()
         adelante = np.array([np.cos(rumbo), np.sin(rumbo), 0.0])
@@ -196,7 +223,7 @@ class CuerpoSim(Cuerpo):
     def posar(self, angulos: dict) -> dict:
         self._poner(**angulos)
         self._esperar(ESPERA_POSTURA_S)
-        return {k: round(float(self.d.qpos[self.qadr[self.id[k]]]), 3) for k in angulos}
+        return {k: round(float(self.df.qpos[self.qadr[self.id[k]]]), 3) for k in angulos}
 
     def senalar(self, punto, segundos: float) -> bool:
         """Gira la cintura y sube o baja la cabeza hasta que la rosa quede en el centro de la foto
@@ -210,7 +237,7 @@ class CuerpoSim(Cuerpo):
             self._poner(**angulos)
             # corregir es un movimiento chico, pero hay que medir con la cámara quieta (si no, se pasa)
             self._esperar(ESPERA_POSTURA_S if k == 0 else ESPERA_CORRECCION_S)
-            p = self.d.cam_xmat[self.cam].reshape(3, 3).T @ (punto - self.d.cam_xpos[self.cam])
+            p = self.df.cam_xmat[self.cam].reshape(3, 3).T @ (punto - self.df.cam_xpos[self.cam])
             error_x, error_y = math.atan2(p[0], -p[2]), math.atan2(p[1], -p[2])   # la cámara mira hacia −z
             if max(abs(error_x), abs(error_y)) < ERROR_APUNTAR_RAD:
                 break
@@ -218,26 +245,35 @@ class CuerpoSim(Cuerpo):
             # negativo = más arriba. Solo una parte: la cintura también mueve la cámara y con una rosa
             # cerca la corrección completa se pasa (oscila).
             inclinacion = _limitar(inclinacion - GANANCIA_INCLINACION * error_y, limites_inclinacion())
-        self.m.light_active[self.puntero] = True
+        self.m.light_active[self.puntero] = True     # la luz está en el modelo completo (el que se ve)
         self._esperar(segundos)
         self.m.light_active[self.puntero] = False
         return max(abs(error_x), abs(error_y)) < ERROR_APUNTAR_RAD
 
     def foto(self) -> Captura:
+        self._al_completo()
         mirar_a_la_camara(self.m, self.d, self.carteles, self.d.cam_xpos[self.cam].copy())
-        self.render.update_scene(self.d, camera=CAMARA)
-        rgb = self.render.render()
-        self.render.enable_depth_rendering()
-        self.render.update_scene(self.d, camera=CAMARA)
-        prof = self.render.render().astype(np.float32)
-        self.render.disable_depth_rendering()
+        piezas = self.piezas_fijas
+        lejos = piezas[np.linalg.norm(self.d.geom_xpos[piezas] - self.d.cam_xpos[self.cam], axis=1)
+                       - self.m.geom_rbound[piezas] > self.radio_foto]
+        grupos = self.m.geom_group[lejos].copy()
+        self.m.geom_group[lejos] = GRUPO_OCULTO      # no se dibujan (ni cuentan para la profundidad)
+        try:
+            self.render.update_scene(self.d, camera=CAMARA)
+            rgb = self.render.render()
+            self.render.enable_depth_rendering()
+            self.render.update_scene(self.d, camera=CAMARA)
+            prof = self.render.render().astype(np.float32)
+            self.render.disable_depth_rendering()
+        finally:
+            self.m.geom_group[lejos] = grupos
         return Captura(
             rgb=rgb, profundidad=prof,
             cam_pos=self.d.cam_xpos[self.cam].copy(),
             cam_mat=self.d.cam_xmat[self.cam].reshape(3, 3).copy(),
             fovy_grados=float(self.m.cam_fovy[self.cam]),
             robot_xy=self.posicion(),
-            angulos={k: round(float(self.d.qpos[self.qadr[self.id[k]]]), 3) for k in NEUTRA},
+            angulos={k: round(float(self.df.qpos[self.qadr[self.id[k]]]), 3) for k in NEUTRA},
             rumbo=self.rumbo(),
         )
 
@@ -245,7 +281,7 @@ class CuerpoSim(Cuerpo):
         """Batería simulada: baja con el tiempo del robot (`sim.bateria`). Del X2: ~500 Wh, ~2 h de
         uso → ~0,8 % por minuto. Al seguir una ronda (`--continuar`) vuelve a salir cargada."""
         b = self.cfg["sim"]["bateria"]
-        return max(0.0, b["inicial_pct"] - b["consumo_pct_min"] * self.d.time / 60)
+        return max(0.0, b["inicial_pct"] - b["consumo_pct_min"] * self.df.time / 60)
 
     def cerrar(self) -> None:
         self.render.close()

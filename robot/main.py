@@ -16,6 +16,7 @@ Se corre desde la carpeta robot/:
     python main.py --rosas cartel      -> con fotos reales de rosas: piensa con el modelo del equipo
     python main.py --parar-despues 5   -> simula batería baja: para tras 5 paradas y vuelve a la base
     python main.py --bateria 35        -> sale con 35 % de batería: vuelve a la base al llegar al mínimo
+    python main.py --completo          -> invernadero completo (20 camas de 30 m, ~6.000 rosas)
     python main.py --continuar         -> sigue la última ronda que quedó a medias
 """
 
@@ -47,6 +48,8 @@ def leer_argumentos(argv=None) -> argparse.Namespace:
                    help="Seguir una ronda que quedó a medias (sin ID: la última)")
     p.add_argument("--parar-despues", type=int, metavar="N",
                    help="Simular batería baja: interrumpir después de N paradas y volver a la base")
+    p.add_argument("--completo", action="store_true",
+                   help="Invernadero completo (invernadero.camas x largo_cama_m) en vez de la escena de prueba")
     p.add_argument("--bateria", type=float, metavar="PCT",
                    help="Batería con la que sale el robot en la simulación (por defecto, sim.bateria.inicial_pct)")
     return p.parse_args(argv)
@@ -122,7 +125,7 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
     escena = armar_escena(cfg, en_base=not args.revisar)
     m = escena.m
     ancho, alto = resolucion(cfg)
-    print(f"Invernadero de prueba: {len(plano.camas)} camas de {plano.largo_m:g} m, {len(escena.verdad)} rosas")
+    print(f"Invernadero{'' if cfg['sim']['camas'] is None else ' de prueba'}: {len(plano.camas)} camas de {plano.largo_m:g} m, {len(escena.verdad)} rosas")
     print(f"Ruta en serpiente por los caminos {caminos}, desde la base y de vuelta")
     print(f"Cámara de la cabeza: {ancho} x {alto}, fovy {m.camera(CAMARA).fovy[0]:.1f}°, "
           f"giro de las fotos {math.degrees(cfg['recorrido']['giro_diagonal_rad']):.0f}°")
@@ -177,6 +180,10 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
         if visor is not None:
             visor.close()
     print(f"{guardar.total} fotos en {carpeta} ({time.time() - inicio:.0f} s)")
+    # tiempo del robot (simulado), sumando las partes si la ronda se cortó por batería
+    avance.datos["tiempo_robot_s"] = round(avance.datos.get("tiempo_robot_s", 0) + cuerpo.df.time, 1)
+    avance.guardar()
+    print(f"Tiempo del robot (simulado): {avance.datos['tiempo_robot_s'] / 60:.0f} min")
     if not completa:
         print(f"Para seguir donde quedó (con la batería cargada): python main.py --continuar {carpeta.name}")
         return 0
@@ -211,6 +218,7 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
             ("versión del modelo", modelo_equipo.revisar(cfg)["clasificador"]["motivo"]
              if eleccion["clasificador"] == "rosanet" else "oráculo (simulación)"),
             ("tiempo de la ronda (s)", round((hora_fin - hora_inicio).total_seconds())),
+            ("tiempo del robot, simulado (min)", round(avance.datos.get("tiempo_robot_s", 0) / 60, 1)),
             ("batería al llegar a la base (%)", avance.datos.get("bateria_pct", "sin dato")),
         ],
     })
@@ -253,6 +261,8 @@ def main(argv=None) -> int:
         "sim.semilla": args.semilla,
         "sim.bateria.inicial_pct": args.bateria,
     })
+    if args.completo:                          # sin el achique de la escena de prueba: usa `invernadero`
+        cfg["sim"]["camas"] = cfg["sim"]["largo_cama_m"] = None
     # todo lo que sale en pantalla queda también en datos/logs/ronda_<id>.log (sección 15 del plan)
     with registro.Bitacora(configuracion.ruta(cfg["datos_dir"]) / "logs"):
         return correr(args, cfg)
@@ -272,6 +282,8 @@ def correr(args: argparse.Namespace, cfg: dict) -> int:
         avance = ronda.Avance.leer(carpeta)
         # se sigue con la misma escena con la que empezó
         cfg["sim"]["semilla"], cfg["sim"]["rosas"] = avance.datos["semilla"], avance.datos["rosas"]
+        if "camas" in avance.datos:            # mismo tamaño de invernadero (--completo)
+            cfg["sim"]["camas"], cfg["sim"]["largo_cama_m"] = avance.datos["camas"], avance.datos["largo_cama_m"]
         reanudar = (carpeta, avance)
     try:
         eleccion = mostrar_percepcion(cfg)

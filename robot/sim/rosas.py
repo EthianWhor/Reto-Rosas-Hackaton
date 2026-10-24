@@ -178,7 +178,7 @@ def agregar_rosales(spec: mujoco.MjSpec, plano: Plano, cfg: dict, rng: random.Ra
     de esa categoría, para que el detector y RosaNet del equipo la vean.
     """
     sim, rosas_cfg = cfg["sim"], cfg["rosas"]
-    mundo = spec.worldbody
+    mundo = spec.worldbody.add_body(name="rosales")   # cuerpo fijo sin choques: la física lo salta
     z_suelo = sim["altura_cama_m"]
     margen = 0.12
     verdad = []
