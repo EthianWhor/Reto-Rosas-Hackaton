@@ -67,7 +67,11 @@ def prioridad(optimo: int, lista_manana: int, minimo_alta: int) -> str:
     return "baja"
 
 
-def armar_cuadrantes(estados: list[tuple[Rosa, str]], plano: Plano, camas: set[int], cfg: dict) -> list[dict]:
+def armar_cuadrantes(estados: list[tuple[Rosa, str]], plano: Plano, camas: set[int], cfg: dict,
+                     casi_optimas: set[str] = frozenset()) -> list[dict]:
+    """`casi_optimas`: rosa_id de las dudosas por baja confianza cuya mejor clase es óptimo. No cambian
+    las columnas (las lee la app), pero suman `reporte.peso_dudosa_optimo` al `orden` y hacen "media"
+    a un cuadrante sin otras rosas para cortar: puede que haya que ir."""
     inv = cfg["invernadero"]["id"]
     n_tramos = math.ceil(plano.largo_m / plano.tramo_m)
     filas = {}
@@ -78,16 +82,19 @@ def armar_cuadrantes(estados: list[tuple[Rosa, str]], plano: Plano, camas: set[i
                           "desde_m": round((t - 1) * plano.tramo_m, 2),
                           "hasta_m": round(min(t * plano.tramo_m, plano.largo_m), 2),
                           **{e: 0 for e in ESTADOS}, "total": 0}
+    casi = {cid: 0 for cid in filas}
     for rosa, estado in estados:
         fila = filas.get(rosa.cuadrante_id)
         if fila is not None:
             fila[estado] += 1
             fila["total"] += 1
+            casi[rosa.cuadrante_id] += rosa.rosa_id in casi_optimas
     minimo_alta = cfg["reporte"]["optimo_prioridad_alta"]
     for fila in filas.values():
-        fila["prioridad"] = prioridad(fila["optimo"], fila["lista_manana"], minimo_alta)
-    # orden de visita: más rosas para hoy primero (las de mañana valen la mitad)
-    puntaje = lambda f: f["optimo"] + 0.5 * f["lista_manana"]
+        fila["prioridad"] = prioridad(fila["optimo"], fila["lista_manana"] + casi[fila["cuadrante_id"]], minimo_alta)
+    # orden de visita: más rosas para hoy primero (las de mañana y las dudosas que parecen óptimas valen menos)
+    peso_casi = cfg["reporte"].get("peso_dudosa_optimo", 0.0)
+    puntaje = lambda f: f["optimo"] + 0.5 * f["lista_manana"] + peso_casi * casi[f["cuadrante_id"]]
     for k, fila in enumerate(sorted(filas.values(), key=lambda f: (-puntaje(f), f["cuadrante_id"])), start=1):
         fila["orden"] = k
     return [{c: f[c] for c in COLUMNAS_CUADRANTES} for f in filas.values()]
@@ -96,10 +103,12 @@ def armar_cuadrantes(estados: list[tuple[Rosa, str]], plano: Plano, camas: set[i
 def armar_reporte(rosas: list[Rosa], plano: Plano, camas: set[int], cfg: dict, meta: dict) -> Reporte:
     """meta: id_ronda, inicio, fin, fechas_fotos (foto → fecha_hora), ronda (lista de (campo, valor)), obstaculos."""
     fechas = meta.get("fechas_fotos", {})
-    estados, listas, todas, dudosas = [], [], [], []
+    estados, listas, todas, dudosas, casi_optimas = [], [], [], [], set()
     for r in rosas:
         m = decidir(r.clase, r.seguro, r.probs, r.diametro_cm, cfg)
         estados.append((r, m.estado))
+        if m.parece_optimo:
+            casi_optimas.add(r.rosa_id)
         base = {"rosa_id": r.rosa_id, "estado": m.estado, "cuadrante_id": r.cuadrante_id, "cama": r.cama,
                 "lado": r.lado, "metro_en_cama": round(r.metro, 2), "altura_m": round(r.altura_m, 2),
                 "diametro_cm": round(r.diametro_cm, 1), "confianza": r.confianza, "foto": r.foto,
@@ -119,7 +128,7 @@ def armar_reporte(rosas: list[Rosa], plano: Plano, camas: set[int], cfg: dict, m
     return Reporte(
         id_ronda=meta["id_ronda"], invernadero=cfg["invernadero"]["id"], fecha=meta["inicio"][:10],
         inicio=meta["inicio"], fin=meta["fin"],
-        cuadrantes=armar_cuadrantes(estados, plano, camas, cfg),
+        cuadrantes=armar_cuadrantes(estados, plano, camas, cfg, casi_optimas),
         rosas_listas=[{c: f[c] for c in COLUMNAS_LISTAS} for f in listas],
         todas=[{c: f[c] for c in COLUMNAS_TODAS} for f in todas],
         dudosas=dudosas, ronda=meta.get("ronda", []), obstaculos=meta.get("obstaculos", []))

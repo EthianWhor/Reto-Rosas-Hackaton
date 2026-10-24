@@ -128,6 +128,10 @@ madurez:
   puntaje_lista_manana: 0.60 # A CALIBRAR
   dias_max_lista_manana: 1.5 # A CALIBRAR
   duda_entre_vecinas_min: 0.85 # duda solo entre inmaduro y óptimo → reglas de "lista mañana", no "dudosa"
+  # tamaño como segunda opinión: "óptimo" con la cabeza fuera de este rango → dudosa (sección 2.6 del plan).
+  # Medido en la sim: el robot mide las óptimas de 4,4 a 8,9 cm y las pasadas que salen óptimas de 6,7 a 10,5.
+  optimo_tamano_rel_min: 0.7  # A CALIBRAR con rosas reales (< 3,5 cm: ¿punto 2?)
+  optimo_tamano_rel_max: 1.6  # A CALIBRAR con rosas reales (> 8 cm: ¿pasada?)
 
 # Acción física del robot (sección 1.1 del plan): qué hace con cada rosa óptima.
 # senalar = apunta la cabeza y la ilumina con el puntero; ninguna = solo la anota. El equipo decide.
@@ -147,6 +151,7 @@ horario:
 reporte:
   formatos: [excel, json]
   optimo_prioridad_alta: 3   # rosas en óptimo para que un cuadrante sea "alta"
+  peso_dudosa_optimo: 0.5    # en el `orden`, cada dudosa cuya mejor clase es óptimo vale media rosa
 
 envio:
   metodo: supabase           # DEMO. carpeta | api | supabase (la app de la tablet lee de Supabase; claves en robot/.env)

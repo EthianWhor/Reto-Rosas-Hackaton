@@ -82,6 +82,7 @@ python modo_foto.py --webcam --enviar --config config/demo.yaml
 | Con fotos reales y el modelo del equipo: rosas encontradas | **71–73 %** | plan 7.13 |
 | Con fotos reales: clase correcta | **74–80 %** | plan 7.13 |
 | Inmaduras mandadas a "cortar hoy" (el error más caro) | **0** | plan 7.13 |
+| Pasadas mandadas a "cortar hoy" (con el tamaño de la cabeza como segunda opinión) | **0–3** (antes 6–7) | plan 2.6 |
 | Óptimas reales que reconoce | **51–59 %** | plan 7.13 |
 | Obstáculos: espera, sigue si lo quitan, abandona el camino si no | 30 s de espera | plan 5.2 |
 | Analizar mientras camina | ronda 16 % más corta | plan 8 |
@@ -97,7 +98,9 @@ reemplaza ese ojo: **cuenta y prioriza el campo** para que los operarios vayan p
   cabeza no se inclina, cabeza y caminar van en modos distintos, y no trae foco en la cabeza.
 - **La noche es simulada.** No hay fotos reales de noche con la luz del robot; el modelo se midió oscureciendo
   fotos de día.
-- **Pasadas:** la finca dio 2 fotos. Con el modelo actual, en la simulación 6–7 pasadas salen como "cortar hoy".
+- **Pasadas:** la finca dio 2 fotos y el modelo a veces las llama óptimas. El robot usa el tamaño de la cabeza
+  como segunda opinión (una pasada es más grande) y las manda a revisión: en la simulación bajan de 6–7 a 0–3 por
+  ronda. Los umbrales de tamaño se eligieron en la simulación; falta calibrarlos con rosas reales.
 - **No señala todas las óptimas:** señalarlas todas no cabe en una noche, así que señala solo en los 10 primeros
   cuadrantes del reporte anterior (los que se cosechan primero). La primera noche, sin reporte, señala en todos.
 - **Las rosas de la simulación son las mismas fotos con las que se entrenó el modelo**: los números con carteles

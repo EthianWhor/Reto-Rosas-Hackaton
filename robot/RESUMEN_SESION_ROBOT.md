@@ -35,7 +35,7 @@ Desde `robot/`, con el entorno virtual de la raíz del repo (`.venv`, Python 3.1
 ../.venv/Scripts/python.exe -X utf8 main.py --continuar      # sigue la última ronda a medias
 ../.venv/Scripts/python.exe -X utf8 main.py --modo real      # lista lo que falta para el robot real
 ../.venv/Scripts/python.exe -X utf8 modo_foto.py --webcam    # demo en vivo con la webcam
-../.venv/Scripts/python.exe -X utf8 -m pytest -q             # pruebas (129 al cerrar esta sesión)
+../.venv/Scripts/python.exe -X utf8 -m pytest -q             # pruebas (133 al cerrar esta sesión)
 ```
 
 En PowerShell: `..\.venv\Scripts\activate` y después `python main.py ...`.
@@ -109,26 +109,21 @@ Rondas completas medidas: `INV1_2026-10-24_044859` (señalando) e `INV1_2026-10-
 
 **Paso 10 terminado:** `DEMO.md` (guion de la demo, números para el pitch, límites y preguntas del jurado) y el
 README del robot al día. RosaNet + forma medida con carteles (plan 7.13): 74–80 % de clase correcta y 0
-inmaduras para "cortar hoy", pero 6–7 pasadas salen óptimas.
+inmaduras para "cortar hoy".
 
-1. **Lo único que falta: la clave de Supabase.** Cuando el compañero de la app pase `SUPABASE_SERVICE_ROLE_KEY`,
-   ponerla en `robot/.env` (hoy la línea está vacía) y probar
-   `python -m reporte.envio --una-vez --config config/demo.yaml`. Eso sube lo que espera en `datos/salida/` y
-   prueba las fotos de las dudosas contra Supabase Storage. Después, ensayar la demo con `DEMO.md`.
-   - La conexión ya está hecha: `config/demo.yaml` (cartel + Supabase), `reporte/fotos.py` (plan 7.12). El modo
-     foto también sube las fotos de sus dudosas (`modo_foto.py --enviar --config config/demo.yaml`): guarda su
-     foto y sus cajas en `datos/rondas/INV1_DEMO_<hora>/`, como una ronda.
-   - Sin la clave, la ronda de la demo termina bien y avisa que el reporte espera en `datos/salida/`.
-   - Si se cambia `config.yaml`, cambiar también `demo.yaml` (una prueba avisa).
-2. **Al final, cuando llegue el RosaNet completo** (hacer pull y medir con `--rosas cartel`):
-   - **Paso 3, reglas de decisión:**
-     - el tamaño de la cabeza como segunda opinión (si la red dice óptimo pero la cabeza es chica → dudosa);
-     - contar en la prioridad las dudosas cuya mejor clase es óptimo.
-     - Se dejó en pausa porque depende de cómo se equivoque la red.
+**Paso 3 terminado (plan 2.6):** si el modelo dice óptimo pero la cabeza mide menos de 3,5 cm o más de 8 cm, la
+rosa va a dudosa; las dudosas que parecen óptimas suman a la prioridad del cuadrante. Las pasadas en "cortar hoy"
+bajan de 6–7 a 0–3, sin perder óptimas. Umbrales "A CALIBRAR" con rosas reales.
+
+**Envío a la app probado contra Supabase real** (2026-10-24): la clave está en `robot/.env` (no se sube), el
+reporte llegó a la tabla `reportes` y las 29 fotos de dudosas se abren por su URL pública. Falta verlo en la tablet.
+`main` tiene todo hasta `cdbe4f8` (merge fast-forward de A).
+
+1. **Siguiente paso, si hay tiempo:**
    - **Paso 7, "lista mañana" con historia:** reconocer la misma rosa de una noche a otra por su posición, medir cuánto creció y calcular los días que faltan. `percepcion/madurez.py` ya acepta `diametro_ayer_cm`.
-3. **Pendiente de otras personas:**
+2. **Pendiente de otras personas:**
    - **Equipo del modelo:**
-     - con RosaNet + forma, las pasadas salen como óptimas (en la sim, 6–7 por ronda de prueba; plan 7.13);
+     - con RosaNet + forma, las pasadas salen como óptimas (en la sim, 6–7 por ronda; la regla del tamaño del robot las baja a 0–3, plan 2.6);
      - medir el detector a 1280–1920 px con sus escenas (el robot rinde más así).
    - **Equipo:** la acción física quedó en apuntar e iluminar las óptimas de los 10 primeros cuadrantes; en el X2 real falta el foco.
    - **AgiBot / robot real:** ver `PLAN_robot_rosas_X2.md` sección 14.1.

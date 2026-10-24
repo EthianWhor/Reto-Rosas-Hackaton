@@ -294,6 +294,33 @@ puntaje = 0,6 · 0,45 + 0,4 · 0,92 = 0,27 + 0,37 = 0,64      → LISTA MAÑANA
 >
 > **Primer resultado en la simulación (oráculo):** de las rosas "lista mañana" que el robot vio, solo marcó el 9 % (pero todas las que marcó eran de verdad). Con 3 clases, una rosa casi lista suele tener `p(óptimo)` de 0,30 a 0,45 y `tamaño_rel` cercano a 0,9, que da un puntaje de 0,55 a 0,62, justo en el borde de 0,6. **No se calibró con el oráculo**, porque sus probabilidades son inventadas: hay que calibrar los umbrales con las salidas reales de RosaNet sobre carteles (paso 4:00) y con un experto del cultivo.
 
+### 2.6 El tamaño de la cabeza como segunda opinión (paso 3, hecho)
+
+`percepcion/madurez.py`, después de la regla de "seguro":
+
+- **"Óptimo" con la cabeza de otro tamaño → dudosa.** Si el modelo dice óptimo pero `tamaño_rel` está fuera de
+  `madurez.optimo_tamano_rel_min`–`optimo_tamano_rel_max` (0,7–1,6, es decir menos de 3,5 cm o más de 8 cm
+  medidos), la rosa va a "Dudosa" con el motivo ("chica: ¿punto 2?" o "grande: ¿pasada?") y la revisa el experto
+  en la tablet con la foto. Sin diámetro (modo foto, sin profundidad) no se aplica.
+- **Las dudosas que parecen óptimas cuentan en la prioridad.** Una dudosa por baja confianza cuya mejor clase es
+  óptimo suma `reporte.peso_dudosa_optimo` (0,5) al `orden` del cuadrante, y un cuadrante sin otras rosas para
+  cortar pasa de "baja" a "media": puede que haya que ir. Las que fueron a dudosa por el tamaño no suman. Las
+  columnas del reporte no cambian (las lee la app).
+- **Umbrales:** el robot mide la cabeza con la caja del detector, que toma algo de margen. En la simulación midió
+  las óptimas de 4,4 a 8,9 cm (casi todas por debajo de 7,6) y las pasadas que el modelo llamaba óptimas de 6,7 a
+  10,5 cm. **Se eligieron con la simulación, donde los carteles tienen el tamaño de su estado: en la finca va a
+  rendir menos.** Hay que calibrarlos midiendo rosas reales con la cámara del robot.
+
+**Medido** (misma escena, misma red; "cortar hoy" por estado real: óptimas / inmaduras / pasadas):
+
+| | Sin la regla | **Con la regla** |
+|---|---|---|
+| Carteles, semilla 7 | 10 / 0 / 7 | **10 / 0 / 3** |
+| Carteles, semilla 11 | 18 / 0 / 6 | **18 / 0 / 0** |
+| Oráculo, semilla 7 | 53 para cortar hoy | **49** (salen 4 inmaduras chicas que el oráculo marcó óptimas a propósito) |
+
+No se perdió ninguna óptima. Las rosas que salen de la lista quedan en "Dudosas", con su foto, para el experto.
+
 ---
 
 ## 3. Cómo ve rosas de 2 m sin hardware extra
@@ -863,6 +890,8 @@ carga solo y promedia su opinión con la de RosaNet, sin cambiar el contrato: el
   exagera el error; pero indica que la forma ve "copa ancha y roja" y no distingue la copa abierta de más. Cortar
   una pasada es menos grave que cortar una inmadura (ya está perdida), pero llena la lista. **Para el equipo del
   modelo:** revisar la forma con las pasadas, y conseguir más fotos de pasadas.
+- **Del lado del robot:** la regla del tamaño de la cabeza (sección 2.6) baja las pasadas en "cortar hoy" de 7 y 6 a
+  3 y 0, sin perder óptimas.
 - **Fotos de las dudosas para la app (hecho, `reporte/fotos.py`):** un experto revisa las dudosas en la tablet y
   la app muestra la foto si `foto` es una dirección web. Con `envio.metodo: supabase`, antes de subir el reporte
   el robot recorta cada dudosa con su caja de `detecciones.jsonl` (15 % de margen, mínimo 256 px), la sube al

@@ -15,6 +15,11 @@ Dudosa: si el modelo no está seguro (`seguro = false`), salvo cuando la duda es
 solo entre inmaduro y óptimo (p(inmaduro) + p(óptimo) ≥ `duda_entre_vecinas_min`).
 Esa duda es justo la de una rosa a punto de abrir, y se decide con las reglas
 de "lista mañana" en vez de mandarla a revisión.
+
+Tamaño como segunda opinión (paso 3): si el modelo dice óptimo pero la cabeza es
+mucho más chica o más grande que un punto 3 (tamaño_rel fuera de
+`optimo_tamano_rel_min`–`optimo_tamano_rel_max`), va a dudosa: una cabeza chica
+suele ser un punto 2 y una muy grande, una pasada. Sin diámetro (modo foto) no se usa.
 """
 
 from dataclasses import dataclass
@@ -29,6 +34,7 @@ class Madurez:
     puntaje: float | None = None
     dias_faltan: float | None = None
     motivo: str = ""
+    parece_optimo: bool = False   # dudosa por baja confianza con "óptimo" como mejor clase (suma a la prioridad)
 
 
 def tamano_relativo(diametro_cm: float, cfg: dict) -> float:
@@ -50,11 +56,14 @@ def decidir(clase: str, seguro: bool, probs: dict, diametro_cm: float, cfg: dict
     duda_vecinas = clase == "inmaduro" and p_inm + p_opt >= m["duda_entre_vecinas_min"]
 
     if not seguro and not duda_vecinas:
-        return Madurez("dudosa", motivo="el modelo no está seguro")
-    if clase != "inmaduro":
-        return Madurez(clase)
-
+        return Madurez("dudosa", motivo="el modelo no está seguro", parece_optimo=clase == "optimo")
     rel = round(tamano_relativo(diametro_cm, cfg), 3)
+    if clase == "optimo" and diametro_cm and not m["optimo_tamano_rel_min"] <= rel <= m["optimo_tamano_rel_max"]:
+        return Madurez("dudosa", rel, motivo=f"el modelo dice óptimo, pero la cabeza mide {diametro_cm:.1f} cm "
+                                             f"({'chica: ¿punto 2?' if rel < 1 else 'grande: ¿pasada?'})")
+    if clase != "inmaduro":
+        return Madurez(clase, rel)
+
     if p_opt < m["p3_min_candidata"]:
         return Madurez("inmaduro" if seguro else "dudosa", rel,
                        motivo="" if seguro else "el modelo no está seguro")

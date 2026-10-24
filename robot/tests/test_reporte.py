@@ -51,6 +51,32 @@ def test_dudosas(cfg):
     assert madurez.decidir("optimo", True, probs(0.1, 0.85), 5.0, cfg).estado == "optimo"
 
 
+def test_tamano_como_segunda_opinion(cfg):
+    # el modelo dice óptimo con confianza, pero la cabeza no tiene el tamaño de un punto 3 (5 cm)
+    grande = madurez.decidir("optimo", True, probs(0.05, 0.85), 9.0, cfg)
+    assert grande.estado == "dudosa" and "pasada" in grande.motivo and not grande.parece_optimo
+    chica = madurez.decidir("optimo", True, probs(0.05, 0.85), 3.0, cfg)
+    assert chica.estado == "dudosa" and "punto 2" in chica.motivo
+    assert madurez.decidir("optimo", True, probs(0.05, 0.85), 7.5, cfg).estado == "optimo"   # dentro del rango
+    assert madurez.decidir("optimo", True, probs(0.05, 0.85), 0.0, cfg).estado == "optimo"   # sin diámetro (modo foto)
+    assert madurez.decidir("pasado", True, {"inmaduro": 0.05, "optimo": 0.1, "pasado": 0.85}, 9.0, cfg).estado == "pasado"
+    # dudosa por baja confianza con óptimo como mejor clase: cuenta para la prioridad
+    assert madurez.decidir("optimo", False, probs(0.3, 0.55), 5.0, cfg).parece_optimo
+
+
+def test_dudosas_que_parecen_optimas_suben_el_cuadrante(cfg):
+    rosas = [rosa(1, 1, 1.0, "optimo", conf=0.5), rosa(1, 1, 2.0, "optimo", conf=0.55),       # C01-T1: 2 casi
+             rosa(1, 2, 6.0, "optimo", conf=0.9, diam=9.5),                                     # C01-T2: grande
+             rosa(2, 1, 1.0, "inmaduro", conf=0.95)]
+    rep = armar_reporte(rosas, armar_plano(cfg), {1, 2}, cfg, {
+        "id_ronda": "INV1_2026-10-24_220000", "inicio": "2026-10-24 22:00:00", "fin": "2026-10-24 23:41:00"})
+    c = {f["cuadrante_id"]: f for f in rep.cuadrantes}
+    assert list(c["INV1-C01-T1"]) == COLUMNAS_CUADRANTES                       # mismas columnas para la app
+    assert (c["INV1-C01-T1"]["dudosa"], c["INV1-C01-T1"]["prioridad"], c["INV1-C01-T1"]["orden"]) == (2, "media", 1)
+    assert (c["INV1-C01-T2"]["dudosa"], c["INV1-C01-T2"]["prioridad"]) == (1, "baja")   # la grande no suma
+    assert c["INV1-C02-T1"]["prioridad"] == "baja"
+
+
 def test_prioridad():
     assert prioridad(3, 0, 3) == "alta"
     assert prioridad(1, 0, 3) == prioridad(0, 2, 3) == "media"
