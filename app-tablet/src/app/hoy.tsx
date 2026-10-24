@@ -6,6 +6,7 @@ import { Aparecer } from '@/componentes/animaciones';
 import { BotonGrande } from '@/componentes/BotonGrande';
 import type { Cuadrante, Prioridad, Reporte } from '@/data/reporte';
 import { cargarReporte, fechaLarga, hora, type Origen } from '@/logica/reporte';
+import { supabase } from '@/logica/supabase';
 import { colores, espacio, fuente, sombra, texto } from '@/tema';
 
 // Turnero del día: con el reporte de la ronda nocturna del robot, dice a qué cuadrantes ir primero.
@@ -37,6 +38,14 @@ export default function Hoy() {
 
   useEffect(() => {
     actualizar();
+    // Cuando el robot sube un reporte nuevo, la pantalla se actualiza sola.
+    const canal = supabase
+      .channel('informe')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reportes' }, () => actualizar())
+      .subscribe();
+    return () => {
+      supabase.removeChannel(canal);
+    };
   }, [actualizar]);
 
   if (!datos) {
