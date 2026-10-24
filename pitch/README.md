@@ -111,8 +111,8 @@ fotos de día; los números tienen ±10 puntos de incertidumbre por las pocas fo
 
 | Min | Bloque | Qué decimos o mostramos | Criterio que ataca |
 |---|---|---|---|
-| 0:00 | **Gancho** | Foto de dos rosas casi iguales: punto 2 y punto 3. "¿Cuál cortarían?" (dejar que el jurado falle). "La falla más común de la finca es esta." | Comprensión de la necesidad |
-| 0:45 | **Problema** | El criterio es tácito, se aprende al lado de un experto, la decisión de hoy se ve en días y dos personas leen distinto la misma rosa. **Hoy la finca no tiene datos del campo:** sus drones solo se usan para pruebas y no guardan nada. | Necesidad |
+| 0:00 | **Gancho** | Foto de dos rosas casi iguales: punto 2 y punto 3. "¿Cuál cortarían?" (dejar que el jurado falle). "En la finca, **12 de cada 100 rosas** se cortan fuera de punto, y la falla más común es esta." | Comprensión de la necesidad |
+| 0:45 | **Problema** | El criterio es tácito y se aprende en el cultivo: la inducción dura **15 a 18 días** y la teoría es solo **2 o 3**; el resto es práctica al lado de un experto. La decisión de hoy se ve en días y dos personas leen distinto la misma rosa. **Hoy la finca no tiene datos del campo:** sus drones solo se usan para pruebas y no guardan nada. | Necesidad |
 | 1:45 | **Persona** | "Marta, 3 semanas en la finca" y "Don Luis, 15 años cortando, que pierde tiempo enseñando". | Necesidad, ética |
 | 2:15 | **Solución** | El diagrama de arriba: aprender → practicar → decidir, con un solo cerebro. | Integración |
 | 3:00 | **DEMO EN VIVO** (3–4 min) | 1) **Modo foto:** el jurado elige una rosa o una foto y el pipeline (detector + RosaNet) la clasifica con su porqué, o dice "incierta". 2) **Ronda del X2 en la simulación** → el reporte JSON llega al dashboard y aparece en la pantalla turnero ("ve primero al cuadrante INV1-C07-T3; mañana, al C04"). 3) Juego de práctica en la app. 4) VR, aunque sea en video. | Funcionamiento (25 + 30 %) |
@@ -133,8 +133,9 @@ fotos de día; los números tienen ±10 puntos de incertidumbre por las pocas fo
 | ¿Los operarios van a usar celular? | No. La finca no lo permite y no hace falta: la app vive en pantallas comunes tipo turnero a la entrada del invernadero y en la sala de formación. |
 | ¿No reemplaza trabajadores? | No corta rosas. Les quita el trabajo de adivinar a dónde ir, acelera la curva de aprendizaje y libera al experto para enseñar lo difícil. |
 | ¿Con 69 fotos entrenaron una red? | No desde cero: se preentrenó con ~4.700 rosas públicas y se calibró con las de la finca. Pasó de 25 % a 75 % de exactitud en la finca. Lo dudoso sale como "incierta". El robot existe justamente para conseguir miles de fotos etiquetadas. |
+| Si los operarios aciertan el 88 % y RosaNet el 75 %, ¿para qué la red? | La red no reemplaza el ojo del cortador: **cuenta y prioriza** el campo entero cada noche (a dónde ir), algo que hoy nadie hace. El que decide qué cortar sigue siendo la persona, y la app y la VR existen para subir ese 88 %. La red mejora con cada ronda y cada corrección del experto; la meta es superar el 88 %, y lo decimos como meta, no como logro. |
 | ¿Qué pasa cuando el modelo se equivoca? | Lo que tiene confianza baja va a una lista de "dudosas" que revisa un experto en la app; su respuesta reentrena el modelo. La decisión final de cortar siempre es de la persona. |
-| ¿Cuánto cuesta y cuándo se paga? | Ver la diapositiva de negocio: en el escenario base, el primer robot se paga en ~13 meses (con supuestos explícitos). |
+| ¿Cuánto cuesta y cuándo se paga? | Ver la diapositiva de negocio: si el error baja de 12 % a 9 %, el primer robot se paga en ~14 meses (con supuestos explícitos y condicionado a la velocidad de la ronda). |
 
 ## Qué necesitamos decidir como equipo
 
@@ -143,6 +144,7 @@ fotos de día; los números tienen ±10 puntos de incertidumbre por las pocas fo
 - [ ] ¿Cómo se identifica el trabajador en la pantalla turnero: nombre, código o carné?
 - [ ] **¿Qué acción física hace el robot?** (pregunta de "Pertinencia", 15 pts). La rama `A` recomienda: en la demo, girar la cabeza e iluminar cada rosa en punto 3; como siguiente paso, esperar en la entrada de los cuadrantes de prioridad alta y señalarlos con el brazo cuando llegan los operarios.
 - [ ] **Velocidad real de la ronda** (decide el negocio, ver `inversion-y-retorno.md` sección 2): la simulación para cada 1,25 m y avanza ~0,1 m/s en promedio; las cuentas del negocio suponen ~0,6 m/s fotografiando en movimiento.
+- [ ] Las gafas (Meta Quest) todavía no están en el repo: cuando lleguen, tienen que verse y hablar igual que la app (mismas categorías, fotos y estilo).
 - [ ] ¿Cuándo se une la rama `A` (simulación y envío del reporte) a `main`?
 - [ ] ¿Quién presenta cada bloque?
 
@@ -150,11 +152,13 @@ fotos de día; los números tienen ±10 puntos de incertidumbre por las pocas fo
 
 Con estas respuestas se cambian los ❓ por datos reales en `inversion-y-retorno.md`:
 
-- [ ] Hectáreas en rosa, número de campos e invernaderos, y largo y número de líneas por campo.
+- [ ] Hectáreas en rosa, número de campos e invernaderos, y largo y número de líneas por campo. (**Todavía no hay medidas.**)
 - [ ] Ancho de los pasillos y de las cabeceras (donde gira el robot).
 - [ ] Número de operarios de cultivo y de cortadores; rotación anual y temporales por temporada.
-- [ ] Porcentaje de tallos que se van a nacional o se descartan **por mal punto de corte**.
-- [ ] Cuánto dura hoy la inducción de un cortador y cuánto tarda en llegar a su meta de tallos por hora.
+- [x] Acierto en el punto de corte: **~88 % de las flores; ~12 % de error** (dato de la finca, 2026-10-23).
+- [ ] Qué pasa con una flor cortada fuera de punto: ¿baja de grado, va a nacional o se descarta? ¿Cuánto vale menos? (hoy suponemos ~1/3 del valor)
+- [x] Duración de la inducción: **15 a 18 días**, de los cuales la teoría son **2 o 3** (dato de la finca, 2026-10-23).
+- [ ] Cuánto tarda un cortador, después de la inducción, en llegar a su meta de tallos por hora.
 - [ ] Cómo hacen hoy el conteo o la proyección de cosecha (quién, cada cuánto, cuántas horas).
 - [ ] El proceso de **sanación** de la planta después del corte.
 - [ ] ¿El video de capacitación de "CHT" es de GHT? ¿Qué relación tiene la finca con GHT?

@@ -1,9 +1,9 @@
 # Inversión y retorno — borrador v1
 
 > **Todas las cifras son supuestos explícitos para discutir.** Las marcadas con 📌 vienen de una fuente
-> (ver [investigacion.md](investigacion.md)). Las marcadas con ❓ son supuestos nuestros que hay que
-> validar con la finca: **todavía no tenemos sus datos** (la lista de preguntas está en
-> [README.md](README.md)). La regla del pitch: **mostrar los supuestos, no esconderlos.** Un jurado de
+> (ver [investigacion.md](investigacion.md)). Las marcadas con 🏠 las dio la finca. Las marcadas con ❓
+> son supuestos nuestros que hay que validar con la finca (la lista de preguntas está en
+> [README.md](README.md)). **Todavía no tenemos medidas del campo.** La regla del pitch: **mostrar los supuestos, no esconderlos.** Un jurado de
 > empresa confía más en un número conservador explicado que en uno grande sin respaldo.
 >
 > **Cambios frente a la v0:** se plantea **un solo robot** para empezar y **un robot por campo** después;
@@ -58,8 +58,8 @@ campo de visión).
 | Velocidad efectiva | Recorrido por noche (10 h) | Área por noche | 20 ha con un robot | Payback base* |
 |---|---|---|---|---|
 | ~0,1 m/s (simulación actual, con paradas) | ~3,6 km | ~0,7 ha (todos los caminos, cama + camino de 1,8 m) | cada línea cada ~30 noches | **no se paga en un plazo razonable** |
-| 0,3 m/s (paradas cada ~5 m) | ~10,8 km | ~2,7 ha | cada ~7 noches | ~2 años |
-| **0,6 m/s (fotos en movimiento)** | **~21,6 km** | **~5,5 ha** | **cada ~4 noches** | **~13 meses** |
+| 0,3 m/s (paradas cada ~5 m) | ~10,8 km | ~2,7 ha | cada ~7 noches | ~2,4 años |
+| **0,6 m/s (fotos en movimiento)** | **~21,6 km** | **~5,5 ha** | **cada ~4 noches** | **~14 meses** |
 
 \* Las palancas A y C solo aplican al área que el robot alcanza a revisar con frecuencia útil
 (cada ≤ 4 noches); la B (formación) no depende del robot. Estimación gruesa para ordenar la
@@ -99,16 +99,23 @@ condicionada a esa prueba.
 ### A. Calidad del corte (la más grande)
 Menos rosas cortadas en punto 2 (la falla más común según la finca) y menos rosas que se pasan en la
 cama. Cada punto porcentual de ingreso que se recupera vale **~USD 43.000 al año** en esta finca.
+- **Dato de la finca 🏠:** hoy aciertan el punto de corte en **~88 % de las flores**; **~12 % se cortan fuera de punto**. Es la línea base que queremos bajar.
+- No todo error es una flor perdida: una rosa en punto 2 puede bajar de grado o irse a nacional. Supuesto ❓: cada error pierde ~1/3 del valor del tallo.
+- Cuenta: *puntos de error que se bajan × 1/3 = % de ingreso recuperado.*
+  - Conservador: 12 % → 10,5 % de error = **0,5 %** del ingreso.
+  - Base: 12 % → 9 % = **1 %**.
+  - Optimista: 12 % → 6 % = **2 %**.
 - Referencia: GHT reporta que con herramientas de datos el descarte bajó del **8 % al 1 %** 📌 (caso promocional de Microsoft, no independiente).
-- La finca hoy **no mide el campo con datos**: sus drones solo se usan para pruebas y no guardan nada. Se parte de cero, así que la mejora puede ser grande.
-- Conservador 0,5 % · Base 1 % · Optimista 2 %.
+- La finca hoy **no mide el campo con datos**: sus drones solo se usan para pruebas y no guardan nada. Se parte de cero.
 
-### B. Curva de aprendizaje más corta
-El operario nuevo practica en VR y en la app antes y durante sus primeras semanas, y llega antes a su
-productividad normal. El experto dedica menos tiempo a acompañarlo.
-- Ahorro por persona nueva ≈ 2 semanas menos al 50 % de productividad (USD 175) + 2 semanas menos del experto acompañando al 25 % (USD 88) ≈ **USD 263**.
-- Hay evidencia de que la productividad (tallos por hora) crece con la experiencia 📌 (estudio en Falcon Farms y GR Chía); falta el número exacto.
-- Conservador 1 semana · Base 2 semanas · Optimista 3 semanas.
+### B. Inducción más corta y curva de aprendizaje
+- **Dato de la finca 🏠:** la inducción dura **15 a 18 días**. La teoría ocupa **2 o 3 días**; el resto es práctica en el cultivo, que es donde está el tiempo y donde Punto 3 actúa (VR para practicar sin dañar rosas, juego para repetir hasta mecanizar).
+- Costo de un día de inducción ≈ USD 20 ❓: el operario nuevo produce ~50 % (USD 13,5) y un experto lo acompaña ~25 % de su tiempo (USD 6,7), con USD 700/mes y 26 días hábiles.
+- Además, después de la inducción el operario sigue por debajo de su meta de tallos por hora; la productividad crece con la experiencia 📌 (estudio en Falcon Farms y GR Chía).
+  - Conservador: 3 días menos de inducción = **USD 60** por persona.
+  - Base: 5 días menos (de ~16 a ~11) + 1 semana menos de curva al 50 % = **USD 180**.
+  - Optimista: 8 días menos + 2 semanas menos de curva = **USD 320**.
+- Con ~70 personas nuevas al año ❓.
 
 ### C. Orientación y asignación del personal
 El conteo y la proyección de botones que hoy se hacen caminando y a ojo pasan al robot, y con la
@@ -121,15 +128,16 @@ pantalla turnero los cortadores llegan directo a los cuadrantes y las líneas co
 | | Conservador | **Base** | Optimista |
 |---|---|---|---|
 | A. Calidad del corte | 21.400 | **42.800** | 85.600 |
-| B. Curva de aprendizaje | 9.200 | **18.400** | 27.600 |
+| B. Inducción y curva de aprendizaje | 4.200 | **12.600** | 22.400 |
 | C. Orientación y asignación | 10.000 | **23.500** | 40.000 |
-| **Beneficio bruto / año** | 40.600 | **84.700** | 153.200 |
+| **Beneficio bruto / año** | 35.600 | **78.900** | 148.000 |
 | − OPEX | 20.100 | **20.100** | 20.100 |
-| **Beneficio neto / año** | 20.500 | **64.600** | 133.100 |
-| **Payback de USD 70.000** | ~3,4 años | **~13 meses** | ~6 meses |
+| **Beneficio neto / año** | 15.500 | **58.800** | 127.900 |
+| **Payback de USD 70.000** | ~4,5 años | **~14 meses** | ~7 meses |
 
-**Mensaje para la diapositiva (3 números):** *Un robot · Inversión ≈ USD 70 mil · Se paga en ~13 meses*,
-y se dice en voz alta: **"si solo recuperamos 1 de cada 100 rosas mal cortadas"**.
+**Mensaje para la diapositiva (3 números):** *Un robot · Inversión ≈ USD 70 mil · Se paga en ~14 meses*,
+y se dice en voz alta: **"hoy 12 de cada 100 rosas se cortan fuera de punto; si bajamos a 9, el robot
+se paga en poco más de un año"**.
 
 ## 7. Fase 2: un robot por campo
 
@@ -140,7 +148,7 @@ y se dice en voz alta: **"si solo recuperamos 1 de cada 100 rosas mal cortadas"*
 ## 8. Modelo de negocio (opciones)
 
 1. **Venta + suscripción:** la finca compra el hardware (sección 3) y paga la suscripción anual de software y actualizaciones del modelo.
-2. **Robot como servicio (RaaS):** cuota mensual por finca que incluye el robot, el mantenimiento, el software y las actualizaciones. Ejemplo ❓: USD 4.500/mes (USD 54.000/año) frente a USD 84.700 de beneficio base → la finca gana desde el primer mes y no invierte capital.
+2. **Robot como servicio (RaaS):** cuota mensual por finca que incluye el robot, el mantenimiento, el software y las actualizaciones. Ejemplo ❓: USD 4.500/mes (USD 54.000/año) frente a USD 78.900 de beneficio base → la finca gana desde el primer mes y no invierte capital.
 3. **Nuestro costo de desarrollo** (~USD 40.000 ❓ una sola vez, seis meses de trabajo) se recupera con las suscripciones de varias fincas, no con la primera.
 4. **Canal GHT:** GHT presta servicios a más de 40 empresas del sector y centraliza datos con su suite Web Flowers y su BI "Verdad Única" 📌. Punto 3 puede entrar como **un módulo que alimenta ese BI**.
 5. **Escalabilidad:** cada finca nueva solo cuesta el hardware y la adaptación por variedad (reetiquetar fotos de esa variedad). La app y la VR se reutilizan sin cambios.

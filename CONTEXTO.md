@@ -211,6 +211,16 @@ Las clases intermedias públicas (`mid-bud`, `2_Early_Bloom`) son rosas **más a
 2. **Más fotos de la finca** para RosaNet, sobre todo óptimas y pasadas, idealmente con la cámara y la luz del robot de noche.
 3. Terminar el entrenamiento del detector (se puede continuar desde `runs/detector/weights/last.pt`) en Colab o con el portátil más ventilado.
 
+## 2.0.4 Datos de la finca para el pitch (2026-10-23, noche)
+
+| Dato | Valor | Implicación |
+|---|---|---|
+| Acierto de los operarios en el punto de corte | **~88 % de las flores (~12 % de error)** | Es la línea base del negocio: la meta es bajar ese 12 %. RosaNet (75 %) todavía está por debajo del ojo humano, así que su papel es contar y priorizar el campo, no decidir el corte |
+| Duración de la inducción | **15 a 18 días**; la teoría dura **2 o 3** | El tiempo está en la práctica, no en la teoría: ahí es donde actúan la VR y el juego |
+| Medidas del campo (hectáreas, líneas, pasillos) | **Todavía no hay** | Las cuentas de capacidad y retorno del pitch siguen con supuestos |
+
+Los cálculos están en `pitch/inversion-y-retorno.md`.
+
 ## 2.1 Propuesta anterior (v1) — reemplazada por la v2
 
 **Foco del MVP:** app móvil + robot. La VR la trabaja otra parte del equipo, en paralelo y con menor prioridad.

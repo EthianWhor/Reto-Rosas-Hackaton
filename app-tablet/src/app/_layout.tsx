@@ -17,6 +17,10 @@ export default function Layout() {
         }}
       >
         <Stack.Screen name="index" options={{ title: 'Punto de Corte' }} />
+        <Stack.Screen name="hoy" options={{ title: 'Lo que encontró el robot' }} />
+        <Stack.Screen name="mi-turno" options={{ title: 'Mi turno de hoy' }} />
+        <Stack.Screen name="turno" options={{ title: 'Turno de hoy' }} />
+        <Stack.Screen name="trabajadores" options={{ title: 'Trabajadores' }} />
         <Stack.Screen name="aprender" options={{ title: 'Las 3 categorías' }} />
         <Stack.Screen name="clasificar" options={{ title: 'Juego: clasifica el botón' }} />
         <Stack.Screen name="sanacion" options={{ title: 'Sanación después del corte' }} />
