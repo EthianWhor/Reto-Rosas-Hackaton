@@ -27,7 +27,11 @@ def evaluate(model, loader, classes: list[str], device) -> dict:
         preds = model(images.to(device)).argmax(1).cpu()
         for t, p in zip(labels.tolist(), preds.tolist()):
             confusion[t][p] += 1
+    return metrics_from_confusion(confusion, classes)
 
+
+def metrics_from_confusion(confusion: list[list[int]], classes: list[str]) -> dict:
+    n = len(classes)
     per_class, f1s = {}, []
     for i, cls in enumerate(classes):
         tp = confusion[i][i]

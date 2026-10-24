@@ -45,32 +45,67 @@ Revisen las cajas en `data/finca_yolo/preview/`. Las fotos de "Casos difíciles"
 
 ### 3. Datasets públicos de apoyo (formato **YOLOv8**) en `robot/descargas/`
 
-| Dataset | Link | Clases |
-|---|---|---|
-| Rose (Sanjay M) | https://universe.roboflow.com/sanjay-m-7nbqj/rose-tk4yv | bud, mid-bud, flower |
-| 食用玫瑰花期检测 (etapas de floración) | https://universe.roboflow.com/yolo-lmnpo/-zkger | 1_Bud, 2_Early_Bloom, 3_Full_Bloom, 4_Senescence |
-| Rose Growth Stage (Mendeley) | https://data.mendeley.com/datasets/53vyvz5yyk/1 | Early, Middle, Final (carpetas) |
+| Dataset | Versión | Carpeta | Clases |
+|---|---|---|---|
+| [Rose (Sanjay M)](https://universe.roboflow.com/sanjay-m-7nbqj/rose-tk4yv/dataset/1/download/yolov8) | v1 | `descargas/rose` | bud, mid-bud, flower |
+| [食用玫瑰花期检测 (floración)](https://universe.roboflow.com/yolo-lmnpo/-zkger/dataset/8/download/yolov8) | v8 | `descargas/floracion` | 1_Bud, 2_Early_Bloom, 3_Full_Bloom, 4_Senescence |
 
-De cada proyecto de Roboflow descarguen **una sola versión** (las versiones repiten las mismas fotos).
+Descargar **una sola versión** de cada uno (las versiones repiten las mismas fotos). La v1 de Rose trae
+copias en gris; `prepare_data` las descarta. El dataset de Mendeley **no se usa**: sus fotos son
+escenas con rosas en varias etapas bajo una sola etiqueta.
 
-### 4. Preparar, entrenar, evaluar y predecir
+### 4. Entrenar RosaNet (dos etapas)
 
-```bash
-python -m ml.prepare_data --yolo data/finca_yolo --yolo descargas/rose --yolo descargas/floracion --folder descargas/mendeley --out data/stages
-python -m ml.train --data data/stages --out runs/rosanet --epochs 40
-python -m ml.evaluate --ckpt runs/rosanet/best.pt --data data/propias
-python -m ml.predict --ckpt runs/rosanet/best.pt foto.jpg --cam mapa.jpg
-```
-
-`data/propias` es una carpeta con fotos propias de rosas comerciales, organizadas en una
-subcarpeta por categoría (mismos nombres que en `ml/stages.py`). Es la prueba más honesta.
-
-Para medir solo con las rosas de la finca que el modelo nunca vio:
+Las clases intermedias de los datasets públicos (`mid-bud`, `2_Early_Bloom`) son rosas más abiertas
+que el punto óptimo de la finca: mezclarlas directo con la finca enseña un criterio equivocado
+(probado: 25 % de exactitud en rosas de la finca). Por eso:
 
 ```bash
-python -m ml.prepare_data --yolo data/finca_yolo --out data/finca_stages
-python -m ml.evaluate --ckpt runs/rosanet/best.pt --data data/finca_stages/test
+# Recortes de la finca (3 categorías) y públicos (escala propia: botón / abriendo / abierta / senescente)
+python -m ml.prepare_data --yolo data/finca_yolo --out data/finca_stages --pad 0.15
+python -m ml.prepare_data --escala publica --yolo descargas/rose --yolo descargas/floracion --out data/pre
+
+# Etapa 1: preentrenar desde cero con los públicos (aprende a "ver" rosas)
+python -m ml.train --data data/pre --out runs/rosanet_pre --epochs 40 --batch-size 64 --workers 4
+
+# Etapa 2: calibrar con la finca + validación cruzada por foto -> runs/rosanet/best.pt
+python -m ml.calibrate --init runs/rosanet_pre/best.pt --freeze 0 --out runs/rosanet
 ```
+
+### 5. Entrenar el detector (YOLO11n preentrenado, una clase "rosa")
+
+```bash
+python -m ml.prepare_detector --yolo descargas/rose --yolo descargas/floracion --out data/detector
+python -m ml.train_detector --data data/detector/data.yaml --epochs 35 --batch 16
+```
+
+Las fotos de la finca **no** se usan para el detector: solo tienen marcadas algunas rosas por escena.
+
+### 6. Operar (modelos ya entrenados en `modelos/`)
+
+El repo incluye los modelos entrenados, así que para usarlos no hace falta entrenar ni descargar datasets:
+
+| Archivo | Qué es |
+|---|---|
+| `modelos/rosanet.pt` | RosaNet preentrenada + calibrada con la finca (inmaduro / óptimo / pasado) |
+| `modelos/detector_rosas.pt` | YOLO11n ajustado para encontrar rosas (una clase) |
+| `modelos/rosanet_calibracion.json` | Métricas de la validación cruzada con la finca |
+
+```bash
+# Una rosa recortada (+ mapa de calor de dónde miró la red)
+python -m ml.predict foto.jpg --cam mapa.jpg
+# Fotos de escena de un sector -> reporte JSON para el dashboard + fotos anotadas
+python -m ml.pipeline --sector B3 "fotos/b3/*.jpg" --out reportes/b3.json --anotadas reportes/b3
+# Medir con fotos propias organizadas por categoría
+python -m ml.evaluate --ckpt modelos/rosanet.pt --data data/propias
+```
+
+Si se reentrena, copiar el resultado a `modelos/` (`runs/rosanet/best.pt` → `modelos/rosanet.pt`,
+`runs/detector/weights/best.pt` → `modelos/detector_rosas.pt`).
+
+### Resultados (2026-10-23)
+
+Ver `CONTEXTO.md`, sección 2.0.3.
 
 ### Pruebas
 

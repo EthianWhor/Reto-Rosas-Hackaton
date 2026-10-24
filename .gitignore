@@ -10,6 +10,8 @@ descargas/
 # Resultados de entrenamiento
 runs/
 *.pt
+# Excepción: los modelos entrenados que usa el equipo
+!robot/modelos/*.pt
 
 # Robot: fotos, reportes y logs de cada ronda; claves del envío
 robot/datos/

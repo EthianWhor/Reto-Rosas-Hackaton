@@ -82,7 +82,7 @@ def gradcam_overlay(model: RosaNet, image: Image.Image, device: str, class_index
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("image", type=Path)
-    p.add_argument("--ckpt", type=Path, default=Path("runs/rosanet/best.pt"))
+    p.add_argument("--ckpt", type=Path, default=Path("modelos/rosanet.pt"))
     p.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="Confianza mínima para 'seguro'")
     p.add_argument("--cam", type=Path, help="Guardar imagen con el mapa de calor Grad-CAM")
     args = p.parse_args()

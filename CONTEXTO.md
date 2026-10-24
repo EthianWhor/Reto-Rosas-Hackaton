@@ -153,6 +153,64 @@ cada una con su carpeta en el repo:
 
 Fuentes de las especificaciones: generationrobots.com, robotshop.com, store.agibot.com y rbtx.com (fichas del AgiBot X2 Ultra, consultadas el 2026-10-23).
 
+## 2.0.3 Entrenamiento de la red y resultados (2026-10-23)
+
+### Arquitectura de operación
+Foto de escena del robot → **detector** (YOLO11n preentrenado, ajustado para una clase, "rosa") → recorte de cada rosa → **RosaNet** (CNN propia) → inmaduro / óptimo / pasado / *incierta* → reporte por sector (JSON) para el dashboard. Código en `robot/ml/pipeline.py`.
+**Cómo usar la red desde el código del robot** (API, config `modelo_equipo`, comandos y límites): `robot/CLAUDE.md`. Los modelos entrenados están en `robot/modelos/`.
+
+### Datos usados
+| Fuente | Uso | Recortes |
+|---|---|---|
+| Finca (General.zip) | Calibración y **medición** (verdad de terreno) | 69 (47 inmaduras, 20 óptimas, 2 pasadas) |
+| Roboflow Rose v1 (Sanjay M) | Preentrenamiento de RosaNet + detector | 2.575 (se descartaron 212 copias en gris) |
+| Roboflow floración v8 | Preentrenamiento de RosaNet + detector | ~2.100 |
+| Mendeley | **Descartado** | Son escenas con rosas en varias etapas bajo una sola etiqueta |
+
+### Hallazgo clave: los datasets públicos no usan la frontera de la finca
+Las clases intermedias públicas (`mid-bud`, `2_Early_Bloom`) son rosas **más abiertas** que el punto óptimo de la finca (punto 3), y el `bud` público mezcla botones cerrados con botones en el punto de la finca. Con un mapeo directo, la red tuvo **83 % de exactitud en los datos públicos, pero solo 25 % en rosas de la finca (0 de 6 óptimas)**.
+
+**Solución: entrenamiento en dos etapas.**
+1. **Preentrenamiento** de RosaNet desde cero con los públicos en *su propia* escala (botón / abriendo / abierta / senescente): **86,5 % de exactitud** (macro-F1 0,857) en 430 fotos públicas de prueba.
+2. **Calibración** con la finca a sus 3 categorías (se cambia la última capa y se ajusta toda la red). La categoría "pasado" se completa con 40 recortes públicos de rosas abiertas o senescentes.
+
+### Resultados en rosas de la finca (validación cruzada de 5 folds por foto, 64 rosas)
+| Variante | Exactitud | Óptimas reconocidas (recall) | Inmaduras marcadas como óptimas |
+|---|---|---|---|
+| Mapeo directo (sin calibrar) | 25 %* | 0 % | — |
+| Calibrada sin preentrenamiento | 73 % | 35 % (6/17) | 4/45 |
+| Preentrenada + calibrada, 2 bloques congelados | 69 % | 47 % (8/17) | 9/45 |
+| **Preentrenada + calibrada, sin congelar (en uso)** | **75 %** | **59 % (10/17)** | 7/45 |
+
+\* Medido solo con 12 rosas. Los casos difíciles (5 rosas) dan 4/5 en todas las variantes calibradas.
+
+### Límites honestos
+- **Muy pocas rosas de la finca:** 64 para la validación cruzada. Los números tienen mucha incertidumbre (±10 puntos o más).
+- **"Pasado" no se aprende:** la finca dio 2 ejemplos y ninguno se reconoce. Las públicas abiertas no se parecen a una Freedom "un poco pasada".
+- **Error más costoso:** marcar una inmadura como óptima repite la falla más común de la finca (cortar en punto 2). Pasa en 7 de 45 inmaduras. Para mitigarlo, el pipeline marca como *incierta* toda predicción con confianza < 60 %.
+- **Todo es de día:** el robot operará de noche con luz artificial (ver 2.0.2).
+- **Lo que más mejoraría el modelo:** más fotos de la finca (sobre todo óptimas y pasadas), idealmente tomadas con la cámara y la luz del robot.
+
+### Detector (YOLO11n ajustado, una clase "rosa")
+- Se entrenó con los dos datasets públicos (3.778 fotos, 4.959 rosas). Se detuvo en la **época 12 de 35**: cada época tardaba ~8 min porque la GPU llegó a 89 °C y bajó su reloj, y los 4 GB de memoria estaban llenos.
+- **Fotos públicas de prueba** (320 fotos, 430 rosas): precisión 0,914, recall 0,891, mAP50 0,959, mAP50-95 0,763.
+- **Fotos de la finca** (invernadero, Freedom, desde abajo), contra las 69 rosas marcadas (IoU > 0,2):
+
+| Resolución | Umbral | Rosas marcadas encontradas | Detecciones totales (56 fotos) |
+|---|---|---|---|
+| 640 px | 0,25 | 28 % | 84 |
+| 1024 px | 0,10 | 70 % | 263 |
+| **1280 px** | **0,10** | **78 % (en uso)** | 281 |
+| 1280 px | 0,05 | 84 % | 483 |
+
+- **Lectura:** el detector aprendió con rosas de jardín fotografiadas de cerca; en el invernadero las rosas son pequeñas y lejanas. A mayor resolución y con un umbral más bajo encuentra casi 4 de cada 5, pero aparecen **falsos positivos** (postes, hojas, una mano). Se filtran las cajas gigantes (> 8 % de la foto). Los demás falsos positivos casi siempre salen como "inmaduro" o "incierta", así que inflan el conteo de inmaduras pero rara vez generan una falsa alarma de "listas para cortar".
+- **Mi medición anterior (83 %) estaba inflada:** contaba como encontrada una rosa cubierta por una caja gigante. Se corrigió con IoU.
+
+### Siguiente paso con más impacto
+1. **Anotar todas las rosas** de las 56 fotos de la finca (en Roboflow, ~1 h) y ajustar el detector con ellas. Es el cambio que más reduciría los falsos positivos y las rosas perdidas en el invernadero.
+2. **Más fotos de la finca** para RosaNet, sobre todo óptimas y pasadas, idealmente con la cámara y la luz del robot de noche.
+3. Terminar el entrenamiento del detector (se puede continuar desde `runs/detector/weights/last.pt`) en Colab o con el portátil más ventilado.
+
 ## 2.1 Propuesta anterior (v1) — reemplazada por la v2
 
 **Foco del MVP:** app móvil + robot. La VR la trabaja otra parte del equipo, en paralelo y con menor prioridad.
@@ -286,6 +344,12 @@ Fuentes de las especificaciones: generationrobots.com, robotshop.com, store.agib
 | 2026-10-23 | Las cajas de la finca se extraen automáticamente de los círculos de los PDF (`robot/ml/finca_labels.py`); los casos difíciles van a test | Ahorra la anotación manual y separa una prueba de robustez |
 | 2026-10-23 | Robot = **AgiBot X2 Ultra**, con rondas **nocturnas o de madrugada** | No hay operarios en los pasillos; hace falta iluminación activa para la cámara |
 | 2026-10-23 | El robot trabaja **por cuadrantes**: identifica cada cuadrante, reporta su estado y lo señala físicamente | Da una unidad de gestión clara a la finca ("¿a dónde mando a cortar hoy?") y una acción visible del robot |
+| 2026-10-23 | **Un solo robot** para empezar y **un robot por campo** después | 11 robots no son rentables; la fase 2 se justifica con el piloto |
+| 2026-10-23 | El robot recorre **línea por línea**: no gira dentro de la línea, da la vuelta en la cabecera | Los pasillos son angostos; en las cabeceras hay espacio para girar |
+| 2026-10-23 | El campo tendrá **iluminación LED blanca** para la ronda nocturna; se asume que la energía del robot alcanza | Resuelve la cámara de noche y da color constante |
+| 2026-10-23 | La app vive en **tablets o pantallas comunes tipo turnero** (entrada del invernadero, sala de formación); el reporte del robot llega a todos los trabajadores registrados | Los operarios no usan celular en el cultivo |
+| 2026-10-23 | Los **drones de la finca quedan fuera**: solo hacen pruebas y no guardan datos | No sirven para el muestreo y no hay tiempo de integrarlos |
+| 2026-10-23 | El pitch vive en `pitch/` (guion, investigación, inversión y visión 360) | Una carpeta para el trabajo del pitch |
 
 ## 6. Bitácora de supuestos y aprendizajes (para el pitch de validación)
 | Supuesto inicial | ¿Se mantuvo? | Qué observamos |
