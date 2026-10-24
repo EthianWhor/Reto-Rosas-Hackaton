@@ -21,7 +21,8 @@ pip install -r requirements.txt
 ## Modelos entrenados (ya están en git)
 | Archivo | Qué hace |
 |---|---|
-| `modelos/detector_rosas.pt` | YOLO11n ajustado: encuentra **dónde** hay rosas en una foto de escena (una clase, "rosa") |
+| `modelos/detector_rosas.pt` | YOLO11n ajustado: encuentra **dónde** hay rosas en una foto de escena (una clase, "rosa"). **Ajustado con escenas del invernadero de la finca** (2026-10-24) |
+| `modelos/detector_rosas_v1_publico.pt` | Versión anterior, solo con rosas de jardín: muy mala en el invernadero. Solo para comparar |
 | `modelos/rosanet.pt` | RosaNet (CNN propia): dice si una rosa **recortada** está `1_inmaduro`, `2_optimo` o `3_pasado`. **Versión "noche"**: entrenada con aumento de fondo oscuro (ver abajo) |
 | `modelos/rosanet_calibracion.json` | Métricas de la validación cruzada con las fotos de la finca (incluye las pruebas de fondo) |
 | `modelos/rosanet_v1_dia.pt` | Versión anterior, sin aumento de fondo oscuro: algo mejor de día, mucho peor de noche. Solo para comparar |
@@ -56,7 +57,7 @@ dets = det.detect(imagen)   # PIL.Image o np.ndarray RGB (H, W, 3)
 - **Ojo con OpenCV:** un `np.ndarray` se interpreta como **RGB**. Si viene de `cv2` (BGR),
   convertir antes: `cv2.cvtColor(img, cv2.COLOR_BGR2RGB)`.
 - Parámetros ya ajustados con las fotos de la finca (constantes en `ml/detect.py`):
-  `DET_CONF = 0.10`, `DET_IMGSZ = 1280`, `NMS_IOU = 0.5`, y se descartan cajas de más del 8 % de
+  `DET_CONF = 0.25`, `DET_IMGSZ = 960`, `NMS_IOU = 0.5`, y se descartan cajas de más del 8 % de
   la foto (`MAX_BOX_FRACTION`; con conf baja aparecían cajas gigantes sobre el techo).
 
 ### Clasificador: `ml.predict.RosePredictor`
@@ -102,9 +103,10 @@ python -m pytest
 ## Rendimiento (medido el 2026-10-23)
 - **Velocidad:** ~86 ms por foto con GPU (GTX 1650 Ti) y ~540 ms solo con CPU, detector + RosaNet,
   ~2,5 rosas por foto. La Orin NX del X2 Ultra debería quedar entre los dos.
-- **Detector en las fotos de la finca:** encuentra el **78 %** de las rosas marcadas por la finca.
-  Tiene falsos positivos (postes, hojas, una mano); casi siempre salen como `1_inmaduro` o
-  `incierta`, así que inflan el conteo de inmaduras pero rara vez dan un falso "listas para cortar".
+- **Detector en el invernadero** (30 escenas que no vio, 49 rosas con todas marcadas, IoU >= 0,5):
+  encuentra el **63 %** de las rosas con **5 falsas alarmas** en total (precisión 86 %). La versión
+  anterior encontraba el 25 % con decenas de falsas alarmas. Las rosas que pierde suelen ser
+  pequeñas y lejanas: **la cámara tiene que estar cerca de la cama**, desde el pasillo apenas se ven.
 - **RosaNet "noche" (validación cruzada con 64 rosas de la finca, promedio de 4 semillas):**
   ~70 % de exactitud con fondo de día y ~74 % con fondo "noche" (cielo y margen oscuros).
   Con fondo nocturno marca como óptimas ~7 de 45 inmaduras (el error más costoso: cortar en punto 2);
