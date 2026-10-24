@@ -241,5 +241,11 @@ class CuerpoSim(Cuerpo):
             rumbo=self.rumbo(),
         )
 
+    def nivel_bateria(self) -> float:
+        """Batería simulada: baja con el tiempo del robot (`sim.bateria`). Del X2: ~500 Wh, ~2 h de
+        uso → ~0,8 % por minuto. Al seguir una ronda (`--continuar`) vuelve a salir cargada."""
+        b = self.cfg["sim"]["bateria"]
+        return max(0.0, b["inicial_pct"] - b["consumo_pct_min"] * self.d.time / 60)
+
     def cerrar(self) -> None:
         self.render.close()

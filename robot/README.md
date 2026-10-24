@@ -143,6 +143,10 @@ config): una caja que alguien quita mientras el robot espera y un balde que bloq
 con un sensor de rayos (como un LiDAR): pasa despacio sobre lo bajo, frena ante lo alto, espera hasta 30 s y, si
 sigue ahí, abandona ese camino y lo anota en el reporte.
 
+Log y batería: todo lo que sale en pantalla queda con la hora en `datos/logs/ronda_<id>.log`. Si la batería
+baja del 25 %, el robot guarda el avance y vuelve a la base; después se sigue con `--continuar`. Para verlo:
+`python main.py --bateria 30` (sale con 30 %).
+
 Robot real: `cuerpo/real_backend.py` es el esqueleto para el AgiBot X2 Ultra con el SDK AimDK_X2 (ROS 2). Con
 `modo: real` en el config, `python main.py` muestra qué falta probar en el robot (sección 14.1 del plan).
 

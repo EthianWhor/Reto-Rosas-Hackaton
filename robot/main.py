@@ -15,6 +15,7 @@ Se corre desde la carpeta robot/:
     python main.py --revisar           -> solo revisa todo, carga la escena y toma una foto de prueba
     python main.py --rosas cartel      -> con fotos reales de rosas: piensa con el modelo del equipo
     python main.py --parar-despues 5   -> simula batería baja: para tras 5 paradas y vuelve a la base
+    python main.py --bateria 35        -> sale con 35 % de batería: vuelve a la base al llegar al mínimo
     python main.py --continuar         -> sigue la última ronda que quedó a medias
 """
 
@@ -27,6 +28,7 @@ from datetime import datetime
 from pathlib import Path
 
 import configuracion
+import registro
 from percepcion import modelo_equipo
 
 
@@ -45,6 +47,8 @@ def leer_argumentos(argv=None) -> argparse.Namespace:
                    help="Seguir una ronda que quedó a medias (sin ID: la última)")
     p.add_argument("--parar-despues", type=int, metavar="N",
                    help="Simular batería baja: interrumpir después de N paradas y volver a la base")
+    p.add_argument("--bateria", type=float, metavar="PCT",
+                   help="Batería con la que sale el robot en la simulación (por defecto, sim.bateria.inicial_pct)")
     return p.parse_args(argv)
 
 
@@ -152,6 +156,7 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
         avance = ronda.Avance.nuevo(carpeta, cfg, caminos)
         guardar_json(carpeta / "verdad.json",
                      {"semilla": cfg["sim"]["semilla"], "rosas": [r.a_dict() for r in escena.verdad]})
+    registro.abrir_log(base / "logs" / f"ronda_{carpeta.name}.log")
     guardar = ronda.GuardarCapturas(carpeta)
     camas = {c for n in caminos for c in (plano.camino(n).cama_izq, plano.camino(n).cama_der) if c is not None}
 
@@ -173,7 +178,7 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
             visor.close()
     print(f"{guardar.total} fotos en {carpeta} ({time.time() - inicio:.0f} s)")
     if not completa:
-        print(f"Para seguir donde quedó: python main.py --continuar {carpeta.name}")
+        print(f"Para seguir donde quedó (con la batería cargada): python main.py --continuar {carpeta.name}")
         return 0
     hora_inicio = datetime.strptime(avance.datos["inicio"], "%Y-%m-%d %H:%M:%S")
 
@@ -206,6 +211,7 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
             ("versión del modelo", modelo_equipo.revisar(cfg)["clasificador"]["motivo"]
              if eleccion["clasificador"] == "rosanet" else "oráculo (simulación)"),
             ("tiempo de la ronda (s)", round((hora_fin - hora_inicio).total_seconds())),
+            ("batería al llegar a la base (%)", avance.datos.get("bateria_pct", "sin dato")),
         ],
     })
     estados = {f["rosa_id"]: f["estado"] for f in rep.todas}
@@ -245,7 +251,14 @@ def main(argv=None) -> int:
         "percepcion.clasificador": args.clasificador,
         "sim.rosas": args.rosas,
         "sim.semilla": args.semilla,
+        "sim.bateria.inicial_pct": args.bateria,
     })
+    # todo lo que sale en pantalla queda también en datos/logs/ronda_<id>.log (sección 15 del plan)
+    with registro.Bitacora(configuracion.ruta(cfg["datos_dir"]) / "logs"):
+        return correr(args, cfg)
+
+
+def correr(args: argparse.Namespace, cfg: dict) -> int:
     print(f"Modo: {cfg['modo']}")
     reanudar = None
     if args.continuar is not None:

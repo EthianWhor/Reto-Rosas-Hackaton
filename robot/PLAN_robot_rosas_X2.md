@@ -1361,7 +1361,22 @@ Todo queda en un **log** (`datos/logs/ronda_YYYY-MM-DD.log`).
 - `python main.py --continuar` (o `--continuar <id_ronda>`) sigue la última ronda a medias: retoma las detecciones ya hechas, vuelve a planear la serpiente con los caminos que faltan y salta las paradas ya hechas. No repite fotos.
 - Si se cierra el programa o la ventana a mitad de ronda, el avance también queda guardado.
 - El reporte y el envío se hacen solo cuando la ronda termina.
-- Falta: el log en archivo, y que el robot real decida volver por la batería leída del SDK (hoy solo se simula con `--parar-despues`).
+
+**Hecho (log y batería, paso 6):**
+- **Log:** todo lo que sale en pantalla queda, con la hora, en `datos/logs/ronda_<id_ronda>.log` (`registro.py`).
+  Al seguir una ronda con `--continuar` se agrega al mismo archivo. Si el programa se cae, el error completo
+  queda en el log (o en `datos/logs/error_<fecha>.log` si todavía no había ronda).
+- **Batería:** antes de entrar a cada camino y antes de cada parada el robot lee `nivel_bateria()`. Si está por
+  debajo de `recorrido.bateria_min_pct` (25 %), guarda el avance, sale del camino y vuelve a la base. Lo que
+  falta se termina con `python main.py --continuar` después de cargar. La hoja Ronda dice con cuánta batería
+  llegó a la base.
+- **En la simulación** la batería baja con el tiempo del robot: 0,8 % por minuto (X2: ~500 Wh, ~2 h de uso).
+  Una ronda completa de prueba gasta ~10 %. `python main.py --bateria 30` lo muestra: vuelve a la base a las
+  13 paradas con 25 % y, con `--continuar`, termina el resto (cobertura 92 %).
+- **En el robot real** `nivel_bateria()` lee `battery_remaining_capacity_percentage` de `/aima/hal/pmu/state`
+  (sección 14.1; falta probarlo en el robot).
+- **Pendiente:** que el robot siga solo después de cargar (hoy se relanza con `--continuar`), y calcular la
+  reserva según lo lejos que esté de la base en un invernadero grande (hoy es un 25 % fijo).
 
 ---
 

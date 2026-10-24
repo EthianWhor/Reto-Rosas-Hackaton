@@ -49,6 +49,9 @@ sim:
   camino_inicial: 1          # camino de --camino por defecto (1 = entre la cama 1 y la 2)
   caminos: null              # caminos de la ronda; null = todos (así cada cama se ve por los dos lados)
   base_xy: [-1.2, 0.4]       # base / cargador en el pasillo principal, junto al camino 0
+  bateria:                   # batería simulada (cuerpo/sim_backend.py)
+    inicial_pct: 100         # con cuánto sale (python main.py --bateria 35 para verla volver)
+    consumo_pct_min: 0.8     # X2: ~500 Wh, ~2 h de uso a 0,5 m/s → ~0,8 % por minuto
   estructura:                # sim/estructura.py
     postes: true             # postes cada 3 m y alambres guía en los bordes de las camas
     poste_cada_m: 3.0
@@ -97,6 +100,7 @@ recorrido:
   alto_obstaculo_m: 0.05     # más alto que esto: frena; más bajo (mangueras, desniveles): pasa despacio
   distancia_frenado_m: 0.5   # se detiene a esta distancia del obstáculo
   espera_obstaculo_s: 30     # cuánto espera a que lo quiten antes de abandonar el camino
+  bateria_min_pct: 25        # por debajo, guarda el avance y vuelve a la base (sección 15 del plan)
 
 camara:
   ancho: 1280                # cámara RGB-D de la cabeza del X2 según el SDK AimDK_X2 (confirmar en el robot)

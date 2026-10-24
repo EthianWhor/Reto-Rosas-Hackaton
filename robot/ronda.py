@@ -176,6 +176,16 @@ def ultima_sin_terminar(base: Path) -> Path | None:
     return None
 
 
+def bateria_baja(cuerpo: Cuerpo, cfg: dict, avance: "Avance") -> bool:
+    """Lee la batería (y la guarda en el checkpoint). True si está por debajo de
+    `recorrido.bateria_min_pct`: la reserva alcanza para salir del camino y volver a la base."""
+    nivel = cuerpo.nivel_bateria()
+    if nivel is None:
+        return False
+    avance.datos["bateria_pct"] = round(nivel, 1)
+    return nivel < cfg["recorrido"]["bateria_min_pct"]
+
+
 class SeAcaboLaBateria(Exception):
     """Simula batería baja (`--parar-despues`): la ronda se interrumpe y el robot vuelve a la base."""
 
@@ -283,17 +293,24 @@ def recorrer(cuerpo: Cuerpo, cfg: dict, plano: Plano, guardar: GuardarCapturas, 
     cola = [c for c in avance.caminos if not all(avance.hecha(c, x) for x in paradas(plano, cfg))]
     desde_cabecera = True
     hechas_ahora = 0
-    tramo = None
+    tramo, dentro = None, False
     try:
         while cola:
             tramo = serpiente(plano, cfg, [cola.pop(0)], desde_cabecera)[0]
-            avisar(f"Camino {tramo.camino} {'hacia el fondo' if tramo.sentido > 0 else 'hacia la cabecera'}")
+            if bateria_baja(cuerpo, cfg, avance):          # ni entra al camino
+                raise SeAcaboLaBateria
+            nivel = cuerpo.nivel_bateria()
+            avisar(f"Camino {tramo.camino} {'hacia el fondo' if tramo.sentido > 0 else 'hacia la cabecera'}"
+                   + (f" (batería {nivel:.0f} %)" if nivel is not None else ""))
             cuerpo.ir_a(tramo.entrada_x, tramo.y)
+            dentro = True
             try:
                 for x in tramo.xs:
                     if avance.hecha(tramo.camino, x):
                         continue
                     if parar_despues is not None and hechas_ahora >= parar_despues:
+                        raise SeAcaboLaBateria
+                    if bateria_baja(cuerpo, cfg, avance):
                         raise SeAcaboLaBateria
                     _avanzar(cuerpo, cfg, x, tramo.y, avance, tramo.camino, avisar)
                     _parada(cuerpo, cfg, plano, tramo, x, guardar, analizador, avisar, avance)
@@ -307,18 +324,26 @@ def recorrer(cuerpo: Cuerpo, cfg: dict, plano: Plano, guardar: GuardarCapturas, 
                 cuerpo.posar(NEUTRA)
                 cuerpo.ir_a(tramo.entrada_x, tramo.y)
                 desde_cabecera = tramo.entrada_x < 0
+            dentro = False
     except SeAcaboLaBateria:
-        avisar("Batería baja: se guardó el avance y el robot vuelve a la base.")
+        nivel = cuerpo.nivel_bateria()
+        avisar("Batería baja" + (f" ({nivel:.0f} %)" if nivel is not None else "")
+               + ": se guardó el avance y el robot vuelve a la base.")
+        avance.guardar()
         cuerpo.posar(NEUTRA)
-        try:
-            _avanzar(cuerpo, cfg, tramo.salida_x, tramo.y, avance, tramo.camino, avisar)  # sale de frente
-        except Bloqueado:
-            cuerpo.ir_a(tramo.entrada_x, tramo.y)
+        if dentro:
+            try:
+                _avanzar(cuerpo, cfg, tramo.salida_x, tramo.y, avance, tramo.camino, avisar)  # sale de frente
+            except Bloqueado:
+                cuerpo.ir_a(tramo.entrada_x, tramo.y)
         for punto in camino_a_la_base(plano, cuerpo.posicion(), base):
             cuerpo.ir_a(*punto)
+        bateria_baja(cuerpo, cfg, avance)                  # anota con cuánto llegó a la base
+        avance.guardar()
         return False
     avisar("Ronda completa: vuelve a la base.")
     for punto in camino_a_la_base(plano, cuerpo.posicion(), base):
         cuerpo.ir_a(*punto)
+    bateria_baja(cuerpo, cfg, avance)                      # anota con cuánto llegó a la base
     avance.terminar()
     return True
