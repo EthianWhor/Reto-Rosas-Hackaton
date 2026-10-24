@@ -1,4 +1,9 @@
-# App tablet — juego para mecanizar el proceso
+# RoseApp — app de la tablet
+
+Estilo: rosa, rojo y blanco, tipografía Nunito e íconos de Ionicons (`src/tema.ts`). Botones 3D
+(`src/componentes/BotonGrande.tsx`) y animaciones con `Animated` de React Native
+(`src/componentes/animaciones.tsx`): pétalos al acertar, sacudida al fallar, racha, puntos y
+barras que se llenan. Todo funciona en Expo Go.
 
 App tipo juego en tablet que ayuda a los operarios a interiorizar el proceso estándar de la finca
 hasta hacerlo de forma mecánica. Hecha con **Expo (SDK 58) + Expo Router + TypeScript**.
