@@ -16,10 +16,11 @@ function barajar<T>(lista: T[]): T[] {
  * Arma una ronda de fotos. Las clases están muy desbalanceadas (47 inmaduras, 20 óptimas,
  * 2 pasadas), así que se reparte por categoría para que el operario no aprenda que
  * "casi siempre es muy pronto". Las categorías con pocas fotos pueden repetirse.
+ * `extra` son las fotos del robot ya confirmadas (logica/confirmadas.ts): se mezclan con las de la finca.
  */
-export function armarRonda(cantidad = PREGUNTAS_POR_RONDA): Rosa[] {
+export function armarRonda(extra: Rosa[] = [], cantidad = PREGUNTAS_POR_RONDA): Rosa[] {
   const porCategoria = new Map<CategoriaId, Rosa[]>();
-  for (const rosa of ROSAS) {
+  for (const rosa of [...ROSAS, ...extra]) {
     porCategoria.set(rosa.categoria, [...(porCategoria.get(rosa.categoria) ?? []), rosa]);
   }
   const grupos = [...porCategoria.values()].map(barajar);

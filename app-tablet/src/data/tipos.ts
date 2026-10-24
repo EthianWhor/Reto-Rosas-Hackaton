@@ -8,4 +8,6 @@ export type Rosa = {
   id: string;
   categoria: CategoriaId;
   imagen: ImageSource | number;
+  /** Fotos del robot: quién confirmó la categoría. Sin valor, es una foto de la finca. */
+  fuente?: 'experto' | 'robot';
 };

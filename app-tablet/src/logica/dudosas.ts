@@ -50,7 +50,8 @@ export async function etiquetarDudosa(
   idRonda: string,
   rosaId: string,
   cuadranteId: string | undefined,
-  categoria: CategoriaId,
+  /** 'no_rosa' si la foto no es una rosa (hoja, mano, poste…): ejemplo negativo para el modelo. */
+  categoria: CategoriaId | 'no_rosa',
 ): Promise<void> {
   revisar(
     await supabase.rpc('etiquetar_dudosa', {

@@ -17,7 +17,7 @@ hasta hacerlo de forma mecánica. Hecha con **Expo (SDK 58) + Expo Router + Type
 | **Trabajador** · Mi turno de hoy: los cuadrantes que le tocan, en orden, con casilla para marcar cada uno como hecho | `src/app/mi-turno.tsx` | Listo |
 | **Admin** · Turno de hoy: quién vino, duración del turno, reparto y avance de cada persona | `src/app/turno.tsx` | Listo |
 | **Admin** · Usuarios: registrar (nombre, correo, teléfono, rol), promover, reiniciar acceso y quitar | `src/app/trabajadores.tsx`, `src/app/nuevo-usuario.tsx` | Listo |
-| **Experto** · Rosas dudosas: responde las rosas en que el robot dudó | `src/app/revisar.tsx` | Listo |
+| **Experto** · Rosas dudosas: responde las rosas en que el robot dudó (o "no es una rosa"), con la foto real, en vivo | `src/app/revisar.tsx` | Listo |
 | Aprender las 3 categorías: fotos reales de la finca + qué mirar | `src/app/aprender.tsx` | Listo |
 | Juego: clasifica el botón (muy pronto / punto óptimo / muy tarde) con explicación inmediata | `src/app/clasificar.tsx` | Listo (básico) |
 | Mi progreso: aciertos por categoría y con qué la confunde | `src/app/progreso.tsx` | Listo (básico, solo en la tablet) |
@@ -28,6 +28,10 @@ hasta hacerlo de forma mecánica. Hecha con **Expo (SDK 58) + Expo Router + Type
 - Las rondas reparten las fotos por categoría (hay 47 inmaduras, 20 óptimas y solo 2 pasadas), así
   que las de "muy tarde" se repiten.
 - El progreso se guarda en la tablet con AsyncStorage.
+- **El material crece solo:** el juego y "Aprender" suman las fotos reales del robot que ya tienen
+  categoría confirmada, sea por un experto en "Rosas dudosas" o por el robot cuando mandó a cortar con
+  confianza ≥ 0,8 (`src/logica/confirmadas.ts`, `fotos_confirmadas()` en Supabase). En el juego llevan el
+  sello "Foto del robot".
 
 ## Correr en desarrollo
 

@@ -9,7 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Aparecer, BarraProgreso, LluviaDePetalos, Rebote, useSacudir } from '@/componentes/animaciones';
 import { BotonGrande } from '@/componentes/BotonGrande';
 import { categoria, CATEGORIAS } from '@/data/categorias';
-import type { CategoriaId } from '@/data/tipos';
+import type { CategoriaId, Rosa } from '@/data/tipos';
+import { cargarConfirmadas } from '@/logica/confirmadas';
 import { useOperario } from '@/logica/operario';
 import { guardarRonda, type Respuesta } from '@/logica/progreso';
 import { armarRonda } from '@/logica/ronda';
@@ -36,6 +37,16 @@ export default function Practicar() {
   const inicioPregunta = useRef(Date.now());
   const { x: sacudida, sacudir } = useSacudir();
   const hoja = useRef(new Animated.Value(0)).current;
+  const confirmadas = useRef<Rosa[]>([]);
+  const empezo = useRef(false);
+
+  // Suma las fotos del robot ya confirmadas. Si llegan antes de la primera respuesta, rearma la ronda.
+  useEffect(() => {
+    cargarConfirmadas().then((extra) => {
+      confirmadas.current = extra;
+      if (extra.length > 0 && !empezo.current) setRonda(armarRonda(extra));
+    });
+  }, []);
 
   useEffect(() => {
     Animated.timing(hoja, {
@@ -74,6 +85,7 @@ export default function Practicar() {
 
   function responder(id: CategoriaId) {
     if (elegida) return;
+    empezo.current = true;
     const bien = id === rosa.categoria;
     setElegida(id);
     setRespuestas((prev) => [
@@ -105,7 +117,7 @@ export default function Practicar() {
   }
 
   function reiniciar() {
-    setRonda(armarRonda());
+    setRonda(armarRonda(confirmadas.current));
     setIndice(0);
     setRespuestas([]);
     setElegida(null);
@@ -142,6 +154,12 @@ export default function Practicar() {
               contentFit="cover"
               transition={200}
             />
+            {rosa.fuente && (
+              <View style={styles.sello}>
+                <Ionicons name="hardware-chip" size={14} color="#fff" />
+                <Text style={styles.selloTexto}>Foto del robot</Text>
+              </View>
+            )}
           </Animated.View>
         </View>
 
@@ -263,6 +281,19 @@ const styles = StyleSheet.create({
   mitad: { flex: 1 },
   pregunta: { fontSize: texto.titulo, fontFamily: fuente.titulo, color: colores.texto, marginBottom: espacio.m },
   marcoFoto: { borderRadius: 24, overflow: 'hidden', borderWidth: 4, borderColor: colores.tarjeta, ...sombra },
+  sello: {
+    position: 'absolute',
+    top: espacio.s,
+    left: espacio.s,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(59,24,32,0.7)',
+    borderRadius: 12,
+    paddingHorizontal: espacio.s,
+    paddingVertical: 4,
+  },
+  selloTexto: { color: '#fff', fontSize: 13, fontFamily: fuente.negrita },
   opciones: { gap: espacio.m, justifyContent: 'center' },
   hoja: {
     position: 'absolute',

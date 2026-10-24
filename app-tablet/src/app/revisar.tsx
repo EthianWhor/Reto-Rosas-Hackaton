@@ -66,7 +66,7 @@ export default function Revisar() {
   const actual = datos.pendientes[0];
   const hechas = datos.total - datos.pendientes.length;
 
-  async function responder(categoria: CategoriaId) {
+  async function responder(categoria: CategoriaId | 'no_rosa') {
     if (!actual || !token || guardando) return;
     setGuardando(true);
     try {
@@ -149,6 +149,13 @@ export default function Revisar() {
               onPress={() => responder(c.id)}
             />
           ))}
+          <BotonGrande
+            titulo="No es una rosa"
+            icono="close-circle"
+            claro
+            deshabilitado={guardando}
+            onPress={() => responder('no_rosa')}
+          />
         </View>
       </ScrollView>
       <LluviaDePetalos disparo={gracias} cantidad={10} />

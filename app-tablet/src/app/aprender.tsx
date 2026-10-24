@@ -1,16 +1,26 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Aparecer } from '@/componentes/animaciones';
 import { BotonGrande } from '@/componentes/BotonGrande';
 import { CATEGORIAS } from '@/data/categorias';
 import { ROSAS } from '@/data/rosas';
+import type { Rosa } from '@/data/tipos';
+import { cargarConfirmadas } from '@/logica/confirmadas';
 import { colores, espacio, fuente, sombra, texto } from '@/tema';
 
-// Ficha de estudio: una tarjeta por categoría con fotos reales de la finca y qué mirar.
+// Ficha de estudio: una tarjeta por categoría con fotos reales y qué mirar. Primero van las fotos del
+// robot ya confirmadas (las más nuevas) y después las de la finca.
 export default function Aprender() {
+  const [confirmadas, setConfirmadas] = useState<Rosa[]>([]);
+
+  useEffect(() => {
+    cargarConfirmadas().then(setConfirmadas);
+  }, []);
+
   return (
     <ScrollView contentContainerStyle={styles.contenido}>
       <Aparecer>
@@ -29,8 +39,9 @@ export default function Aprender() {
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fotos}>
-            {ROSAS.filter((r) => r.categoria === cat.id)
-              .slice(0, 6)
+            {[...confirmadas, ...ROSAS]
+              .filter((r) => r.categoria === cat.id)
+              .slice(0, 8)
               .map((r) => (
                 <Image key={r.id} source={r.imagen} style={styles.foto} contentFit="cover" />
               ))}

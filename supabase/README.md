@@ -17,6 +17,7 @@ falten, en orden. `schema.sql` siempre incluye todas las migraciones.
 |---|---|---|
 | `001_personas_en_vivo.sql` | Tabla `version_personas` y disparador: la lista de personas se actualiza sola en todas las tablets | Sí (2026-10-24) |
 | `002_roles_y_dudosas.sql` | Roles `admin` / `experto` / `aprendiz` (los "trabajador" pasan a aprendiz), `cambiar_rol` para promover, tabla `etiquetas_expertos` y funciones para revisar las dudosas del robot | Sí (2026-10-24) |
+| `004_no_es_rosa_y_fotos_confirmadas.sql` | Respuesta "no es una rosa" en las dudosas (`categoria = 'no_rosa'`) y `fotos_confirmadas()`: fotos del robot clasificadas por un experto u óptimas con confianza ≥ 0,8, para el juego y "Aprender" | Sí (2026-10-24) |
 | `003_activacion_con_codigo.sql` | Alta con nombre, correo, teléfono y rol; código de activación de 6 dígitos (cifrado, 5 intentos); cada persona crea su propio PIN (no obvio); "reiniciar acceso"; validación de nombre, correo y teléfono | Sí (2026-10-24) |
 
 ## Qué hay
