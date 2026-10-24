@@ -114,3 +114,16 @@ def test_auto_manda_una_vez_por_rosa_y_espera_que_la_saquen():
     assert not d.ver([rosa("inmaduro")])
     assert d.ver([rosa("inmaduro")])                     # rosa nueva: manda otra vez
     assert [r.estado for r in d.rosas] == ["inmaduro"]   # la lectura que se manda (sin analizar otra vez)
+
+
+def test_auto_no_toma_la_piel_ni_el_pelo_por_una_rosa():
+    piel = np.zeros((60, 60, 3), np.uint8); piel[:] = (205, 150, 125)     # rojiza pero poco saturada
+    pelo = np.zeros((60, 60, 3), np.uint8); pelo[:] = (60, 50, 45)
+    pelo[::4] = (150, 30, 25)                                             # hebras finas de rojo vivo
+    rosa = np.zeros((60, 60, 3), np.uint8); rosa[:] = (230, 230, 230)
+    rosa[15:45, 15:45] = (190, 20, 35)                                    # una mancha compacta
+    boton = np.zeros((60, 60, 3), np.uint8); boton[20:40, 20:40] = (70, 8, 15)   # rojo oscuro
+    assert modo_foto.fraccion_roja(piel) > modo_foto.ROJO_MIN             # el filtro general la acepta...
+    assert modo_foto.mancha_roja(piel) == modo_foto.mancha_roja(pelo) == 0.0     # ...el de --auto no
+    assert modo_foto.mancha_roja(rosa) == pytest.approx(0.25)
+    assert modo_foto.mancha_roja(boton) >= modo_foto.AUTO_MANCHA_MIN

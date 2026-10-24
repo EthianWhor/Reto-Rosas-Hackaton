@@ -27,7 +27,7 @@ COLORES = {
     "media": "F9E0C7",
     "baja": "FFFFFF",
 }
-MAX_VERSIONES = 50
+MAX_VERSIONES = 999   # un día de pruebas y demos puede pasar de 50 reportes; esto solo evita un bucle sin fin
 
 
 def _hoja(wb: Workbook, titulo: str, columnas: list[str], filas: list[dict], colorear: str | None = None):
@@ -81,14 +81,16 @@ def _nombre(base: str, version: int) -> str:
 
 
 def guardar(rep: Reporte, carpeta: Path, formatos=("excel", "json"), avisar=print,
-            ya_enviados: Path | None = None) -> list[Path]:
+            ya_enviados: Path | None = None, base: str | None = None) -> list[Path]:
     """Guarda el reporte con un nombre libre. Devuelve las rutas escritas.
 
     `ya_enviados`: carpeta de los reportes que ya salieron (datos/enviados/). Sus
     nombres tampoco se repiten, para no pisar en el dashboard uno que ya llegó.
+    `base`: otro nombre en vez de reporte_<invernadero>_<fecha> (el modo foto usa su id_ronda: manda
+    muchos por día y no tiene que gastar las versiones de la noche).
     """
     carpeta.mkdir(parents=True, exist_ok=True)
-    base = f"reporte_{rep.invernadero}_{rep.fecha}"
+    base = base or f"reporte_{rep.invernadero}_{rep.fecha}"
     extensiones = {"excel": ".xlsx", "json": ".json"}
     for version in range(1, MAX_VERSIONES + 1):
         nombre = _nombre(base, version)

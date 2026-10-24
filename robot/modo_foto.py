@@ -70,6 +70,12 @@ ROJO_MIN = 0.03           # con la cámara: fracción mínima de píxeles rojizo
 GUIA_FRAC = 0.6           # lado del cuadro guía de la cámara, como fracción del lado corto de la imagen
 AUTO_CADA_S = 1.0         # --auto: cada cuánto mira si hay una rosa (el análisis tarda ~0,5 s sin GPU)
 AUTO_IGUALES = 2          # --auto: lecturas seguidas con el mismo resultado antes de mandar (la rosa quieta)
+# --auto: tamaño mínimo (fracción del cuadro) de la mancha de rojo vivo más grande para mirar si hay una rosa.
+# Medido con la webcam en un salón: el rojo general acepta piel y pelo (una cara dio 27 % y se mandó como
+# "inmaduro"), y hasta el rojo saturado aparece en hebras de pelo castaño (1,2 %). En una rosa el rojo es UNA
+# mancha compacta: pelo y caras dieron como mucho 0,26 %, las rosas (de verdad o en un celular) 1,8–18 %.
+# Un botón muy oscuro tiene que llenar el cuadro. Con ESPACIO basta ROJO_MIN, porque ahí decide la persona.
+AUTO_MANCHA_MIN = 0.008
 
 
 def fraccion_roja(rgb: np.ndarray) -> float:
@@ -80,6 +86,20 @@ def fraccion_roja(rgb: np.ndarray) -> float:
     hsv = cv2.cvtColor(np.ascontiguousarray(rgb), cv2.COLOR_RGB2HSV)
     h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
     return float((((h <= 12) | (h >= 150)) & (s >= 40) & (v >= 20)).mean())   # incluye el rojo oscuro de un botón
+
+
+def mancha_roja(rgb: np.ndarray) -> float:
+    """Tamaño (fracción de la imagen) de la mancha más grande de rojo vivo, como un pétalo o un botón.
+    Se abre la máscara (5 × 5 px) para borrar hebras de pelo y bordes sueltos."""
+    import cv2
+    if rgb.size == 0:
+        return 0.0
+    hsv = cv2.cvtColor(np.ascontiguousarray(rgb), cv2.COLOR_RGB2HSV)
+    h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+    mascara = ((((h <= 12) | (h >= 160)) & (s >= 120) & (v >= 15)) * 255).astype(np.uint8)   # v bajo: botón oscuro
+    mascara = cv2.morphologyEx(mascara, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    n, _, stats, _ = cv2.connectedComponentsWithStats(mascara)
+    return float(stats[1:, cv2.CC_STAT_AREA].max()) / mascara.size if n > 1 else 0.0
 
 
 def cuadro_guia(ancho: int, alto: int) -> tuple[int, int, int, int]:
@@ -276,8 +296,9 @@ def procesar(rgb: np.ndarray, nombre: str, analizador: Analizador, carpeta: Path
         datos = configuracion.ruta(cfg["datos_dir"])
         ahora = datetime.now()
         guardar_como_ronda(rgb, nombre, rosas, datos / "rondas" / id_ronda_demo(cfg, ahora), cfg["invernadero"]["id"])
-        rutas = archivos.guardar(mini_reporte(rosas, cfg, nombre, ahora), datos / "salida",
-                                 cfg["reporte"]["formatos"], avisar=print, ya_enviados=datos / "enviados")
+        mini = mini_reporte(rosas, cfg, nombre, ahora)
+        rutas = archivos.guardar(mini, datos / "salida", cfg["reporte"]["formatos"], avisar=print,
+                                 ya_enviados=datos / "enviados", base=f"reporte_{mini.id_ronda}")
         print("Mini reporte: " + ", ".join(str(r) for r in rutas))
         if enviar:
             from reporte import envio
@@ -360,7 +381,7 @@ def webcam(analizador: Analizador, carpeta: Path, cfg: dict, reporte: bool, envi
                 rgb = cv2.cvtColor(cuadro, cv2.COLOR_BGR2RGB)
                 gx1, gy1, gx2, gy2 = cuadro_guia(rgb.shape[1], rgb.shape[0])
                 # lectura rápida: si el cuadro no tiene nada rojo ni se analiza (no gasta la red)
-                hay_rojo = fraccion_roja(rgb[gy1:gy2, gx1:gx2]) >= ROJO_MIN
+                hay_rojo = mancha_roja(rgb[gy1:gy2, gx1:gx2]) >= AUTO_MANCHA_MIN
                 disparar = disparo.ver(analizador.analizar(rgb, (gx1, gy1, gx2, gy2)) if hay_rojo else [])
                 if disparar:
                     leidas = disparo.rosas   # la misma imagen que se acaba de leer: no se analiza dos veces
