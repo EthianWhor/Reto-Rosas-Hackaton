@@ -244,7 +244,12 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
 
     # Envío: durante la ronda no hay WiFi; aparece al volver a la base (sección 11 del plan).
     wifi = envio.ConexionSimulada(hay_wifi=False)
-    bandeja, enviador, conexion = envio.crear(cfg, wifi)
+    try:
+        bandeja, enviador, conexion = envio.crear(cfg, wifi)
+    except RuntimeError as error:   # p. ej. supabase sin claves en robot/.env: el reporte espera en salida/
+        print(f"Envío: no se puede enviar todavía ({error}). El reporte espera en datos/salida/; "
+              f"después: python -m reporte.envio --una-vez" + (f" --config {args.config}" if args.config else ""))
+        return 0
     print(f"Envío en el camino: {envio.describir(bandeja.intentar(enviador, conexion))}")
     wifi.hay_wifi = True
     print(f"Envío en la base (hay WiFi): {envio.describir(bandeja.intentar(enviador, conexion))}")

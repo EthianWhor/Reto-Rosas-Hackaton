@@ -829,8 +829,30 @@ cambiar nada.
 - Casi igual (3–4 rosas de diferencia, menos que el ruido de una escena). En la simulación no se ve la mejora que
   midió el equipo (de 22 % a 55 % de noche): los carteles salen bien iluminados por la linterna y la noche de MuJoCo
   no se parece a la que ellos simularon. Se deja el de noche, porque la ronda real es de noche y aquí no pierde nada.
-- Esta medición se hizo con la RosaNet anterior. Después llegó **RosaNet + forma** (`ml/shape.py`,
-  `modelos/forma.joblib`, merge `66a2d9a`): falta medirla con `--rosas cartel`.
+- Esta medición se hizo con la RosaNet anterior. Después llegó **RosaNet + forma** (abajo).
+
+### 7.13 RosaNet + forma (pull del 2026-10-24, tarde)
+
+El equipo sumó un clasificador de forma y color (`ml/shape.py`, `modelos/forma.joblib`). `RosePredictor` lo
+carga solo y promedia su opinión con la de RosaNet, sin cambiar el contrato: el robot no cambió nada.
+
+**Medido con carteles (`--rosas cartel`), detector noche, misma escena, semillas 7 y 11:**
+
+| | Solo RosaNet | **RosaNet + forma (en uso)** |
+|---|---|---|
+| Cobertura | 71 % / 73 % | 71 % / 73 % (no depende del clasificador) |
+| Clase correcta | 67 % / 68 % | **74 % / 80 %** |
+| Óptimas reales que marca como óptimas (recall) | 33 % / 37 % | **51 % / 59 %** |
+| De las que marca como óptimas, cuántas lo eran | 37 % / 46 % | **56 % / 69 %** |
+| "Cortar hoy": óptimas / inmaduras / pasadas | 11/0/0 y 13/0/1 | **10/0/7 y 18/0/6** |
+| Dudosas | 25 / 24 | 24 / 17 |
+
+- **Ninguna inmadura sale para "cortar hoy"** (el error más caro), y se encuentran casi el doble de óptimas.
+- **Problema nuevo: las pasadas salen como óptimas** (6–7 de cada 17–24 rosas para cortar). En la simulación
+  todas las pasadas son las **2 únicas fotos** de pasadas de la finca, repetidas en cada cartel, así que el número
+  exagera el error; pero indica que la forma ve "copa ancha y roja" y no distingue la copa abierta de más. Cortar
+  una pasada es menos grave que cortar una inmadura (ya está perdida), pero llena la lista. **Para el equipo del
+  modelo:** revisar la forma con las pasadas, y conseguir más fotos de pasadas.
 - **Fotos de las dudosas para la app (hecho, `reporte/fotos.py`):** un experto revisa las dudosas en la tablet y
   la app muestra la foto si `foto` es una dirección web. Con `envio.metodo: supabase`, antes de subir el reporte
   el robot recorta cada dudosa con su caja de `detecciones.jsonl` (15 % de margen, mínimo 256 px), la sube al

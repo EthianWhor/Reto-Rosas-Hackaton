@@ -11,6 +11,7 @@ Se corre desde la carpeta robot/:
     python modo_foto.py --webcam              -> cámara en vivo: ESPACIO analiza, Q sale
     python modo_foto.py foto.jpg --reporte    -> además arma un mini reporte (Excel + JSON) como una ronda
     python modo_foto.py foto.jpg --enviar     -> y lo manda a la app con el envío del config (envio.metodo)
+    python modo_foto.py --webcam --enviar --config config/demo.yaml   -> a la app (Supabase), con las fotos de las dudosas
 
 Límites (decirlos en la demo):
 - Sin cámara de profundidad no se sabe el tamaño de la cabeza, así que aquí no
@@ -204,11 +205,19 @@ def explicar(rosas: list[RosaFoto], motivo: str = "") -> str:
     return "\n".join(lineas)
 
 
-def mini_reporte(rosas: list[RosaFoto], cfg: dict, nombre_foto: str):
-    """Reporte con el mismo formato de la ronda (sección 10), con un solo "cuadrante" DEMO, para la app."""
+def id_ronda_demo(cfg: dict, ahora: datetime) -> str:
+    return f"{cfg['invernadero']['id']}_DEMO_{ahora:%Y-%m-%d_%H%M%S}"
+
+
+def mini_reporte(rosas: list[RosaFoto], cfg: dict, nombre_foto: str, ahora: datetime | None = None):
+    """Reporte con el mismo formato de la ronda (sección 10), con un solo "cuadrante" DEMO, para la app.
+
+    `foto` es `fotos/<nombre>` dentro de datos/rondas/<id_ronda>/, como en la ronda (ver `guardar_como_ronda`).
+    """
     from reporte.tabla import COLUMNAS_LISTAS, Reporte, prioridad
-    ahora = datetime.now()
+    ahora = ahora or datetime.now()
     inv = cfg["invernadero"]["id"]
+    nombre_foto = f"fotos/{nombre_foto}"
     c = resumen(rosas)
     cuadrante = {"cuadrante_id": f"{inv}-DEMO", "cama": 0, "tramo": 0, "desde_m": 0, "hasta_m": 0,
                  "optimo": c["optimo"], "lista_manana": 0, "inmaduro": c["inmaduro"], "pasado": c["pasado"],
@@ -224,11 +233,22 @@ def mini_reporte(rosas: list[RosaFoto], cfg: dict, nombre_foto: str):
                 "cuadrante_id": cuadrante["cuadrante_id"], "cama": 0, "lado": "", "metro_en_cama": 0,
                 "altura_m": 0, "foto": nombre_foto, "fecha_hora": fecha_hora}
                for i, r in enumerate(rosas, start=1) if r.estado == "dudosa"]
-    id_ronda = f"{inv}_DEMO_{ahora:%Y-%m-%d_%H%M%S}"
+    id_ronda = id_ronda_demo(cfg, ahora)
     return Reporte(id_ronda=id_ronda, invernadero=inv, fecha=f"{ahora:%Y-%m-%d}", inicio=fecha_hora, fin=fecha_hora,
                    cuadrantes=[cuadrante], rosas_listas=listas, todas=[], dudosas=dudosas,
                    ronda=[("id_ronda", id_ronda), ("modo", "foto (demo en vivo)"), ("foto", nombre_foto),
                           ("rosas en la foto", len(rosas))])
+
+
+def guardar_como_ronda(rgb: np.ndarray, nombre: str, rosas: list[RosaFoto], carpeta_ronda: Path, inv: str) -> None:
+    """La foto y las cajas en datos/rondas/<id_ronda>/, como una ronda: así el envío a Supabase
+    encuentra el recorte de cada dudosa (reporte/fotos.py) igual que en la ronda. Sin checkpoint,
+    `main.py --continuar` no la toma por una ronda a medias."""
+    (carpeta_ronda / "fotos").mkdir(parents=True, exist_ok=True)
+    Image.fromarray(rgb).save(carpeta_ronda / "fotos" / nombre)
+    lineas = [json.dumps({"rosa_id": f"{inv}-DEMO-{i}", "foto": f"fotos/{nombre}", "bbox": r.caja})
+              for i, r in enumerate(rosas, start=1)]
+    (carpeta_ronda / "detecciones.jsonl").write_text("".join(l + "\n" for l in lineas), encoding="utf-8")
 
 
 def procesar(rgb: np.ndarray, nombre: str, analizador: Analizador, carpeta: Path, cfg: dict,
@@ -246,8 +266,10 @@ def procesar(rgb: np.ndarray, nombre: str, analizador: Analizador, carpeta: Path
     if reporte or enviar:
         from reporte import archivos
         datos = configuracion.ruta(cfg["datos_dir"])
-        rutas = archivos.guardar(mini_reporte(rosas, cfg, nombre), datos / "salida", cfg["reporte"]["formatos"],
-                                 avisar=print, ya_enviados=datos / "enviados")
+        ahora = datetime.now()
+        guardar_como_ronda(rgb, nombre, rosas, datos / "rondas" / id_ronda_demo(cfg, ahora), cfg["invernadero"]["id"])
+        rutas = archivos.guardar(mini_reporte(rosas, cfg, nombre, ahora), datos / "salida",
+                                 cfg["reporte"]["formatos"], avisar=print, ya_enviados=datos / "enviados")
         print("Mini reporte: " + ", ".join(str(r) for r in rutas))
         if enviar:
             from reporte import envio
@@ -303,12 +325,13 @@ def main(argv=None) -> int:
     p.add_argument("--reporte", action="store_true", help="Armar un mini reporte (Excel + JSON) como el de la ronda")
     p.add_argument("--enviar", action="store_true", help="Enviar el mini reporte con envio.metodo del config")
     p.add_argument("--salida", type=Path, help="Carpeta para las fotos anotadas (por defecto datos/modo_foto/<hora>)")
+    p.add_argument("--config", type=Path, help="Otro archivo de configuración (p. ej. config/demo.yaml, para enviar a la app)")
     args = p.parse_args(argv)
     if not args.fotos and args.webcam is None:
         p.print_help()
         return 2
 
-    cfg = configuracion.cargar()
+    cfg = configuracion.cargar(args.config)
     try:
         analizador = Analizador(cfg)
     except (RuntimeError, ValueError) as e:

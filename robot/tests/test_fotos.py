@@ -162,3 +162,28 @@ def test_config_demo(monkeypatch, tmp_path):
             nodo.pop(ultima, None)
     cfg["datos_dir"] = base["datos_dir"]
     assert cfg == base
+
+
+def test_modo_foto_sube_el_recorte_de_sus_dudosas(tmp_path, monkeypatch):
+    """El modo foto guarda su foto y sus cajas como una ronda: la dudosa sube recortada, no la foto entera."""
+    from datetime import datetime
+
+    import numpy as np
+
+    import modo_foto
+    cfg = configuracion.cargar()
+    ahora = datetime(2026, 10, 24, 15, 0, 0)
+    rosas = [modo_foto.RosaFoto([100, 100, 180, 190], "optimo", "2_optimo", 0.8, {}),
+             modo_foto.RosaFoto([600, 300, 700, 380], "dudosa", "2_optimo", 0.5, {})]
+    carpeta = tmp_path / "rondas" / modo_foto.id_ronda_demo(cfg, ahora)
+    modo_foto.guardar_como_ronda(np.zeros((720, 1280, 3), np.uint8), "webcam_150000.jpg", rosas, carpeta, "INV1")
+    reporte = modo_foto.mini_reporte(rosas, cfg, "webcam_150000.jpg", ahora)
+    assert reporte.id_ronda == carpeta.name and reporte.dudosas[0]["foto"] == "fotos/webcam_150000.jpg"
+
+    falso = SupabaseFalso()
+    monkeypatch.setattr(urllib.request, "urlopen", falso)
+    nuevo = fotos.poner_fotos({"id_ronda": reporte.id_ronda, "invernadero": "INV1", "dudosas": reporte.dudosas},
+                              carpeta, fotos.Storage(URL, "clave"))
+    assert nuevo["dudosas"][0]["foto"].endswith(f"/fotos-rosas/{carpeta.name}/INV1-DEMO-2.jpg")
+    img = Image.open(io.BytesIO(falso.subidas()[0].data))
+    assert min(img.size) == 256 and img.width / img.height == pytest.approx(130 / 104, rel=0.02)   # la caja de 100 x 80

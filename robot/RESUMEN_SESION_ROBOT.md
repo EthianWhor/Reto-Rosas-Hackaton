@@ -35,7 +35,7 @@ Desde `robot/`, con el entorno virtual de la raíz del repo (`.venv`, Python 3.1
 ../.venv/Scripts/python.exe -X utf8 main.py --continuar      # sigue la última ronda a medias
 ../.venv/Scripts/python.exe -X utf8 main.py --modo real      # lista lo que falta para el robot real
 ../.venv/Scripts/python.exe -X utf8 modo_foto.py --webcam    # demo en vivo con la webcam
-../.venv/Scripts/python.exe -X utf8 -m pytest -q             # pruebas (118 al cerrar esta sesión)
+../.venv/Scripts/python.exe -X utf8 -m pytest -q             # pruebas (129 al cerrar esta sesión)
 ```
 
 En PowerShell: `..\.venv\Scripts\activate` y después `python main.py ...`.
@@ -106,19 +106,29 @@ Rondas completas medidas: `INV1_2026-10-24_044859` (señalando) e `INV1_2026-10-
 
 ## 5. Por dónde empezar en la próxima sesión
 
-1. **Decidir con el equipo la acción física en la ronda completa** (sección 4) y dejarla en `accion` del config.
-2. **Paso 10: cierre para la presentación.** README del robot, guion de la demo (simulación + modo foto con webcam) y números para el pitch (cobertura, tiempo por noche, batería, obstáculos).
-3. **Conexión con la app (hecha, falta la clave):** `config/demo.yaml` (cartel + Supabase) y `reporte/fotos.py` (sube los recortes de las dudosas a Supabase Storage, plan 7.12). Cuando el compañero de la app pase `SUPABASE_SERVICE_ROLE_KEY`, ponerla en `robot/.env` y probar `python -m reporte.envio --una-vez --config config/demo.yaml`. Si se cambia `config.yaml`, cambiar también `demo.yaml` (una prueba avisa). Falta medir RosaNet + forma con `--rosas cartel`.
-4. **Al final, cuando llegue el RosaNet completo** (hacer pull y medir con `--rosas cartel`):
+**Paso 10 terminado:** `DEMO.md` (guion de la demo, números para el pitch, límites y preguntas del jurado) y el
+README del robot al día. RosaNet + forma medida con carteles (plan 7.13): 74–80 % de clase correcta y 0
+inmaduras para "cortar hoy", pero 6–7 pasadas salen óptimas.
+
+1. **Lo único que falta: la clave de Supabase.** Cuando el compañero de la app pase `SUPABASE_SERVICE_ROLE_KEY`,
+   ponerla en `robot/.env` (hoy la línea está vacía) y probar
+   `python -m reporte.envio --una-vez --config config/demo.yaml`. Eso sube lo que espera en `datos/salida/` y
+   prueba las fotos de las dudosas contra Supabase Storage. Después, ensayar la demo con `DEMO.md`.
+   - La conexión ya está hecha: `config/demo.yaml` (cartel + Supabase), `reporte/fotos.py` (plan 7.12). El modo
+     foto también sube las fotos de sus dudosas (`modo_foto.py --enviar --config config/demo.yaml`): guarda su
+     foto y sus cajas en `datos/rondas/INV1_DEMO_<hora>/`, como una ronda.
+   - Sin la clave, la ronda de la demo termina bien y avisa que el reporte espera en `datos/salida/`.
+   - Si se cambia `config.yaml`, cambiar también `demo.yaml` (una prueba avisa).
+2. **Decisión del equipo:** qué hace el robot con las óptimas en la ronda completa (sección 4). Hoy `accion.tipo: senalar`.
+3. **Al final, cuando llegue el RosaNet completo** (hacer pull y medir con `--rosas cartel`):
    - **Paso 3, reglas de decisión:**
      - el tamaño de la cabeza como segunda opinión (si la red dice óptimo pero la cabeza es chica → dudosa);
      - contar en la prioridad las dudosas cuya mejor clase es óptimo.
      - Se dejó en pausa porque depende de cómo se equivoque la red.
    - **Paso 7, "lista mañana" con historia:** reconocer la misma rosa de una noche a otra por su posición, medir cuánto creció y calcular los días que faltan. `percepcion/madurez.py` ya acepta `diametro_ayer_cm`.
-5. **Pendiente de otras personas:**
+4. **Pendiente de otras personas:**
    - **Equipo del modelo:**
-     - RosaNet "noche" deja escapar óptimas en recortes chicos (70–100 px);
-     - las pasadas salen dudosas;
+     - con RosaNet + forma, las pasadas salen como óptimas (en la sim, 6–7 por ronda de prueba; plan 7.13);
      - medir el detector a 1280–1920 px con sus escenas (el robot rinde más así).
    - **Equipo:** confirmar la acción física (hoy apunta e ilumina).
    - **AgiBot / robot real:** ver `PLAN_robot_rosas_X2.md` sección 14.1.
@@ -136,6 +146,9 @@ Rondas completas medidas: `INV1_2026-10-24_044859` (señalando) e `INV1_2026-10-
 | `ronda.py` | Serpiente, paradas, obstáculos, batería, análisis en paralelo, señalar, checkpoint |
 | `registro.py` | Log en `datos/logs/` |
 | `modo_foto.py` | Demo con foto o webcam |
+| `reporte/fotos.py` | Fotos de las dudosas a Supabase Storage |
+| `config/demo.yaml` | Config de la demo con la app (cartel + Supabase) |
+| `DEMO.md` | Guion de la demo y números para el pitch |
 | `cuerpo/interfaz.py` | Lo que la ronda le pide al robot (igual en sim y real) |
 | `cuerpo/sim_backend.py` | Robot en MuJoCo |
 | `cuerpo/real_backend.py` | Esqueleto del X2 real (SDK AimDK_X2) |

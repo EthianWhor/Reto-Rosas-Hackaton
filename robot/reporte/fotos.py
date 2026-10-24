@@ -28,7 +28,7 @@ def _id_rosa(det: dict, invernadero: str) -> str:
 
 
 def _cajas(carpeta_ronda: Path, invernadero: str) -> dict:
-    """{(rosa_id, foto): bbox} con las detecciones de la ronda."""
+    """{(rosa_id, foto): bbox} con las detecciones de la ronda. El modo foto guarda el `rosa_id` en cada línea."""
     archivo = carpeta_ronda / "detecciones.jsonl"
     cajas = {}
     if not archivo.exists():
@@ -36,7 +36,8 @@ def _cajas(carpeta_ronda: Path, invernadero: str) -> dict:
     for linea in archivo.read_text(encoding="utf-8").splitlines():
         if linea.strip():
             det = json.loads(linea)
-            cajas.setdefault((_id_rosa(det, invernadero), det["foto"]), det["bbox"])
+            rosa_id = det.get("rosa_id") or _id_rosa(det, invernadero)
+            cajas.setdefault((rosa_id, det["foto"]), det["bbox"])
     return cajas
 
 

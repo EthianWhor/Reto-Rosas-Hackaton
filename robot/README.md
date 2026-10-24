@@ -147,7 +147,10 @@ python main.py --camino 1   # solo un camino (0 = la orilla)
 python main.py --parar-despues 5   # simula batería baja: para tras 5 paradas y vuelve a la base
 python main.py --continuar         # sigue la última ronda que quedó a medias, sin repetir fotos
 python main.py --revisar    # solo revisa todo y toma una foto de prueba, sin caminar
+python main.py --completo   # invernadero completo: 20 camas de 30 m, ~6.000 rosas (~30 min de cómputo)
 ```
+
+El guion de la demo y los números para el pitch están en [DEMO.md](DEMO.md).
 
 La escena tiene postes, alambres, mangueras y desniveles, y dos obstáculos de ejemplo (`sim.obstaculos` en el
 config): una caja que alguien quita mientras el robot espera y un balde que bloquea un camino. El robot los ve
@@ -194,6 +197,21 @@ la dirección del dashboard, y dejar corriendo:
 python -m reporte.envio
 ```
 
+**Envío a la app de la tablet (Supabase).** La app lee el último reporte de la tabla `reportes` de Supabase.
+`config/demo.yaml` es igual a `config.yaml` salvo tres valores marcados "DEMO": rosas como carteles (decide el
+modelo del equipo, no el oráculo), `envio.metodo: supabase` y `envio.fotos_bucket`. Antes de subir el reporte,
+el robot recorta cada rosa dudosa y la sube al bucket público `fotos-rosas` de Supabase Storage, para que el
+experto la vea en la tablet (`reporte/fotos.py`). Necesita `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en
+`robot/.env` (no se sube a git):
+
+```bash
+python main.py --config config/demo.yaml                  # ronda que termina en la app
+python -m reporte.envio --una-vez --config config/demo.yaml   # mandar lo que quedó en datos/salida/
+```
+
+No se pone `metodo: supabase` en `config.yaml`: las pruebas hacen rondas de verdad y subirían reportes.
+Si se cambia algo en `config.yaml`, hay que cambiarlo también en `demo.yaml` (una prueba avisa).
+
 ## Modo foto: demo en vivo
 
 El jurado trae una rosa o una foto, y el robot la analiza con el mismo pipeline de la ronda (detector del equipo
@@ -203,7 +221,8 @@ la finca para reconocerla.
 ```bash
 python modo_foto.py foto.jpg            # una o varias fotos
 python modo_foto.py --webcam            # cámara en vivo: ESPACIO analiza, Q sale
-python modo_foto.py foto.jpg --enviar   # además manda un mini reporte a la app (envio.metodo)
+python modo_foto.py foto.jpg --enviar   # además manda un mini reporte (envio.metodo)
+python modo_foto.py --webcam --enviar --config config/demo.yaml   # a la app, con la foto de cada dudosa
 ```
 
 Las fotos anotadas quedan en `datos/modo_foto/`. Si la foto es de una sola rosa de cerca y el detector no la
