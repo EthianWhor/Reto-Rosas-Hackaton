@@ -14,3 +14,4 @@ opencv-python
 openpyxl
 requests
 python-dotenv
+ultralytics                # detector del equipo (ml/detect.py, YOLO11n)

@@ -21,6 +21,8 @@ from cuerpo.interfaz import Captura
 from navegacion.plano import Plano, tramo
 
 TOLERANCIA_CAMA_M = 0.15   # una rosa puede asomarse un poco fuera de su cama
+GRUPO_PROF_M = 0.03        # ancho de cada grupo de profundidades
+GRUPO_MIN_FRAC = 0.20      # fracción mínima del centro de la caja para que un grupo cuente como la rosa
 
 
 @dataclass
@@ -54,7 +56,14 @@ def punto_desde_pixel(u: float, v: float, z: float, cap: Captura) -> np.ndarray:
 
 
 def profundidad_caja(prof: np.ndarray | None, bbox) -> float | None:
-    """Mediana de la profundidad en el centro de la caja (40 % del medio), sin contar los ceros (sin dato)."""
+    """Profundidad de la rosa en su caja, aunque algo la tape en parte.
+
+    Se mira el centro de la caja (40 % del medio, sin los ceros = sin dato), se
+    agrupan las profundidades cada 3 cm y se elige el grupo **más lejano** que
+    tenga al menos el 20 % de los píxeles. Una hoja o un tallo delante de la
+    rosa forman un grupo más cercano y se ignoran. (Con la mediana, cuando la
+    hoja tapaba más de la mitad, la rosa quedaba ubicada hasta 65 cm más cerca.)
+    """
     if prof is None:
         return None
     x1, y1, x2, y2 = bbox
@@ -63,7 +72,16 @@ def profundidad_caja(prof: np.ndarray | None, bbox) -> float | None:
     cy1, cy2 = int(y1 + 0.3 * h), int(math.ceil(y2 - 0.3 * h))
     zona = prof[max(cy1, 0):max(cy2, cy1 + 1), max(cx1, 0):max(cx2, cx1 + 1)]
     validos = zona[zona > 0]
-    return float(np.median(validos)) if validos.size else None
+    if not validos.size:
+        return None
+    grupos = np.floor(validos / GRUPO_PROF_M).astype(int)
+    valores, cuentas = np.unique(grupos, return_counts=True)
+    por_grupo = dict(zip(valores.tolist(), cuentas.tolist()))
+    # cada grupo cuenta también a sus vecinos, para que una rosa entre dos grupos no se parta
+    con_vecinos = {g: sum(por_grupo.get(k, 0) for k in (g - 1, g, g + 1)) for g in por_grupo}
+    candidatos = [g for g, n in con_vecinos.items() if n / validos.size >= GRUPO_MIN_FRAC]
+    elegido = max(candidatos) if candidatos else max(por_grupo, key=por_grupo.get)
+    return float(np.median(validos[np.abs(grupos - elegido) <= 1]))
 
 
 def _corte_con_cama(u, v, cap: Captura, plano: Plano, camino: int) -> tuple[np.ndarray, float] | None:

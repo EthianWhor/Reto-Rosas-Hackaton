@@ -121,17 +121,22 @@ Primero se activa el entorno de la raíz del repo (ahí están instaladas las de
 
 ```bash
 ..\.venv\Scripts\activate
-python main.py              # recorre el camino 1, ubica las rosas y arma el reporte Excel + JSON en datos/salida/
+python main.py              # ronda por todos los caminos: ubica las rosas y arma el reporte Excel + JSON en datos/salida/
 python main.py --ventana    # lo mismo, mirando el visor de MuJoCo
-python main.py --camino 0   # otro camino (0 = la orilla)
+python main.py --camino 1   # solo un camino (0 = la orilla)
 python main.py --revisar    # solo revisa todo y toma una foto de prueba, sin caminar
 ```
 
 La configuración está en `config/config.yaml`. Con `percepcion.candidatas: auto` y
-`percepcion.clasificador: auto`, el robot usa lo que haya en `ml/`: hoy RosaNet, y el detector del
-equipo en cuanto exista el módulo y los pesos que dice `modelo_equipo.detector` (después de un
-`git pull` y de copiar los pesos, que no se suben a git). Todo lo que toca `ml/` está en
-`percepcion/modelo_equipo.py`.
+`percepcion.clasificador: auto`, el robot usa el modelo del equipo de `ml/` (detector + RosaNet, pesos en
+`modelos/`, contrato en `CLAUDE.md`). Con las rosas de la simulación como figuras usa el oráculo; para que
+el robot "piense" con el modelo de verdad, las rosas se ponen como carteles con fotos reales de la finca:
+
+```bash
+python main.py --rosas cartel
+```
+
+Todo lo que toca `ml/` está en `percepcion/modelo_equipo.py`.
 
 Cada ronda deja sus fotos y resultados en `datos/rondas/<id>/` (fotos con profundidad, detecciones, rosas sin
 repetir y métricas contra la verdad de la simulación), y el reporte para el dashboard en `datos/salida/`

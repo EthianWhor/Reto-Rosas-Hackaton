@@ -333,12 +333,14 @@ distancia = √(2² + 0,6²) = 2,09 m
 
 | Foto | Giro (cintura + cabeza) | Inclinación | Qué alturas cubre a 1–3 m |
 |------|------------------------|-------------|---------------------------|
-| izq_media | +35° | 0° | 0,9–1,6 m |
-| izq_alta | +35° | −35° (arriba) | 1,4–2,2 m |
-| der_media | −35° | 0° | 0,9–1,6 m |
-| der_alta | −35° | −35° (arriba) | 1,4–2,2 m |
+| izq_media | +65° | 0° | 0,9–1,6 m |
+| izq_alta | +65° | −35° (arriba) | 1,4–2,2 m |
+| der_media | −65° | 0° | 0,9–1,6 m |
+| der_alta | −65° | −35° (arriba) | 1,4–2,2 m |
 
-> **Comprobado en la simulación:** "mirar hacia arriba" es un ángulo **negativo**, en la cabeza y en la cintura. El giro lo hace la cintura y la inclinación primero la cabeza (hasta −0,40) y el resto la cintura (`cuerpo/posturas.py`). Con −0,61 pedidos, la cámara queda mirando **~38° hacia arriba** y **35° hacia el lado**: la cintura cede un poco por el peso del torso. No importa, porque cada foto guarda la pose **real** de la cámara. La inclinación de cintura se hace **solo con el robot quieto**, por equilibrio.
+> **Cambio después de medir (sección 16.1):** el giro era de 35°. Con 35° las rosas del costado se veían desde lejos y quedaban de menos de 32 px. Con **65°** el robot mira casi de frente a la cama (las rosas quedan a 0,5–2 m) y, con paradas cada 1,25 m, igual hay traslape entre una parada y la siguiente. La cobertura sube de ~88 % a ~95 % con las mismas fotos y el mismo tiempo.
+
+> **Comprobado en la simulación:** "mirar hacia arriba" es un ángulo **negativo**, en la cabeza y en la cintura. El giro lo hace la cintura y la inclinación primero la cabeza (hasta −0,40) y el resto la cintura (`cuerpo/posturas.py`). Con −0,61 pedidos, la cámara queda mirando **~38° hacia arriba** (con el giro de 35° que se probó primero): la cintura cede un poco por el peso del torso. No importa, porque cada foto guarda la pose **real** de la cámara. La inclinación de cintura se hace **solo con el robot quieto**, por equilibrio.
 >
 > Las fotos se toman en el orden `izq_media → izq_alta → der_alta → der_media`, así la cintura cruza de lado una sola vez por parada.
 
@@ -598,14 +600,68 @@ Todo lo que toca `ml/` está en **un solo archivo**: `percepcion/modelo_equipo.p
 | Situación | Candidatas | Clasificador |
 |-----------|-----------|--------------|
 | Sim con rosas como figuras | oráculo | oráculo (el modelo no reconoce figuras) |
-| Sim con carteles o robot real, **hoy** (solo RosaNet) | máscara roja | RosaNet |
-| Después del pull, con el detector y sus pesos | **detector del equipo** | RosaNet, o el detector si `clasifica: true` |
-| Faltan los pesos de RosaNet | — | sim: oráculo (con aviso) · real: **error**, no adivina |
+| Sim con carteles o robot real, sin detector (o sin `ultralytics`) | máscara roja | RosaNet |
+| Sim con carteles o robot real, con detector (**lo de hoy**) | **detector del equipo** | RosaNet |
+| Faltan los pesos de RosaNet | sim: oráculo | sim: oráculo (con aviso) · real: **error**, no adivina |
 
-- El robot reconoce el detector cuando existen el módulo y los pesos que dice `modelo_equipo.detector` en el config (hoy `ml.detect`, `RoseDetector`, `runs/detector/best.pt`: **nombres supuestos**, confirmar con el equipo). Si el equipo usa otros nombres, **solo se cambia el config**.
-- Los pesos (`*.pt`) no se suben a git: después del pull hay que **copiarlos** a la ruta del config (en el PC y en el robot).
-- Lo único que puede tocar código es el **formato de salida** del detector: se traduce en una sola función del adaptador (`percepcion/clasificador.py`) al contrato de 7.3.
 - `py main.py` imprime qué está listo, qué no y por qué, y qué va a usar la ronda.
+
+### 7.7 Integrado con el modelo del equipo (pull del 2026-10-23)
+
+El equipo subió a `main` el modelo completo (contrato en `robot/CLAUDE.md`). Se integró en la rama `A` **sin cambiar nada de lo que tocaron** (`ml/`, `modelos/`, `robot/CLAUDE.md`, el pitch). Del lado del robot se adaptó:
+
+- **Config:** pesos en `modelos/rosanet.pt` y `modelos/detector_rosas.pt` (ya están en git, no hay que copiarlos) y `margen_recorte: 0.15`, el margen con el que se calibró RosaNet.
+- **Candidatas (`percepcion/candidatas.py`):** `CandidatasDetector` llama a `RoseDetector.detect(foto)`. Las fotos del robot ya son RGB (MuJoCo y el driver de la cámara); si alguna vez se leen con OpenCV, hay que pasarlas a RGB antes. `CandidatasColor` (máscara roja) queda de respaldo.
+- **Clasificador (`percepcion/clasificador.py`):** `ClasificadorRosaNet` recorta con `pad_box` del equipo (`ml/prepare_data.py`) y 15 % de margen, llama a `RosePredictor.predict` y pasa las etapas al formato del robot: `"2_optimo"` → `"optimo"` (`etapa.split("_", 1)[1]`), también en las probabilidades.
+- **Dependencias:** `ultralytics` (lo usa el detector) se agregó a `requirements.txt`.
+- **Carteles en la simulación (`sim/rosas.py`):** cada rosa es un plano con una foto real de la finca de su categoría (`app-tablet/assets/rosas/`). Antes de cada foto el plano gira para mirar a la cámara, porque una rosa real es 3D y se ve bien desde cualquier lado, y una foto plana vista de lado se deforma. "Lista mañana" no existe con carteles (una foto no lo muestra).
+
+**Resultado: ronda por los 3 caminos con `python main.py --rosas cartel`** (detector + RosaNet de verdad, 108 fotos, ~1 min):
+
+| Medida | Valor |
+|---|---|
+| Rosas encontradas por el detector (cobertura) | **85 %** |
+| Duplicados / falsas | 0 % / 0 |
+| Error de ubicación | 0,2 cm (altura y metro) |
+| Óptimas reales que marcó como óptimas | 33 de 39 (85–87 %) |
+| De las que marcó como óptimas, cuántas lo eran | **35 %** |
+| Inmaduras que marcó como óptimas | 27 de 107 (25 %) |
+| Pasadas que marcó como óptimas | 16 de 23 (el equipo ya avisó que `3_pasado` no funciona) |
+
+**Por qué RosaNet marca de más "óptimo" en la simulación.** Se probó con las fotos originales de la finca, fuera de la simulación:
+
+| Cambio a la foto | Inmaduras que salen como óptimas |
+|---|---|
+| Ninguno (foto original) | 2 de 47 |
+| Más o menos brillo, más o menos saturación | 1–3 de 47 (no influye) |
+| Reducida a 70 px / 50 px de ancho | 6 / 10 de 47 |
+| **Margen de la foto pintado de negro**, misma escala de la rosa (como el fondo de noche) | **14 a 33 de 47** (margen del 8 % / 12 %) |
+| Margen de la foto pintado de gris claro, misma escala | 3 de 47 (y 18–19 de 20 óptimas, casi como el original) |
+
+(Una primera prueba que **agregaba** un borde alrededor de la foto daba 30 de 47 con negro, pero también cambiaba el tamaño de la rosa dentro del recorte, y eso solo ya altera a la red: con cualquier borde agregado, incluso claro o espejado, perdía óptimas. La prueba que vale es la de la tabla, que deja la rosa del mismo tamaño.)
+
+El recorte con 15 % de margen toma también lo que hay alrededor de la rosa. De noche ese alrededor es oscuro, y RosaNet, entrenada con fotos de día con fondo claro (plástico del invernadero), se confunde. **Esto también va a pasar en el robot real de noche.** El equipo del modelo no tiene fotos de noche para reentrenar.
+
+### 7.8 Fondo claro: arreglo del lado del robot (`percepcion.fondo_claro`)
+
+Antes de pasar el recorte a RosaNet, el robot usa la profundidad para pintar de gris claro los píxeles del **fondo**: los que no tienen dato o están más de 25 cm detrás de la rosa. La rosa, sus hojas y lo que está delante no se tocan. Sin profundidad (si la unidad no trae RGB-D), el recorte queda igual. Está en `percepcion/clasificador.py` (`aclarar_fondo`) y se apaga con `percepcion.fondo_claro.activo: false`.
+
+**Cambia lo que recibe la red** (no la red): las métricas del equipo del modelo se midieron con recortes sin editar. **Hay que avisarle al equipo del modelo**, para que lo sepan al comparar números y porque si ellos reentrenan con fondos oscuros (aumento de datos, sin fotos nuevas) este arreglo puede sobrar.
+
+**Resultado en la simulación** (carteles + detector + RosaNet, 3 caminos, semillas 7 y 11):
+
+| | Sin fondo claro | Con fondo claro (gris 170) |
+|---|---|---|
+| Inmaduras marcadas como óptimas (el error más caro) | 27/107 y 24/102 | **8/107 y 16/102** |
+| De las que marca como óptimas, cuántas lo eran | 35 % y 41 % | **53 % y 51 %** |
+| Óptimas reales que encuentra | 33/39 y 40/42 | 19/39 y 29/42 (**baja**) |
+| Inmaduras que marca como dudosas | 33 y 41 | 2 y 3 |
+| Pasadas marcadas como óptimas | 16 y 15 | 7 y 11 |
+
+- Baja mucho el error de cortar en punto 2, pero también se pierden óptimas: es un **intercambio**, no un arreglo completo. Se dejó activo porque la finca dice que el error más común es cortar en punto 2.
+- El tono del gris casi no cambia el resultado (170, 205 y 235 dan parecido).
+- Fuera de la simulación, con las fotos de la finca, el gris claro no hacía perder óptimas. En la simulación sí, probablemente porque los carteles son pequeños (~75 px) y planos. **Hay que validarlo con fotos reales de noche**, aunque sean pocas (rosas compradas, cuarto oscuro y una linterna).
+- Otras opciones que siguen abiertas: reentrenar con fondos oscuros (equipo del modelo), prender las luces del invernadero en la ronda (sección 6), usar el tamaño de la cabeza como segunda opinión, y exigir más confianza para "óptimo" de noche.
 
 ### 7.5 Modo foto: para la demo en vivo
 
@@ -976,7 +1032,7 @@ recorrido:
   paso_entre_paradas_m: 1.25 # era 2,5 (sección 16.1)
   velocidad_m_s: 0.3
   velocidad_dificil_m_s: 0.2
-  giro_diagonal_rad: 0.61    # ~35°
+  giro_diagonal_rad: 1.13    # ~65° (era 35°, sección 16.1)
   inclinacion_alta_rad: -0.61
 camara:
   ancho: 1920                # CONFIRMAR con el X2 real
@@ -1151,7 +1207,25 @@ Todo queda en un **log** (`datos/logs/ronda_YYYY-MM-DD.log`).
 - La ubicación y la deduplicación funcionan muy bien (con profundidad perfecta de la simulación; la real tendrá más error).
 - **La cobertura la limita el tamaño en píxeles:** con paradas cada 2,5 m, más de la mitad de las rosas solo se ven lejos y quedan de menos de 32 px. El ~13 % restante está tapado por tallos y hojas.
 - Paradas más seguidas suben la cobertura pero alargan la ronda. **Decisión: paradas cada 1,25 m** (~75 % de cobertura). Son 25 paradas por camino de 30 m en vez de 13, y la ronda pasa de ~95 min a ~2 h 10 min, así que se hace en dos partes con cambio de batería (sección 4.4).
-- La última parada de cada camino (al final de la cama) no ve rosas, porque las fotos miran en diagonal hacia adelante. Se puede quitar o cambiar por fotos mirando hacia atrás.
+- La última parada de cada camino (al final de la cama) no ve rosas, porque las fotos miran en diagonal hacia adelante. Se puede quitar o cambiar por fotos mirando hacia atrás. (Con el giro de 65° ya ve algunas.)
+
+**Mejora de la cobertura (después del paso 5).** Se midió, rosa por rosa, por qué no se veía. Con un solo camino, el 16 % solo se veía de menos de 32 px (casi todas en la mitad lejana de la cama), el 4 % nunca entraba en una foto y el ~7 % eran fallos a propósito del oráculo. Ninguna quedaba tapada en todas las fotos. Se probaron varias soluciones (oráculo, semillas 7 y 11):
+
+| Solución | Cobertura | Fotos por camino | Tiempo de ronda |
+|---|---|---|---|
+| Base: giro 35°, un camino (lo que se medía antes) | 73–76 % | 36 | igual |
+| A. Medir la ronda por **todos los caminos** (cada cama vista por sus dos lados, como en el invernadero real) | 87–89 % | 36 | igual |
+| B. Giro de **55°** en vez de 35°, un camino | 83–90 % | 36 | igual |
+| C. 8 fotos por parada (35° + 80°), un camino | 93–94 % | 72 | **el doble** |
+| **D. Todos los caminos + giro 65°** | **95–97 %** | 36 | **igual** |
+| D con paradas cada 1,67 m | 89–94 % | 28 | ~1 h 50 min: cabe en una batería |
+| D con paradas cada 2,0 m | 80–82 % | 24 | ~1 h 35 min |
+
+**Decisión: D** (giro 65°, paradas cada 1,25 m, ronda por todos los caminos). Si la batería no alcanza y no se puede cambiar a mitad de ronda, la opción con paradas cada 1,67 m cabe en una carga perdiendo unos 5 puntos.
+
+**Rosas mal ubicadas.** Con la ronda completa aparecían 5–7 "rosas falsas": una rosa real ubicada hasta 65 cm más cerca porque una hoja o un tallo tapaba más de la mitad del centro de su caja, y la mediana de la profundidad tomaba la hoja. Ahora `profundidad_caja` elige el grupo de profundidades **más lejano** que ocupe al menos el 20 % del centro de la caja. Resultado: 0 falsas, sin perder cobertura. **Hay que validarlo con la cámara RGB-D real**, que tiene más ruido que la simulación.
+
+**Resultado actual (`python main.py`, semillas 7 y 11):** cobertura **94–95 %**, 0 % duplicados, 0 falsas, error de altura 0,5 cm y de metro 0,9 cm, 108 fotos en ~45 s de simulación. El ~5 % que falta son casi todo fallos a propósito del oráculo (sin ellos se podría ver el ~98 %).
 
 Ejemplo de precisión: el robot dice que hay 50 rosas en óptimo y 45 de verdad lo están.
 
@@ -1226,7 +1300,8 @@ Prioridad 1: **un camino de punta a punta lo antes posible** (escena fea pero co
 | 8 fotos en dos carpetas a la vez | Medio | Confirmar con el equipo del modelo que etiquetan **por rosa** (cajas), no por foto |
 | Fotos del zip de día y a contraluz; el robot opera de noche | Alto | Pedir fotos de noche con luz artificial para entrenar |
 | Cámara real con menos resolución de la supuesta | Medio | Bajar `distancia_max_m` y poner paradas más seguidas |
-| Cobertura: con paradas cada 2,5 m solo se veía el 47 % (medido en sim, sección 16.1) | Alto → **decidido** | Paradas cada 1,25 m (~75 %). Falta confirmar con el equipo del modelo si RosaNet lee bien rosas de menos de 32 px, que subiría la cobertura sin alargar la ronda |
+| Cobertura: con paradas cada 2,5 m solo se veía el 47 % (medido en sim, sección 16.1) | Alto → **resuelto en sim** | Paradas cada 1,25 m + giro de 65° + ronda por todos los caminos: ~95 %. Falta medirlo con RosaNet real (carteles) y en el invernadero |
+| **RosaNet confunde inmaduras con óptimas cuando el fondo es oscuro** (medido, sección 7.7) | **Alto**: es el error más costoso (cortar en punto 2) y de noche el fondo es oscuro | Hecho del lado del robot: fondo claro con la profundidad (sección 7.8; en sim, de 35–41 % a 51–53 % de aciertos en "óptimo", pero pierde óptimas). Pendiente: reentrenar con fondos oscuros, luces del invernadero, validar con fotos reales de noche y decirlo como límite en el pitch |
 | Ronda de ~2 h 10 min con paradas cada 1,25 m | Medio | Ronda en dos partes con cambio de batería y checkpoint (secciones 4.4 y 15) |
 | Batería no alcanza para todo el invernadero (~2 h y la ronda dura ~95 min) | Medio | Ronda en dos partes con checkpoint, o cambiar la batería |
 | Camino real más difícil que lo simulado | Alto en real | Depende del controlador oficial; probar en pasillo de prueba |
@@ -1252,15 +1327,15 @@ Recomendación: **A** para la demo (se ve el robot "actuar"), y explicar **B** c
 
 ### Para la persona del modelo (RosaNet)
 
-Lo que ya se sabe leyendo `robot/ml/`, y no hace falta preguntar: es una CNN propia que **clasifica un recorte** (no detecta), devuelve las 3 clases `1_inmaduro`, `2_optimo` y `3_pasado`, entrega **todas las probabilidades**, usa entrada de 224 × 224, recortes con 10% de margen y mínimo 32 px, y `seguro` con confianza ≥ 0,6. Se carga con `RosePredictor(ckpt)`.
+**Respondido en el pull del 2026-10-23 (`robot/CLAUDE.md`):** hay pesos en git (`modelos/rosanet.pt`, `modelos/detector_rosas.pt`), hay detector (YOLO11n, `ml.detect.RoseDetector`), el margen del recorte es 15 %, tarda ~86 ms por foto con GPU y ~540 ms con CPU, se entrenó solo con fotos de día y `seguro` sigue siendo confianza ≥ 0,6.
 
-1. ¿Cuándo hay unos pesos `best.pt` que se puedan usar? (Hacen falta antes de la hora 4:00 del cronograma.)
-2. ¿Piensa hacer un **detector** (por ejemplo, YOLO) que encuentre las rosas en la foto? Si no, el robot usa la máscara roja.
-3. ¿Puede agregar una función para clasificar **varios recortes de una vez** (lote)? Si no, el robot llama uno por uno.
-4. ¿Qué recortes quedaron en **test** (que el modelo nunca vio)? Esos son los que se usan para los carteles de la simulación cuando se mide.
-5. ¿Cuánto tarda por recorte y en qué computador?
-6. ¿Lo entrenaron solo con fotos de día? ¿Se pueden agregar fotos **de noche con luz artificial**?
-7. ¿El umbral de 0,6 para `seguro` va a cambiar? El robot lo lee del modelo.
+Lo que falta preguntar o pedir:
+
+1. **Fondo oscuro (hallazgo del robot, sección 7.7):** con el margen del recorte negro, como el de una foto de noche, RosaNet llama "óptimo" a 14–33 de 47 inmaduras (con la foto original, a 2 de 47). No hay fotos de noche, pero ¿se puede reentrenar oscureciendo el fondo de las fotos de día a propósito (aumento de datos)? **Avisar** además que el robot ya aclara el fondo con la profundidad antes de pasarle el recorte (sección 7.8): la red recibe recortes editados.
+2. ¿Puede agregar una función para clasificar **varios recortes de una vez** (lote)? Si no, el robot llama uno por uno.
+3. ¿Qué recortes quedaron fuera del entrenamiento? Los carteles de la simulación usan los de `app-tablet/assets/rosas/`, que la red ya vio: las métricas con carteles son optimistas.
+4. **Rosas pequeñas:** en los recortes de 50 px de ancho, 10 de 47 inmaduras salen como óptimas (en la foto original, 2). ¿Se puede entrenar también con recortes pequeños?
+5. `3_pasado` no funciona (solo 2 fotos). ¿Hay planes para más ejemplos?
 
 ### Para la persona del dashboard
 

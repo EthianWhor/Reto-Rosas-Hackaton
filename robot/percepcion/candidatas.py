@@ -1,7 +1,13 @@
 """Paso 1 de la percepción: encontrar las rosas en la foto y dar una caja por rosa (sección 7.2).
 
-Por ahora solo está el oráculo (simulación). La máscara roja y el detector del
-equipo se agregan en el paso de carteles + RosaNet.
+Tres formas, todas con `buscar(captura) -> list[Candidata]`:
+- CandidatasDetector: el detector del equipo (ml.detect.RoseDetector, YOLO11n). Es la de verdad.
+- CandidatasColor: máscara de rojo. Respaldo si el detector no está instalado.
+- CandidatasOraculo: la verdad de MuJoCo (solo simulación, con rosas como figuras).
+
+Las fotos del robot (MuJoCo y la cámara real a través de su driver) llegan en
+RGB. Si algún día se leen con OpenCV (BGR), hay que pasarlas a RGB antes del
+detector: cv2.cvtColor(img, cv2.COLOR_BGR2RGB).
 """
 
 import random
@@ -23,6 +29,46 @@ TOLERANCIA_PROF_M = 0.04
 class Candidata:
     bbox: tuple[int, int, int, int]      # x1, y1, x2, y2 en píxeles de la foto completa
     verdad_id: int | None = None         # solo el oráculo sabe qué rosa es
+    confianza_deteccion: float | None = None
+
+
+class CandidatasDetector:
+    """El detector del equipo. Solo ubica; la categoría la da RosaNet (robot/CLAUDE.md)."""
+
+    def __init__(self, detector):
+        self.detector = detector   # ml.detect.RoseDetector (lo crea modelo_equipo.cargar)
+
+    def buscar(self, cap: Captura) -> list[Candidata]:
+        salida = []
+        for d in self.detector.detect(cap.rgb):           # cap.rgb ya es RGB
+            x1, y1, x2, y2 = (round(v) for v in d["bbox"])
+            salida.append(Candidata((x1, y1, x2, y2), confianza_deteccion=d["confianza"]))
+        return salida
+
+
+class CandidatasColor:
+    """Respaldo sin el detector: manchas rojas en la foto (sección 7.2 del plan).
+
+    Rojo = tono cerca de 0° o de 180° en HSV, con color y brillo suficientes. Los
+    umbrales son para la luz del robot y hay que calibrarlos con fotos de noche.
+    Límite conocido: dos rosas pegadas salen como una sola mancha.
+    """
+
+    SAT_MIN, BRILLO_MIN, TONO_MAX = 90, 40, 12   # OpenCV: tono de 0 a 180
+
+    def buscar(self, cap: Captura) -> list[Candidata]:
+        import cv2
+        hsv = cv2.cvtColor(cap.rgb, cv2.COLOR_RGB2HSV)
+        h, s, v = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+        rojo = ((h <= self.TONO_MAX) | (h >= 180 - self.TONO_MAX)) & (s >= self.SAT_MIN) & (v >= self.BRILLO_MIN)
+        mascara = cv2.morphologyEx(rojo.astype(np.uint8) * 255, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+        n, _, stats, _ = cv2.connectedComponentsWithStats(mascara)
+        salida = []
+        for x, y, w, hh, area in stats[1:n]:
+            if area < 30 or not (0.3 <= w / max(hh, 1) <= 3.0):
+                continue
+            salida.append(Candidata((int(x), int(y), int(x + w), int(y + hh))))
+        return salida
 
 
 class CandidatasOraculo:

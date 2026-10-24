@@ -19,7 +19,9 @@ def cfg_con(**cambios):
 def test_config_por_defecto():
     cfg = configuracion.cargar()
     assert cfg["modo"] == "sim"
-    assert cfg["percepcion"]["margen_recorte"] == 0.10
+    assert cfg["percepcion"]["margen_recorte"] == 0.15   # el de la calibración de RosaNet (robot/CLAUDE.md)
+    assert cfg["modelo_equipo"]["clasificador"]["pesos"] == "modelos/rosanet.pt"
+    assert cfg["modelo_equipo"]["detector"]["pesos"] == "modelos/detector_rosas.pt"
     assert cfg["percepcion"]["tamano_min_px"] == 32
 
 

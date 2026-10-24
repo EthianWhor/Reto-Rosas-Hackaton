@@ -14,6 +14,7 @@ import numpy as np
 from cuerpo.interfaz import Captura, Cuerpo
 from cuerpo.posturas import NEUTRA
 from sim.escena_invernadero import ALTURA_PELVIS, CAMARA, Escena, resolucion
+from sim.rosas import ids_carteles, mirar_a_la_camara
 
 KP, KD = 150.0, 5.0       # control PD de los motores
 PERIODO_PASO = 1.0        # segundos por ciclo de pasos (izq + der)
@@ -36,6 +37,7 @@ class CuerpoSim(Cuerpo):
         ancho, alto = resolucion(cfg)
         self.render = mujoco.Renderer(m, alto, ancho)
         self.velocidad = cfg["recorrido"]["velocidad_m_s"]
+        self.carteles = ids_carteles(m)   # rosas con foto real (vacío si son figuras)
 
     # ---------- motores ----------
     def _poner(self, **angulos):
@@ -105,6 +107,7 @@ class CuerpoSim(Cuerpo):
         return {k: round(float(self.d.qpos[self.qadr[self.id[k]]]), 3) for k in angulos}
 
     def foto(self) -> Captura:
+        mirar_a_la_camara(self.m, self.d, self.carteles, self.d.cam_xpos[self.cam].copy())
         self.render.update_scene(self.d, camera=CAMARA)
         rgb = self.render.render()
         self.render.enable_depth_rendering()

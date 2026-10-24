@@ -105,7 +105,7 @@ def test_posturas_apuntan_donde_deben(cuerpo, cfg, nombre, signo_y, mira_arriba)
     v = adelante(cuerpo.foto())
     giro = math.degrees(math.atan2(v[1], v[0]))
     elevacion = math.degrees(math.asin(v[2]))
-    assert giro * signo_y == pytest.approx(35, abs=3)
+    assert giro * signo_y == pytest.approx(math.degrees(cfg["recorrido"]["giro_diagonal_rad"]), abs=3)
     assert (elevacion > 25) if mira_arriba else (abs(elevacion) < 5)
     assert reales["waist_yaw"] * signo_y > 0.5
 

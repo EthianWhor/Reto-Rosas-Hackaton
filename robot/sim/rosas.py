@@ -5,8 +5,9 @@ oráculo y para medir aciertos. Las formas y colores salen de la tabla de la
 sección 13.2 del plan. Todo es visual (no choca con el robot), como las hojas
 reales, que son flexibles.
 
-Por ahora solo hay rosas como figuras. Los "carteles" con fotos reales
-(sección 7.4) se agregan en su propio paso.
+Dos formas de dibujar la cabeza (`sim.rosas`): figura (formas simples, para el
+oráculo) o cartel (una foto real de una rosa de la finca, para que el detector
+y RosaNet del equipo la vean; sección 7.4).
 """
 
 import math
@@ -14,6 +15,7 @@ import random
 from dataclasses import asdict, dataclass
 
 import mujoco
+import numpy as np
 
 from navegacion.plano import Plano
 
@@ -96,13 +98,96 @@ def _cabeza(mundo, nombre, figura, cx, cy, cz, d_cm, rng):
         _sepalos(mundo, nombre, cx, cy, cz, 0.6 * r, 2.4, rng)
 
 
+def preparar_carteles(spec: mujoco.MjSpec, cfg: dict) -> dict[str, list[tuple[str, float]]]:
+    """Carga las fotos reales de rosas como texturas. Devuelve {estado: [(material, alto/ancho), ...]}.
+
+    Las fotos son los recortes de la finca de `sim.carteles_dir` (una carpeta por
+    categoría, como en ml/stages.py). MuJoCo solo lee PNG, así que se convierten
+    una vez a datos/cache_carteles/.
+    """
+    from PIL import Image
+
+    from configuracion import ruta
+    origen = ruta(cfg["sim"]["carteles_dir"])
+    cache = ruta(cfg["datos_dir"]) / "cache_carteles"
+    cache.mkdir(parents=True, exist_ok=True)
+    carteles: dict[str, list[tuple[str, float]]] = {}
+    for carpeta in sorted(p for p in origen.iterdir() if p.is_dir()):
+        estado = carpeta.name.split("_", 1)[1]           # "2_optimo" → "optimo"
+        for foto in sorted(carpeta.glob("*.jpg")):
+            png = cache / f"{carpeta.name}__{foto.stem}.png"
+            with Image.open(foto) as im:
+                if not png.exists():
+                    im.convert("RGB").save(png)
+                alto_rel = im.height / im.width
+            nombre = f"cartel_{carpeta.name}_{foto.stem}"
+            spec.add_texture(name=nombre, type=mujoco.mjtTexture.mjTEXTURE_2D, file=str(png))
+            mat = spec.add_material(name=nombre, emission=0.25, specular=0.0)
+            mat.textures[mujoco.mjtTextureRole.mjTEXROLE_RGB] = nombre
+            carteles.setdefault(estado, []).append((nombre, alto_rel))
+    return carteles
+
+
+# Rotación inicial de un plano para que mire hacia −y o hacia +y, con la foto derecha.
+_QUAT_MIRA = {}
+for _signo in (-1, 1):
+    _q = np.zeros(4)
+    mujoco.mju_mat2Quat(_q, np.array([[-_signo, 0, 0], [0, 0, _signo], [0, 1, 0]], dtype=float).ravel())
+    _QUAT_MIRA[_signo] = _q.tolist()
+
+
+SUFIJO_CARTEL = "_cartel"
+
+
+def _cartel(mundo, nombre, material, alto_rel, cx, cy, cz, d_cm):
+    """Un plano con la foto de la rosa. Antes de cada foto gira para mirar a la cámara
+    (`mirar_a_la_camara`): una rosa real es 3D y se ve bien desde cualquier lado; una foto plana
+    vista de lado se deforma y RosaNet no la reconoce."""
+    medio_ancho = d_cm / 200 * 1.3   # la foto trae algo de margen alrededor de la rosa
+    mundo.add_geom(name=f"{nombre}{SUFIJO_CARTEL}", type=mujoco.mjtGeom.mjGEOM_PLANE,
+                   size=[medio_ancho, medio_ancho * alto_rel, 0.01], pos=[cx, cy, cz],
+                   quat=_QUAT_MIRA[-1], material=material, contype=0, conaffinity=0, group=1)
+
+
+def ids_carteles(m: mujoco.MjModel) -> np.ndarray:
+    return np.array([g for g in range(m.ngeom) if (m.geom(g).name or "").endswith(SUFIJO_CARTEL)], dtype=int)
+
+
+def mirar_a_la_camara(m: mujoco.MjModel, d: mujoco.MjData, ids: np.ndarray, cam_pos: np.ndarray) -> None:
+    """Gira cada cartel para que su cara (eje z del plano) apunte a la cámara, con la foto derecha."""
+    if ids.size == 0:
+        return
+    centros = m.geom_pos[ids]
+    z = cam_pos - centros
+    z /= np.linalg.norm(z, axis=1, keepdims=True)
+    arriba = np.array([0.0, 0.0, 1.0])
+    x = np.cross(arriba, z)
+    x /= np.maximum(np.linalg.norm(x, axis=1, keepdims=True), 1e-9)
+    y = np.cross(z, x)
+    for k, g in enumerate(ids):
+        mat = np.column_stack([x[k], y[k], z[k]])
+        mujoco.mju_mat2Quat(m.geom_quat[g], mat.ravel())
+    mujoco.mj_kinematics(m, d)
+
+
 def agregar_rosales(spec: mujoco.MjSpec, plano: Plano, cfg: dict, rng: random.Random) -> list[RosaVerdad]:
-    """Siembra rosales en todas las camas del plano y devuelve la verdad de cada rosa."""
+    """Siembra rosales en todas las camas del plano y devuelve la verdad de cada rosa.
+
+    Con `sim.rosas: figura` la cabeza es una figura según su estado (para el
+    oráculo). Con `sim.rosas: cartel` es una foto real de una rosa de la finca
+    de esa categoría, para que el detector y RosaNet del equipo la vean.
+    """
     sim, rosas_cfg = cfg["sim"], cfg["rosas"]
     mundo = spec.worldbody
     z_suelo = sim["altura_cama_m"]
     margen = 0.12
     verdad = []
+    carteles = preparar_carteles(spec, cfg) if sim["rosas"] == "cartel" else None
+    prob = dict(sim["prob_estados"])
+    if carteles is not None:
+        # una foto no puede mostrar "lista mañana": esas cuentan como inmaduras
+        prob["inmaduro"] = prob.get("inmaduro", 0) + prob.pop("lista_manana", 0)
+        prob = {e: p for e, p in prob.items() if e in carteles}
     for cama in plano.camas:
         for metro in range(int(cama.largo_m)):
             for _ in range(rng.randint(*sim["tallos_por_metro"])):
@@ -113,7 +198,7 @@ def agregar_rosales(spec: mujoco.MjSpec, plano: Plano, cfg: dict, rng: random.Ra
                 # el tallo se inclina un poco: la cabeza no queda justo encima de la base
                 hx, hy = bx + rng.uniform(-0.05, 0.05), by + rng.uniform(-0.05, 0.05)
 
-                figura = _sorteo_estado(sim["prob_estados"], rng)
+                figura = _sorteo_estado(prob, rng)
                 d_cm = rng.uniform(*FIGURAS[figura][0])
                 nombre = f"rosa{i}"
                 r = d_cm / 200
@@ -130,7 +215,11 @@ def agregar_rosales(spec: mujoco.MjSpec, plano: Plano, cfg: dict, rng: random.Ra
                                         z_suelo + f * (hz - z_suelo)],
                                    euler=[0, -0.4, a], rgba=_color(VERDE_HOJA[:3], rng),
                                    contype=0, conaffinity=0, group=1)
-                _cabeza(mundo, f"{nombre}_cabeza", figura, hx, hy, hz, d_cm, rng)
+                if carteles is None:
+                    _cabeza(mundo, f"{nombre}_cabeza", figura, hx, hy, hz, d_cm, rng)
+                else:
+                    material, alto_rel = rng.choice(carteles[figura])
+                    _cartel(mundo, f"{nombre}_cabeza", material, alto_rel, hx, hy, hz, d_cm)
 
                 estado = "inmaduro" if figura == "lista_manana" else figura
                 verdad.append(RosaVerdad(i, estado, figura == "lista_manana", cama.numero,

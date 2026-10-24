@@ -9,22 +9,30 @@ percepcion:
   # si aparece el detector, el robot lo empieza a usar solo (ver modelo_equipo).
   candidatas: auto           # auto | oraculo | color | detector_equipo
   clasificador: auto         # auto | oraculo | rosanet | detector_equipo
-  margen_recorte: 0.10       # igual que --pad de ml/prepare_data.py
+  margen_recorte: 0.15       # el margen con el que se calibró RosaNet (robot/CLAUDE.md)
   tamano_min_px: 32          # igual que --min-size de ml/prepare_data.py
+  # De noche el fondo detrás de la rosa es oscuro y RosaNet (entrenada de día)
+  # confunde inmaduras con óptimas. Con la profundidad se pinta el fondo de un
+  # gris claro antes de pasar el recorte a la red (plan, sección 7.7).
+  # OJO: cambia lo que recibe la red; avisado al equipo del modelo.
+  fondo_claro:
+    activo: true
+    color: [170, 175, 180]   # gris claro (en la sim 170 dio algo mejor que 205 y 235)
+    mas_lejos_m: 0.25        # fondo = más de esto detrás de la rosa (o sin dato)
   # la confianza mínima ("seguro") la pone RosaNet (0,6); no se repite aquí
 
-# Lo que el robot sabe del modelo del equipo. Es lo único que se cambia si el
-# equipo usa otros nombres de módulo, clase o pesos.
+# Lo que el robot sabe del modelo del equipo (contrato en robot/CLAUDE.md).
+# Los pesos ya están en git, en modelos/: no hay que copiarlos a mano.
 modelo_equipo:
-  clasificador:              # RosaNet (ya existe en ml/predict.py)
+  clasificador:              # RosaNet: dice la categoría de UNA rosa recortada
     modulo: ml.predict
     clase: RosePredictor
-    pesos: runs/rosanet/best.pt
-  detector:                  # todavía no existe: nombres SUPUESTOS, confirmar con el equipo
+    pesos: modelos/rosanet.pt
+  detector:                  # YOLO11n: encuentra dónde hay rosas en la foto (una clase)
     modulo: ml.detect
     clase: RoseDetector
-    pesos: runs/detector/best.pt
-    clasifica: false         # true si el detector ya dice inmaduro/optimo/pasado por caja
+    pesos: modelos/detector_rosas.pt
+    clasifica: false         # el detector solo ubica; la categoría la da RosaNet
 
 sim:
   escena: escena_base.xml
@@ -35,7 +43,8 @@ sim:
   # Sin estos dos valores se usa `invernadero` completo.
   camas: 2
   largo_cama_m: 10
-  camino_inicial: 1          # camino por el que arranca el robot (1 = entre la cama 1 y la 2)
+  camino_inicial: 1          # camino de --camino por defecto (1 = entre la cama 1 y la 2)
+  caminos: null              # caminos de la ronda; null = todos (así cada cama se ve por los dos lados)
   altura_cama_m: 0.25
   tallos_por_metro: [8, 12]
   prob_estados:              # qué tan seguido sale cada estado en la escena
@@ -69,7 +78,7 @@ recorrido:
   paso_entre_paradas_m: 1.25  # era 2,5: con 1,25 la cobertura sube de 47 % a ~75 % (sección 16.1)
   velocidad_m_s: 0.3
   velocidad_dificil_m_s: 0.2
-  giro_diagonal_rad: 0.61    # ~35°
+  giro_diagonal_rad: 1.13    # ~65° (antes 35°: con 65° la cobertura sube de ~88 % a ~96 %, sección 16.1)
   inclinacion_alta_rad: -0.61
 
 camara:

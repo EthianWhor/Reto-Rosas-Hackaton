@@ -50,6 +50,12 @@ def test_profundidad_caja_ignora_ceros():
     assert geometria.profundidad_caja(np.zeros((20, 20)), (0, 0, 20, 20)) is None
 
 
+def test_profundidad_caja_ignora_una_hoja_delante():
+    prof = np.full((20, 20), 1.50, np.float32)   # la rosa
+    prof[6:14, 6:12] = 0.70                      # una hoja tapa el 75 % del centro
+    assert geometria.profundidad_caja(prof, (0, 0, 20, 20)) == pytest.approx(1.50)
+
+
 def test_ubicar_con_profundidad_y_sin_ella(plano):
     punto = np.array([3.2, plano.cama(2).y_centro, 1.6])
     sin_prof = captura_mirando_izquierda(plano)

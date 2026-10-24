@@ -32,6 +32,7 @@ class Deteccion:
     metro: float
     tramo: int
     verdad_id: int | None = None   # solo en simulación con oráculo, para medir
+    confianza_deteccion: float | None = None   # la del detector del equipo (si lo hubo)
 
     def a_dict(self) -> dict:
         return asdict(self)
@@ -64,21 +65,32 @@ class Analizador:
                 foto=foto, bbox=res["bbox"], clase=res["clase"], confianza=res["confianza"],
                 seguro=res["seguro"], probs=res["probs"], x=u.x, y=u.y, altura_m=u.z,
                 distancia_m=u.distancia_m, metodo=u.metodo, diametro_cm=u.diametro_cm, cama=u.cama,
-                lado=u.lado, metro=u.metro, tramo=u.tramo, verdad_id=cand.verdad_id))
+                lado=u.lado, metro=u.metro, tramo=u.tramo, verdad_id=cand.verdad_id,
+                confianza_deteccion=cand.confianza_deteccion))
         self.detecciones.extend(nuevas)
         return nuevas
 
 
 def crear_analizador(cfg: dict, eleccion: dict, plano: Plano, verdad=None) -> Analizador:
+    from percepcion import candidatas as cands, clasificador as clf
+
     rng = random.Random(cfg["sim"]["semilla"] + 1)
-    if eleccion["candidatas"] == "oraculo":
-        from percepcion.candidatas import CandidatasOraculo
-        candidatas = CandidatasOraculo(verdad, cfg, rng)
+    eleccion_cand, eleccion_clf = eleccion["candidatas"], eleccion["clasificador"]
+    if eleccion_cand == "oraculo":
+        candidatas = cands.CandidatasOraculo(verdad, cfg, rng)
+    elif eleccion_cand == "detector_equipo":
+        candidatas = cands.CandidatasDetector(modelo_equipo.cargar(cfg, "detector"))
+    elif eleccion_cand == "color":
+        candidatas = cands.CandidatasColor()
     else:
-        raise NotImplementedError(f"candidatas '{eleccion['candidatas']}' llega en el paso de carteles + RosaNet")
-    if eleccion["clasificador"] == "oraculo":
-        from percepcion.clasificador import ClasificadorOraculo
-        clasificador = ClasificadorOraculo(verdad, cfg, rng, modelo_equipo.umbral_seguro(cfg))
+        raise ValueError(f"candidatas desconocidas: {eleccion_cand}")
+
+    if eleccion_clf == "oraculo":
+        clasificador = clf.ClasificadorOraculo(verdad, cfg, rng, modelo_equipo.umbral_seguro(cfg))
+    elif eleccion_clf == "rosanet":
+        clasificador = clf.ClasificadorRosaNet(modelo_equipo.cargar(cfg, "clasificador"),
+                                               cfg["percepcion"]["margen_recorte"],
+                                               cfg["percepcion"].get("fondo_claro"))
     else:
-        raise NotImplementedError(f"clasificador '{eleccion['clasificador']}' llega en el paso de carteles + RosaNet")
+        raise NotImplementedError(f"clasificador '{eleccion_clf}': el detector del equipo no clasifica")
     return Analizador(cfg, plano, candidatas, clasificador)
