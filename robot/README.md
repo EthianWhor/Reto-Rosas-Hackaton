@@ -102,3 +102,14 @@ Cada ronda deja sus fotos y resultados en `datos/rondas/<id>/` (fotos con profun
 repetir y métricas contra la verdad de la simulación), y el reporte para el dashboard en `datos/salida/`
 (`reporte_INV1_<fecha>.xlsx` con 6 hojas y `.json` con los mismos datos). Nunca sobreescribe: si ya hay un
 reporte de esa noche, guarda `_v2`, `_v3`…
+
+**Envío al dashboard.** Durante la ronda no hay WiFi: los reportes esperan en `datos/salida/`. En la
+simulación el WiFi "aparece" al volver a la base y se copian a la carpeta del dashboard
+(`datos/dashboard_simulado/`); los enviados pasan a `datos/enviados/`. Si un envío falla, se reintenta
+en 1, 2, 4, 8… min. Para el robot real, copiar `.env.ejemplo` como `.env`, poner la carpeta compartida o
+la dirección del dashboard, y dejar corriendo:
+
+```bash
+python -m reporte.envio
+```
+

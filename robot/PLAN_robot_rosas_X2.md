@@ -812,6 +812,16 @@ La dirección, usuario y clave van en un archivo **`.env`** que **no** se sube a
 
 En simulación, el WiFi "aparece" cuando el robot vuelve a la base.
 
+### 11.4 Lo que quedó hecho (paso 5, `reporte/envio.py`)
+
+- **Carpeta** (`envio.metodo: carpeta`, el que viene por defecto): copia a la carpeta compartida con nombre temporal y luego renombra, así el dashboard nunca ve un archivo a medias. Llegó = la copia quedó idéntica. Hay conexión = la carpeta existe (está montada o sincronizada). En la simulación la carpeta es `datos/dashboard_simulado/`.
+- **API** (`envio.metodo: api`): `POST` del archivo (campo `archivo`, más `nombre`) con `Authorization: Bearer <ENVIO_TOKEN>`. Llegó = responde 200 o 201, o 409 si ya lo tenía. Hay conexión = el dashboard responde en `ENVIO_PING_URL` (o `ENVIO_URL`). **Hay que acordar este contrato con la persona del dashboard.**
+- **Correo:** no está hecho.
+- Sin conexión, los archivos esperan y **no** cuenta como intento. Si falla un envío con conexión, se reintenta en 1, 2, 4, 8… min, hasta `envio.espera_max_min` (60). El estado queda en `datos/pendientes.json`, así que sobrevive si se apaga el robot.
+- Un reporte nuevo nunca usa el nombre de uno que ya está en `enviados/`, para no pisar en el dashboard uno que ya llegó.
+- En el robot real se deja corriendo aparte: `python -m reporte.envio` (revisa cada `revisar_cada_s`). Con `--una-vez` hace un solo intento.
+- Claves y rutas en `robot/.env` (plantilla: `robot/.env.ejemplo`).
+
 ---
 
 ## 12. Estructura del repo y cómo armarlo
@@ -1161,7 +1171,7 @@ Se suman a `tests/test_pipeline.py`, que ya existe y es del modelo (no se toca).
 - `test_dedup`: dos detecciones a 5 cm quedan en una sola rosa.
 - `test_madurez`: los dos ejemplos de la sección 2.4 dan "lista mañana".
 - `test_reporte`: el Excel tiene las 6 hojas y las columnas acordadas, el JSON tiene los mismos números, nunca sobreescribe y si el archivo está abierto usa `_v2`.
-- `test_envio`: sin WiFi no borra nada; con WiFi mueve a `enviados/`.
+- `test_envio`: sin WiFi no borra nada ni cuenta intentos; con WiFi mueve a `enviados/`; los reintentos esperan 1, 2, 4 min; enviar dos veces no duplica; API con respuesta 500 y luego 201.
 
 ```powershell
 py -m pytest

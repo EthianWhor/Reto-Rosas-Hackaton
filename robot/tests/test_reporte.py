@@ -117,6 +117,14 @@ def test_nunca_sobreescribe(reporte, tmp_path):
     assert all(p.exists() for p in primero + segundo)
 
 
+def test_no_repite_el_nombre_de_uno_ya_enviado(reporte, tmp_path):
+    salida, enviados = tmp_path / "salida", tmp_path / "enviados"
+    enviados.mkdir()
+    (enviados / "reporte_INV1_2026-10-24.xlsx").write_bytes(b"ya llego al dashboard")
+    rutas = archivos.guardar(reporte, salida, avisar=lambda s: None, ya_enviados=enviados)
+    assert [p.name for p in rutas] == ["reporte_INV1_2026-10-24_v2.xlsx", "reporte_INV1_2026-10-24_v2.json"]
+
+
 def test_si_esta_abierto_usa_otro_nombre(reporte, tmp_path, monkeypatch):
     from openpyxl import Workbook
     original = Workbook.save

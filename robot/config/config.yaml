@@ -103,6 +103,10 @@ reporte:
 envio:
   metodo: carpeta            # api | carpeta | correo (acordar con el dashboard)
   revisar_cada_s: 60
+  espera_max_min: 60         # los reintentos esperan 1, 2, 4, 8… min, hasta este máximo
+  # carpeta compartida del dashboard. ENVIO_CARPETA en robot/.env la reemplaza
+  # (en la simulación es una carpeta local que hace de dashboard).
+  carpeta_destino: datos/dashboard_simulado
 
 bateria:
   volver_a_base_pct: 25

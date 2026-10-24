@@ -80,15 +80,23 @@ def _nombre(base: str, version: int) -> str:
     return base if version == 1 else f"{base}_v{version}"
 
 
-def guardar(rep: Reporte, carpeta: Path, formatos=("excel", "json"), avisar=print) -> list[Path]:
-    """Guarda el reporte con un nombre libre. Devuelve las rutas escritas."""
+def guardar(rep: Reporte, carpeta: Path, formatos=("excel", "json"), avisar=print,
+            ya_enviados: Path | None = None) -> list[Path]:
+    """Guarda el reporte con un nombre libre. Devuelve las rutas escritas.
+
+    `ya_enviados`: carpeta de los reportes que ya salieron (datos/enviados/). Sus
+    nombres tampoco se repiten, para no pisar en el dashboard uno que ya llegó.
+    """
     carpeta.mkdir(parents=True, exist_ok=True)
     base = f"reporte_{rep.invernadero}_{rep.fecha}"
     extensiones = {"excel": ".xlsx", "json": ".json"}
     for version in range(1, MAX_VERSIONES + 1):
         nombre = _nombre(base, version)
         rutas = {f: carpeta / f"{nombre}{extensiones[f]}" for f in formatos}
-        if any(r.exists() for r in rutas.values()):
+        usados = list(rutas.values())
+        if ya_enviados is not None:
+            usados += [ya_enviados / r.name for r in rutas.values()]
+        if any(r.exists() for r in usados):
             continue
         try:
             if "excel" in rutas:

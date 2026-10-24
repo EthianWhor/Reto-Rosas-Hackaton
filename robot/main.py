@@ -3,8 +3,9 @@
 Por ahora (paso 3) revisa qué ofrece el modelo del equipo en ml/, arma el
 invernadero de prueba (2 camas de 10 m) y recorre un camino: para cada 2,5 m,
 toma las 4 posturas, guarda las fotos (color + profundidad) en datos/rondas/,
-encuentra y ubica cada rosa (cama, metro, altura), junta las repetidas y
-compara el resultado con la verdad de la simulación.
+encuentra y ubica cada rosa (cama, metro, altura), junta las repetidas,
+compara el resultado con la verdad de la simulación, arma el reporte Excel +
+JSON y lo envía al dashboard cuando "aparece" el WiFi al volver a la base.
 
 Se corre desde la carpeta robot/:
     python main.py                     -> recorre el camino 1 y guarda las fotos
@@ -72,7 +73,7 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace) -> int:
     from cuerpo.sim_backend import CuerpoSim
     from percepcion.analisis import crear_analizador
     from percepcion.dedup import juntar
-    from reporte import archivos
+    from reporte import archivos, envio
     from reporte.tabla import armar_reporte
     from sim.escena_invernadero import CAMARA, armar_escena, resolucion
 
@@ -151,7 +152,8 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace) -> int:
         guardar_json(carpeta / "metricas.json", {**resultado, "descartadas": analizador.descartadas})
         mostrar_resumen(rosas, resultado, analizador)
 
-        rutas = archivos.guardar(rep, configuracion.ruta(cfg["datos_dir"]) / "salida", cfg["reporte"]["formatos"])
+        datos = configuracion.ruta(cfg["datos_dir"])
+        rutas = archivos.guardar(rep, datos / "salida", cfg["reporte"]["formatos"], ya_enviados=datos / "enviados")
         print("  orden  cuadrante      prioridad  óptimo  mañana  inmaduro  pasado  dudosa")
         for c in sorted(rep.cuadrantes, key=lambda f: f["orden"]):
             print(f"  {c['orden']:>5}  {c['cuadrante_id']:<14} {c['prioridad']:<9}  {c['optimo']:>6}  "
@@ -161,6 +163,13 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace) -> int:
               f"{len(rep.dudosas)} dudosas")
         for ruta in rutas:
             print(f"  {ruta}")
+
+        # Envío: durante la ronda no hay WiFi; aparece al volver a la base (sección 11 del plan).
+        wifi = envio.ConexionSimulada(hay_wifi=False)
+        bandeja, enviador, conexion = envio.crear(cfg, wifi)
+        print(f"Envío en el camino: {envio.describir(bandeja.intentar(enviador, conexion))}")
+        wifi.hay_wifi = True
+        print(f"Envío en la base (hay WiFi): {envio.describir(bandeja.intentar(enviador, conexion))}")
     except KeyboardInterrupt:
         print("Ronda interrumpida.")
         return 1
