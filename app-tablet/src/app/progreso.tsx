@@ -8,13 +8,13 @@ import { leerRondas, matrizDeConfusion, type Ronda } from '@/logica/progreso';
 import { colores, espacio, texto } from '@/tema';
 
 export default function Progreso() {
-  const { nombre } = useOperario();
+  const { nombre, token } = useOperario();
   const [rondas, setRondas] = useState<Ronda[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      leerRondas().then((todas) => setRondas(todas.filter((r) => r.operario === nombre)));
-    }, [nombre]),
+      leerRondas(token, nombre).then(setRondas);
+    }, [token, nombre]),
   );
 
   if (rondas.length === 0) {

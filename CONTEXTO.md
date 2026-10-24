@@ -184,6 +184,37 @@ Las clases intermedias públicas (`mid-bud`, `2_Early_Bloom`) son rosas **más a
 
 \* Medido solo con 12 rosas. Los casos difíciles (5 rosas) dan 4/5 en todas las variantes calibradas.
 
+### Ajustes probados (3 semillas cada uno, validación cruzada con 64 rosas; 2026-10-24)
+| Configuración | Exactitud media (rango) | Con TTA (imagen + espejo) |
+|---|---|---|
+| **En uso:** 30 épocas, lr 1e-3, +40 "pasado" públicas | **74,5 %** (70–77) | 75,5 % |
+| 50 épocas | 73,9 % (73–75) | 76,1 % |
+| lr 5e-4 | 70,8 % (64–75) | 69,7 % |
+| Sin las "pasado" públicas | **46,9 %** (41–50) | 46,4 % |
+
+- La variación entre semillas (±4 puntos) es mayor que las diferencias entre ajustes: **ninguno mejora de forma clara**. El TTA da +1 a +2 puntos, pero no siempre, así que no se activó.
+- **Completar "pasado" con rosas públicas es imprescindible** (+28 puntos): con solo 2 ejemplos de la finca, el peso de esa clase se dispara y la red dice "pasado" de más.
+- Conclusión: el límite ya son los datos, no los ajustes.
+
+### Fondo oscuro de noche (2026-10-24)
+El Claude del robot detectó que con el **margen del recorte pintado de negro** (como de noche) RosaNet llamaba "óptimo" a muchas inmaduras: el problema es el fondo, no la luz sobre la rosa. Casi todas las fotos de entrenamiento tienen cielo claro detrás.
+
+**Solución: aumento de fondo oscuro** (`robot/ml/data.py`, `RandomDarkBackground`, `--oscuro 0.5`). En la mitad de los recortes de entrenamiento oscurece al azar el margen del propio recorte, **sin cambiar la escala** (de negro a gris oscuro, rectángulo o viñeta tipo linterna) y oscurece el cielo y el plástico (píxeles claros y sin color).
+
+Medido con validación cruzada (64 rosas, promedio de 3 semillas), "inmaduras → óptimo" sobre 45:
+
+| Prueba de fondo | Sin aumento | **Con aumento (50 %)** | Con aumento (75 %) |
+|---|---|---|---|
+| Original | 72,9 % · 6,7 | 71,9 % · 6,3 | 71,9 % · 5,7 |
+| **Noche** (cielo y margen oscuros, viñeta) | 52,1 % · **24,7** | **75,5 % · 7,0** | 72,9 % · 8,0 |
+| Margen negro liso | 52,1 % · 28,3 | 66,7 % · 15,3 | 70,3 % · 13,7 |
+| Margen gris claro | 73,9 % · 6,3 | 71,9 % · 6,0 | 70,8 % · 6,3 |
+
+- Se adoptó el **50 %**. `robot/modelos/rosanet.pt` es ahora la versión "noche"; la anterior queda en `robot/modelos/rosanet_v1_dia.pt`.
+- **Costo:** con fondo de día pierde ~3,5 puntos en promedio (4 semillas: 73,4 % → 69,9 %). **Ganancia de noche:** ~20 puntos. Como el robot hace la ronda de noche, conviene.
+- **Pendiente:** las pruebas de noche son simuladas. Hay que medir con 30-50 fotos reales de rosas Freedom de noche, con una linterna como la del robot. También medir el ajuste del robot que aclara el fondo con la profundidad, con y sin él.
+- Fuentes de datos sugeridas por el equipo del robot: la base de *Plants* 2025 (vase-life, fotos de noche con luz artificial; se pide a los autores, doi 10.3390/plants14071076) y la de rosas de Tocancipá (*Agronomía Colombiana* 2025, Universidad Nacional; se pide a los autores). Unsplash y Pexels se descartan: no tienen etiquetas, no son Freedom y la licencia para entrenar IA no es clara.
+
 ### Límites honestos
 - **Muy pocas rosas de la finca:** 64 para la validación cruzada. Los números tienen mucha incertidumbre (±10 puntos o más).
 - **"Pasado" no se aprende:** la finca dio 2 ejemplos y ninguno se reconoce. Las públicas abiertas no se parecen a una Freedom "un poco pasada".
@@ -210,6 +241,16 @@ Las clases intermedias públicas (`mid-bud`, `2_Early_Bloom`) son rosas **más a
 1. **Anotar todas las rosas** de las 56 fotos de la finca (en Roboflow, ~1 h) y ajustar el detector con ellas. Es el cambio que más reduciría los falsos positivos y las rosas perdidas en el invernadero.
 2. **Más fotos de la finca** para RosaNet, sobre todo óptimas y pasadas, idealmente con la cámara y la luz del robot de noche.
 3. Terminar el entrenamiento del detector (se puede continuar desde `runs/detector/weights/last.pt`) en Colab o con el portátil más ventilado.
+
+## 2.0.4 Datos de la finca para el pitch (2026-10-23, noche)
+
+| Dato | Valor | Implicación |
+|---|---|---|
+| Acierto de los operarios en el punto de corte | **~88 % de las flores (~12 % de error)** | Es la línea base del negocio: la meta es bajar ese 12 %. RosaNet (75 %) todavía está por debajo del ojo humano, así que su papel es contar y priorizar el campo, no decidir el corte |
+| Duración de la inducción | **15 a 18 días**; la teoría dura **2 o 3** | El tiempo está en la práctica, no en la teoría: ahí es donde actúan la VR y el juego |
+| Medidas del campo (hectáreas, líneas, pasillos) | **Todavía no hay** | Las cuentas de capacidad y retorno del pitch siguen con supuestos |
+
+Los cálculos están en `pitch/inversion-y-retorno.md`.
 
 ## 2.1 Propuesta anterior (v1) — reemplazada por la v2
 

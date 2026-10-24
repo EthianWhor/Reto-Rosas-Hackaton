@@ -135,6 +135,23 @@ def test_bundled_models_follow_the_robot_contract():
     assert pred["etapa"] in STAGES and set(pred["probabilidades"]) == set(STAGES)
 
 
+def test_darken_margin_keeps_scale_and_rose():
+    import numpy as np
+
+    from ml.data import RandomDarkBackground, darken_margin, darken_sky
+
+    im = Image.new("RGB", (100, 100), (220, 220, 225))  # cielo claro
+    ImageDraw.Draw(im).ellipse((30, 30, 70, 70), fill=(170, 20, 50))  # rosa al centro
+    out = darken_margin(im, margin=0.115, fill=(0, 0, 0))
+    a, b = np.asarray(im), np.asarray(out)
+    assert out.size == im.size                       # no agrega bordes ni cambia la escala
+    assert (b[:5, :5] == 0).all()                    # margen negro
+    assert (b[40:60, 40:60] == a[40:60, 40:60]).all()  # la rosa no se toca
+    sky = np.asarray(darken_sky(im, 0.0))
+    assert sky[5, 50].max() < 30 and (sky[50, 50] == a[50, 50]).all()  # cielo oscuro, rosa igual
+    assert RandomDarkBackground(1.0)(im).size == im.size
+
+
 def test_model_output_shape():
     model = RosaNet(num_classes=4)
     out = model(torch.randn(2, 3, IMAGE_SIZE, IMAGE_SIZE))

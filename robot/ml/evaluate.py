@@ -18,13 +18,21 @@ from ml.data import StageFolder
 from ml.model import load_checkpoint
 
 
+def predict_logits(model, images: torch.Tensor, tta: bool = False) -> torch.Tensor:
+    """Logits del modelo; con tta promedia la imagen y su espejo horizontal."""
+    logits = model(images)
+    if tta:
+        logits = (logits + model(torch.flip(images, dims=[3]))) / 2
+    return logits
+
+
 @torch.no_grad()
-def evaluate(model, loader, classes: list[str], device) -> dict:
+def evaluate(model, loader, classes: list[str], device, tta: bool = False) -> dict:
     model.eval()
     n = len(classes)
     confusion = [[0] * n for _ in range(n)]  # filas = real, columnas = predicha
     for images, labels in loader:
-        preds = model(images.to(device)).argmax(1).cpu()
+        preds = predict_logits(model, images.to(device), tta).argmax(1).cpu()
         for t, p in zip(labels.tolist(), preds.tolist()):
             confusion[t][p] += 1
     return metrics_from_confusion(confusion, classes)

@@ -15,7 +15,7 @@ import { colores, espacio, texto } from '@/tema';
 // Juego principal: se muestra una rosa real de la finca, el operario elige la categoría y
 // recibe de inmediato el porqué. Al final de la ronda se guarda el resultado.
 export default function Clasificar() {
-  const { nombre } = useOperario();
+  const { nombre, token } = useOperario();
   const { width, height } = useWindowDimensions();
   const horizontal = width > height;
 
@@ -70,7 +70,7 @@ export default function Clasificar() {
   function siguiente() {
     const nuevoIndice = indice + 1;
     if (nuevoIndice >= ronda.length) {
-      guardarRonda({ fecha: new Date().toISOString(), operario: nombre, respuestas });
+      guardarRonda(token, { fecha: new Date().toISOString(), operario: nombre, respuestas }).catch(() => {});
     }
     setElegida(null);
     setIndice(nuevoIndice);

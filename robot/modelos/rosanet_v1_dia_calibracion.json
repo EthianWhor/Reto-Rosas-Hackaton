@@ -1,0 +1,110 @@
+{
+  "validacion_cruzada": {
+    "accuracy": 0.75,
+    "macro_f1": 0.4698293799417395,
+    "per_class": {
+      "1_inmaduro": {
+        "precision": 0.8636363636363636,
+        "recall": 0.8444444444444444,
+        "f1": 0.853932584269663,
+        "support": 45
+      },
+      "2_optimo": {
+        "precision": 0.5263157894736842,
+        "recall": 0.5882352941176471,
+        "f1": 0.5555555555555555,
+        "support": 17
+      },
+      "3_pasado": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2
+      }
+    },
+    "confusion": [
+      [
+        38,
+        7,
+        0
+      ],
+      [
+        6,
+        10,
+        1
+      ],
+      [
+        0,
+        2,
+        0
+      ]
+    ],
+    "classes": [
+      "1_inmaduro",
+      "2_optimo",
+      "3_pasado"
+    ],
+    "n_images": 64
+  },
+  "config": {
+    "finca": "data\\finca_stages",
+    "publico": "data\\pre",
+    "init": "runs\\rosanet_pre\\best.pt",
+    "out": "runs\\calib_pre_freeze0",
+    "k": "5",
+    "freeze": "0",
+    "epochs": "30",
+    "lr": "0.001",
+    "batch_size": "16",
+    "extra_pasado": "40",
+    "workers": "0",
+    "seed": "42"
+  },
+  "test_dificiles": {
+    "accuracy": 0.8,
+    "macro_f1": 0.8,
+    "per_class": {
+      "1_inmaduro": {
+        "precision": 0.6666666666666666,
+        "recall": 1.0,
+        "f1": 0.8,
+        "support": 2
+      },
+      "2_optimo": {
+        "precision": 1.0,
+        "recall": 0.6666666666666666,
+        "f1": 0.8,
+        "support": 3
+      },
+      "3_pasado": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 0
+      }
+    },
+    "confusion": [
+      [
+        2,
+        0,
+        0
+      ],
+      [
+        1,
+        2,
+        0
+      ],
+      [
+        0,
+        0,
+        0
+      ]
+    ],
+    "classes": [
+      "1_inmaduro",
+      "2_optimo",
+      "3_pasado"
+    ],
+    "n_images": 5
+  }
+}

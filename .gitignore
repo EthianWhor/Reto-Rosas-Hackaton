@@ -1,4 +1,6 @@
 .venv/
+# Claves locales (la service_role de Supabase vive solo en robot/.env)
+robot/.env
 __pycache__/
 *.pyc
 .pytest_cache/
