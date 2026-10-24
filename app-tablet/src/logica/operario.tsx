@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { AppState, View } from 'react-native';
 
-import type { Rol, Usuario } from '@/data/usuarios';
+import { normalizar, type Rol, type Usuario } from '@/data/usuarios';
 import { revisar, supabase } from '@/logica/supabase';
 
 // Sesión de la tablet. La tablet es compartida (va a la entrada del invernadero): cada persona
@@ -30,8 +30,12 @@ type Contexto = {
   salir: () => void;
   /** true si la última sesión se cerró sola por inactividad (para avisarlo en el ingreso). */
   cerradaPorInactividad: boolean;
-  recargarUsuarios: () => Promise<void>;
-  crearPersona: (nombre: string, rol: Rol, pin: string) => Promise<void>;
+  /** Recarga la lista de personas activas y la devuelve. */
+  recargarUsuarios: () => Promise<Usuario[]>;
+  /** Abre la sesión con un token ya emitido (al activar un usuario nuevo). */
+  abrirSesion: (token: string, usuario: Usuario) => void;
+  /** Solo coordinación; por ejemplo, promover de "aprendiz" a "experto". */
+  cambiarRol: (id: string, rol: Rol) => Promise<void>;
   quitarPersona: (id: string) => Promise<void>;
 };
 
@@ -43,8 +47,9 @@ const OperarioContext = createContext<Contexto>({
   entrar: async () => false,
   salir: () => {},
   cerradaPorInactividad: false,
-  recargarUsuarios: async () => {},
-  crearPersona: async () => {},
+  recargarUsuarios: async () => [],
+  abrirSesion: () => {},
+  cambiarRol: async () => {},
   quitarPersona: async () => {},
 });
 
@@ -57,9 +62,10 @@ export function OperarioProvider({ children }: { children: ReactNode }) {
   sesionActual.current = sesion;
 
   const recargarUsuarios = useCallback(async () => {
-    const lista = revisar(await supabase.rpc('listar_personas')) as Usuario[];
+    const lista = (revisar(await supabase.rpc('listar_personas')) as Usuario[]).map(normalizar);
     setUsuarios(lista);
     await AsyncStorage.setItem(CLAVE_USUARIOS, JSON.stringify(lista));
+    return lista;
   }, []);
 
   const salir = useCallback((porInactividad = false) => {
@@ -72,7 +78,7 @@ export function OperarioProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     AsyncStorage.multiGet([CLAVE_USUARIOS, CLAVE_SESION_VIEJA]).then(([[, u], [, vieja]]) => {
-      if (u) setUsuarios(JSON.parse(u) as Usuario[]);
+      if (u) setUsuarios((JSON.parse(u) as Usuario[]).map(normalizar));
       if (vieja) {
         const { token } = JSON.parse(vieja) as Sesion;
         supabase.rpc('salir', { p_token: token }).then(() => {});
@@ -115,14 +121,18 @@ export function OperarioProvider({ children }: { children: ReactNode }) {
   async function entrar(usuario: Usuario, pin: string) {
     const token = revisar(await supabase.rpc('entrar', { p_persona: usuario.id, p_pin: pin })) as string | null;
     if (!token) return false;
-    ultimoToque.current = Date.now();
-    setCerradaPorInactividad(false);
-    setSesion({ token, usuario });
+    abrirSesion(token, usuario);
     return true;
   }
 
-  async function crearPersona(nombre: string, rol: Rol, pin: string) {
-    revisar(await supabase.rpc('crear_persona', { p_token: sesion?.token, p_nombre: nombre, p_rol: rol, p_pin: pin }));
+  function abrirSesion(token: string, usuario: Usuario) {
+    ultimoToque.current = Date.now();
+    setCerradaPorInactividad(false);
+    setSesion({ token, usuario });
+  }
+
+  async function cambiarRol(id: string, rol: Rol) {
+    revisar(await supabase.rpc('cambiar_rol', { p_token: sesion?.token, p_persona: id, p_rol: rol }));
     await recargarUsuarios();
   }
 
@@ -143,7 +153,8 @@ export function OperarioProvider({ children }: { children: ReactNode }) {
         salir: () => salir(),
         cerradaPorInactividad,
         recargarUsuarios,
-        crearPersona,
+        abrirSesion,
+        cambiarRol,
         quitarPersona,
       }}
     >

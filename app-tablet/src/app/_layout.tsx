@@ -31,10 +31,12 @@ export default function Layout() {
   );
 }
 
-// Sin sesión solo se ve el ingreso (index); las pantallas de administración, solo con rol admin.
-// Si la sesión se cierra, la app vuelve sola al ingreso.
+// Quién ve qué: sin sesión, solo el ingreso (index). Los juegos de práctica son para quien está en
+// capacitación (el experto no los ve); las dudas del robot, para expertos y coordinación; la
+// administración, solo para coordinación. Si la sesión se cierra, la app vuelve sola al ingreso.
 function Navegacion() {
   const { usuario } = useOperario();
+  const rol = usuario?.rol;
   return (
     <Stack
       screenOptions={{
@@ -48,16 +50,22 @@ function Navegacion() {
     >
       <Stack.Screen name="index" options={{ headerShown: false, title: 'RoseApp' }} />
       <Stack.Protected guard={!!usuario}>
-        <Stack.Screen name="hoy" options={{ title: 'Lo que vio el robot' }} />
+        <Stack.Screen name="hoy" options={{ title: 'Informe del robot' }} />
         <Stack.Screen name="mi-turno" options={{ title: 'Mi turno' }} />
+      </Stack.Protected>
+      <Stack.Protected guard={rol === 'aprendiz' || rol === 'admin'}>
         <Stack.Screen name="aprender" options={{ title: 'Aprender' }} />
         <Stack.Screen name="clasificar" options={{ headerShown: false, title: 'Practicar' }} />
         <Stack.Screen name="sanacion" options={{ title: 'Sanación' }} />
         <Stack.Screen name="progreso" options={{ title: 'Mi progreso' }} />
       </Stack.Protected>
-      <Stack.Protected guard={usuario?.rol === 'admin'}>
+      <Stack.Protected guard={rol === 'experto' || rol === 'admin'}>
+        <Stack.Screen name="revisar" options={{ title: 'Rosas dudosas' }} />
+      </Stack.Protected>
+      <Stack.Protected guard={rol === 'admin'}>
         <Stack.Screen name="turno" options={{ title: 'Turno de hoy' }} />
-        <Stack.Screen name="trabajadores" options={{ title: 'Personas' }} />
+        <Stack.Screen name="trabajadores" options={{ title: 'Usuarios' }} />
+        <Stack.Screen name="nuevo-usuario" options={{ title: 'Nuevo usuario' }} />
       </Stack.Protected>
     </Stack>
   );

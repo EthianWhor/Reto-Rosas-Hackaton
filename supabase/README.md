@@ -16,12 +16,15 @@ falten, en orden. `schema.sql` siempre incluye todas las migraciones.
 | Migración | Qué cambia | Aplicada en el proyecto |
 |---|---|---|
 | `001_personas_en_vivo.sql` | Tabla `version_personas` y disparador: la lista de personas se actualiza sola en todas las tablets | Sí (2026-10-24) |
+| `002_roles_y_dudosas.sql` | Roles `admin` / `experto` / `aprendiz` (los "trabajador" pasan a aprendiz), `cambiar_rol` para promover, tabla `etiquetas_expertos` y funciones para revisar las dudosas del robot | Sí (2026-10-24) |
+| `003_activacion_con_codigo.sql` | Alta con nombre, correo, teléfono y rol; código de activación de 6 dígitos (cifrado, 5 intentos); cada persona crea su propio PIN (no obvio); "reiniciar acceso"; validación de nombre, correo y teléfono | Sí (2026-10-24) |
 
 ## Qué hay
 
 | Tabla | Qué guarda | Quién escribe |
 |---|---|---|
-| `personas` | Nombre, rol (admin / trabajador), PIN cifrado y `activo`. **Quitar no borra la fila**: la deja con `activo = false`, para no perder lo que la persona marcó o practicó | Admin, con `crear_persona` y `quitar_persona` |
+| `personas` | Nombre, rol (admin / experto / aprendiz), PIN cifrado y `activo`. **Quitar no borra la fila**: la deja con `activo = false`, para no perder lo que la persona marcó o practicó | Admin, con `crear_persona` y `quitar_persona` |
+| `etiquetas_expertos` | Respuesta de un experto sobre una rosa en la que el robot dudó (ronda, rosa, cuadrante, categoría). Es verdad de terreno para reentrenar a RosaNet; el equipo del modelo la lee con la clave service_role | Expertos y coordinación, con `etiquetar_dudosa` |
 | `version_personas` | Un contador que sube con cada cambio en `personas`, para avisar en vivo a la app | Disparador `personas_cambian` |
 | `sesiones` | Token de cada sesión abierta (vence a las 14 h) | `entrar` y `salir` |
 | `reportes` | JSON completo de cada ronda del robot | El robot (`robot/subir_reporte.py`, clave service_role) |
