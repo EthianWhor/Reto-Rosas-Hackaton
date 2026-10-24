@@ -10,15 +10,13 @@ optimizar el tiempo de los operarios.
 
 ## Red neuronal: RosaNet (`ml/`)
 
-CNN propia (`ml/model.py`, ~1,2 M parámetros, entrenada desde cero) que clasifica la
-**etapa de apertura** de una rosa en la escala común definida en `ml/stages.py`:
+CNN propia (`ml/model.py`, ~1,2 M parámetros, entrenada desde cero) que clasifica cada rosa
+en las **3 categorías del proceso estándar de la finca** (`ml/stages.py`):
 
-1. Botón cerrado · 2. Apertura inicial · 3. Abierta · 4. Senescente
+1. Inmaduro – no cortar · 2. Punto óptimo de corte (punto 3) · 3. Pasado / sobreabierto
 
-> Pendiente: alinear la escala con el proceso estándar de la finca (muy pronto / punto óptimo /
-> muy tarde). Ver CONTEXTO.md.
-
-Para cada predicción devuelve la etapa, la confianza, si está "segura" y tips. Opcionalmente
+Para cada predicción devuelve la categoría, la confianza, si está "segura" y tips basados en la
+información técnica de la finca. Opcionalmente
 genera un mapa de calor (Grad-CAM) con las zonas de la rosa que más pesaron en la decisión.
 
 Todos los comandos se ejecutan **desde esta carpeta (`robot/`)**.
@@ -35,7 +33,17 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
 pip install -r requirements.txt
 ```
 
-### 2. Descargar los datasets (formato **YOLOv8**) en `robot/descargas/`
+### 2. Datos de la finca (verdad de terreno)
+
+Descomprimir `General.zip` en `robot/descargas/General` y convertir los círculos de los PDF en cajas YOLO:
+
+```bash
+python -m ml.finca_labels --src descargas/General --out data/finca_yolo
+```
+
+Revisen las cajas en `data/finca_yolo/preview/`. Las fotos de "Casos difíciles" quedan en test.
+
+### 3. Datasets públicos de apoyo (formato **YOLOv8**) en `robot/descargas/`
 
 | Dataset | Link | Clases |
 |---|---|---|
@@ -45,17 +53,24 @@ pip install -r requirements.txt
 
 De cada proyecto de Roboflow descarguen **una sola versión** (las versiones repiten las mismas fotos).
 
-### 3. Preparar, entrenar, evaluar y predecir
+### 4. Preparar, entrenar, evaluar y predecir
 
 ```bash
-python -m ml.prepare_data --yolo descargas/rose --yolo descargas/floracion --folder descargas/mendeley --out data/stages
+python -m ml.prepare_data --yolo data/finca_yolo --yolo descargas/rose --yolo descargas/floracion --folder descargas/mendeley --out data/stages
 python -m ml.train --data data/stages --out runs/rosanet --epochs 40
 python -m ml.evaluate --ckpt runs/rosanet/best.pt --data data/propias
 python -m ml.predict --ckpt runs/rosanet/best.pt foto.jpg --cam mapa.jpg
 ```
 
 `data/propias` es una carpeta con fotos propias de rosas comerciales, organizadas en una
-subcarpeta por etapa (mismos nombres que en `ml/stages.py`). Es la prueba más honesta.
+subcarpeta por categoría (mismos nombres que en `ml/stages.py`). Es la prueba más honesta.
+
+Para medir solo con las rosas de la finca que el modelo nunca vio:
+
+```bash
+python -m ml.prepare_data --yolo data/finca_yolo --out data/finca_stages
+python -m ml.evaluate --ckpt runs/rosanet/best.pt --data data/finca_stages/test
+```
 
 ### Pruebas
 

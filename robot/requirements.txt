@@ -6,4 +6,5 @@ torchvision
 pillow
 numpy
 pyyaml
+pypdf
 pytest

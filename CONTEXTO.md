@@ -84,6 +84,75 @@ cada una con su carpeta en el repo:
 
 > La sección 2.1 (v1) se conserva como historia. Lo del robot por cuadrantes sigue vigente; la app móvil queda reemplazada por la v2.
 
+## 2.0.1 Información recibida de la finca (General.zip, 2026-10-23)
+
+### Contenido
+| Material | Detalle |
+|---|---|
+| `Información técnica.pdf` | Partes de la rosa (botón floral, pétalos, sépalos, cáliz, pedúnculo, hojas, tallo), qué es invernadero y cama, y la definición del punto de corte |
+| `01_Inmaduro_No_Cortar` | 37 fotos + PDF |
+| `02_Punto_Optimo_Corte` | 18 fotos + PDF |
+| `03_Pasado_Sobreabierto` | 2 fotos + PDF |
+| `04_Casos_Dificiles_Ruido` | 8 fotos + PDF |
+| `Videos de apoyo` | "Corte con carro" (10 s), "Punto de corte baja" (64 s, video de capacitación con puntos de corte 1, 2 y 3), "Video 1 vista a un lado" (28 s), "Video 2 vista al camino" (11 s) |
+| `Párrafo de Loop.loop` | Componente de Microsoft Loop; no se pudo extraer contenido útil |
+
+### Criterio de corte de la finca
+- **Variedad: Freedom** (rosa roja). Todo el material es de una sola variedad.
+- La finca usa una escala de **"puntos" de corte**. El **punto 3** es el punto de corte: *"el caracol está definido mostrando centro, el color de los pétalos es vivo e intenso y la flor presenta un patrón de copa"*.
+- **La falla más común es cortar en punto 2 (cerrado):** la cabeza se ve más pequeña, el rojo es más oscuro y los sépalos están más pegados a los pétalos.
+- Las 3 categorías del proceso estándar: **Inmaduro – no cortar** (punto ≤ 2), **Punto óptimo de corte** (punto 3) y **Pasado / sobreabierto**.
+- Estos rasgos (forma de copa, caracol con centro visible, intensidad del rojo, sépalos separados y tamaño de la cabeza) son la base de los tips de la AR, del juego y de la explicación del robot.
+
+### Cómo vienen las fotos (importante para entrenar)
+- Son **fotos de escena dentro del invernadero**, no recortes: cada una tiene muchas rosas, y en el PDF un **círculo naranja marca cuál es la rosa de esa categoría**. Los JPEG sueltos no tienen el círculo.
+- Por eso **una misma foto aparece en varias carpetas** (por ejemplo, la 26 está en Inmaduro, Óptimo y Difíciles): en cada PDF se marca una rosa distinta. En total hay **56 fotos únicas**.
+- Los círculos son **figuras vectoriales en el PDF**, así que se pueden extraer sus coordenadas automáticamente y convertirlas en cajas YOLO para cada foto. Eso ahorra la anotación manual, aunque conviene revisar las cajas en Roboflow porque el círculo es más grande que la rosa.
+- **Desbalance fuerte:** solo hay 2 ejemplos de "Pasado". Con eso la red no aprende la clase; hay que completarla con los datasets públicos (`flower`, `3_full_bloom`, `4_senescence`) o tomar más fotos.
+- **Casos difíciles:** contraluz contra el plástico del invernadero, rosas lejanas y diminutas, y rosas tapadas por hojas. Son el mejor **conjunto de prueba de robustez**; no hay que usarlos para entrenar.
+
+### Lo que muestran los videos (implicaciones para el robot)
+- Los **pasillos entre camas son angostos** y los comparten los operarios con su carro o caja de corte. El robot debe ser compacto y no estorbar.
+- Las rosas están en la **parte alta de plantas altas**. Las fotos de la finca y los videos de "vista a un lado" y "vista al camino" están tomados **desde abajo mirando hacia arriba**, que es justo la perspectiva de una cámara montada en un robot bajo. La cámara debe apuntar hacia arriba y tolerar el **contraluz**.
+- El video de capacitación (punto de corte 1 → 3) sirve como referencia visual para la AR y el juego (es material de un tercero, "CHT"; usarlo solo como referencia).
+
+### Implicaciones para RosaNet
+- **Pasar a las 3 clases de la finca** (inmaduro / óptimo / pasado) en lugar de 4 etapas genéricas, para que la red hable el idioma del proceso estándar.
+- **Datos de la finca = verdad de terreno.** Los públicos (rosas de jardín, otras variedades) solo sirven de apoyo. Mapeo aproximado: `bud`/`1_bud` → inmaduro; `mid-bud`/`2_early_bloom` → óptimo (*dudoso*: verificar con las fotos de la finca); `flower`/`3_full_bloom`/`4_senescence` → pasado.
+- La red del robot necesita **detectar** (ubicar las rosas en una escena), no solo clasificar recortes. Las fotos de la finca son de escena, así que con las cajas extraídas de los PDF sirven para ambas cosas.
+
+### Lo que falta y hay que pedir
+- **La sanación después del corte no aparece en el material.** Hace falta saber los pasos, los errores típicos y fotos o video.
+- Más ejemplos de "Pasado / sobreabierto".
+- La definición de los puntos 1 y 4 o 5, si existen en su escala.
+
+## 2.0.2 Robot: AgiBot X2 Ultra con rondas nocturnas
+
+**Decisión del equipo:** el robot es un **AgiBot X2 Ultra** (humanoide) y hace las rondas **de noche o en la madrugada**, cuando no hay operarios en los pasillos.
+
+**Especificaciones (según tiendas y distribuidores; confirmar con AgiBot):**
+| | |
+|---|---|
+| Tamaño | ~1,31 m de alto × 46 cm de ancho × 21 cm; ~39 kg |
+| Sensores | LiDAR 3D, cámara RGB-D, RGB estéreo frontal, RGB trasera, micrófonos |
+| Cómputo | 2× RK3588 + NVIDIA Orin NX (157 TOPS): puede correr RosaNet a bordo |
+| Batería | ~500 Wh, **~2 h a 0,5 m/s**, intercambiable; base de carga automática opcional |
+| Velocidad | Normal ≤ 0,8 m/s (máx. 1,8–2 m/s) |
+| SDK | AimDK_X2, compatible con ROS (movimiento, percepción y comportamiento) |
+| Temperatura | −10 °C a 40 °C |
+
+> Hay discrepancias entre fuentes: la tienda oficial lista una "nueva versión" del X2 Ultra *sin* LiDAR ni RGB-D. Hay que confirmar la configuración exacta de la unidad que vamos a usar.
+
+**Implicaciones de operar de noche:**
+- **Ventaja:** no hay operarios en los pasillos (seguridad) y el robot no estorba el trabajo. Además, no hay contraluz del plástico del invernadero, que es uno de los "casos difíciles".
+- **La cámara RGB necesita luz propia.** Ninguna especificación menciona visión nocturna. El LiDAR sirve para navegar a oscuras, pero para ver el rojo de la rosa hace falta **iluminación activa** (por ejemplo, un LED frontal o una lámpara montada en el robot). Bien hecho, esto es una ventaja: **luz controlada = color consistente**, y la intensidad del rojo es justamente un criterio de la finca.
+- **Diferencia de dominio:** todas las fotos de la finca son de día con luz natural. La red se entrena con fotos de día y el robot verá de noche con luz artificial. Hace falta **tomar fotos de prueba de noche con la misma luz del robot** y medir con ellas. Si no se puede, hay que decirlo como límite.
+- **Autonomía:** unas 2 h por carga a 0,5 m/s, unos 3,6 km de recorrido en teoría (menos si se detiene a fotografiar). Hay que calcular cuántas camas cubre por carga y si se necesita la base de carga automática.
+- **Altura:** con ~1,3 m, la cámara de la cabeza queda por debajo de las rosas, así que mira hacia arriba, como en las fotos de la finca. Es consistente con los datos de entrenamiento.
+- **Ancho:** 46 cm; verificar que cabe y gira en los pasillos entre camas.
+
+Fuentes de las especificaciones: generationrobots.com, robotshop.com, store.agibot.com y rbtx.com (fichas del AgiBot X2 Ultra, consultadas el 2026-10-23).
+
 ## 2.1 Propuesta anterior (v1) — reemplazada por la v2
 
 **Foco del MVP:** app móvil + robot. La VR la trabaja otra parte del equipo, en paralelo y con menor prioridad.
@@ -184,9 +253,12 @@ cada una con su carpeta en el repo:
 
 ## 4. Preguntas abiertas
 - [ ] **(v2)** ¿Cuándo y dónde se usa la tablet si no se permiten celulares? (¿sala de capacitación, solo para entrenamiento?)
-- [ ] **(v2)** ¿Cómo define la finca exactamente *muy pronto*, *punto óptimo* y *muy tarde*? ¿Varía por variedad?
-- [ ] **(v2)** ¿En qué consiste la sanación de la planta después del corte? (pasos, errores típicos)
-- [ ] **(v2)** ¿RosaNet pasa a 3 clases (las de la finca) o se mantienen 4 etapas que se traducen a 3?
+- [x] **(v2)** ¿Cómo define la finca *muy pronto*, *punto óptimo* y *muy tarde*? → Punto 3 = óptimo (ver sección 2.0.1). Variedad Freedom.
+- [ ] **(v2)** ¿En qué consiste la sanación de la planta después del corte? **No viene en el material de la finca; hay que pedirlo.**
+- [x] **(v2)** ¿RosaNet pasa a 3 clases (las de la finca)? → Sí, ya está hecho.
+- [ ] **Robot:** ¿qué configuración exacta tiene nuestro X2 Ultra (LiDAR, RGB-D)? ¿Tendremos el robot físicamente en el hackatón?
+- [ ] **Robot:** ¿qué iluminación lleva para la ronda nocturna? ¿Podemos tomar fotos de prueba de noche con esa luz?
+- [ ] **Datos:** la finca dio 69 rosas marcadas (47 inmaduras, 20 óptimas y 2 pasadas). Es muy poco para entrenar desde cero; hacen falta los datasets públicos y, ojalá, más fotos de la finca.
 - [ ] **(v2)** Dashboard: ¿qué tecnología usamos y cómo le llegan los datos del robot?
 - [ ] ¿Qué hardware tenemos o podemos conseguir? (cámara, Raspberry Pi, ESP32 o Arduino, chasis con ruedas, servos, LEDs o láser, Meta Quest)
 - [ ] ¿Tendremos rosas reales para fotografiar y probar? ¿De qué variedades?
@@ -210,6 +282,9 @@ cada una con su carpeta en el repo:
 | 2026-10-23 | **Red propia (RosaNet)** entrenada desde cero en PyTorch, con escala común de 4 etapas (botón cerrado, apertura inicial, abierta, senescente) | El equipo quiere diseñar y entrenar su propia red; 4 etapas porque el dataset de floración trae senescencia |
 | 2026-10-23 | **Cambio de alcance (v2):** tres áreas, Meta Quest (AR 2D de entrenamiento), app tablet (juego del proceso estándar y la sanación) y robot (detección por sectores + dashboard) | La empresa no permite celulares a los operarios |
 | 2026-10-23 | Repo dividido en `metaquest/`, `app-tablet/` y `robot/`; la red neuronal vive en `robot/ml/` | Una carpeta por área de trabajo del equipo |
+| 2026-10-23 | **RosaNet pasa a las 3 categorías de la finca** (inmaduro / óptimo / pasado); los tips salen de la "Información técnica" de la finca | Hablar el mismo idioma que el proceso estándar; los archivos de la finca son la referencia |
+| 2026-10-23 | Las cajas de la finca se extraen automáticamente de los círculos de los PDF (`robot/ml/finca_labels.py`); los casos difíciles van a test | Ahorra la anotación manual y separa una prueba de robustez |
+| 2026-10-23 | Robot = **AgiBot X2 Ultra**, con rondas **nocturnas o de madrugada** | No hay operarios en los pasillos; hace falta iluminación activa para la cámara |
 | 2026-10-23 | El robot trabaja **por cuadrantes**: identifica cada cuadrante, reporta su estado y lo señala físicamente | Da una unidad de gestión clara a la finca ("¿a dónde mando a cortar hoy?") y una acción visible del robot |
 
 ## 6. Bitácora de supuestos y aprendizajes (para el pitch de validación)
@@ -217,4 +292,6 @@ cada una con su carpeta en el repo:
 |---|---|---|
 | Hay bases de datos públicas suficientes de punto de corte | **No** | Los datasets encontrados tienen solo 3 etapas gruesas, son de rosas de jardín y no traen defectos. Sirven para la detección y una base de etapas, pero hacen falta fotos propias de rosas comerciales |
 | Una foto basta para decidir el punto de corte | Por verificar | |
+| La finca enviaría recortes de rosas listos para entrenar | **No** | Envió fotos de escena con la rosa marcada en un PDF; hay que convertir esas marcas en cajas |
+| Las 3 categorías tendrían ejemplos parecidos en cantidad | **No** | Inmaduro 37, Óptimo 18, Pasado 2 |
 | El trabajador nuevo confía más si la app le da un veredicto | Por verificar | |

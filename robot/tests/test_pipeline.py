@@ -7,7 +7,7 @@ import torch
 import yaml
 from PIL import Image, ImageDraw
 
-from ml import prepare_data
+from ml import finca_labels, prepare_data
 from ml.data import StageFolder, present_classes
 from ml.model import IMAGE_SIZE, RosaNet, load_checkpoint, save_checkpoint
 from ml.predict import RosePredictor
@@ -32,9 +32,21 @@ def make_yolo_dataset(root, names, per_split=4):
 
 
 def test_map_class_name_is_case_insensitive():
-    assert map_class_name("Mid-Bud") == "2_apertura_inicial"
-    assert map_class_name("4_Senescence") == "4_senescente"
+    assert map_class_name("Optimo") == "2_optimo"
+    assert map_class_name("Mid-Bud") == "2_optimo"
+    assert map_class_name("4_Senescence") == "3_pasado"
     assert map_class_name("desconocida") is None
+
+
+def test_finca_matrix_math_maps_pdf_points_to_photo():
+    # Foto dibujada en la página con escala 200x300 y origen en (50, 100).
+    image_matrix = [200, 0, 0, 300, 50, 100]
+    inv = finca_labels.invert(image_matrix)
+    u, v = finca_labels.apply(inv, 150, 250)  # centro de la foto en la página
+    assert abs(u - 0.5) < 1e-9 and abs(v - 0.5) < 1e-9
+    scaled = finca_labels.mat_mul([2, 0, 0, 2, 0, 0], [1, 0, 0, 1, 10, 20])  # escala y luego traslada
+    assert finca_labels.apply(scaled, 1, 1) == (12, 22)
+    assert finca_labels.shrink((0.2, 0.2, 0.6, 0.6), 0.5) == pytest.approx((0.3, 0.3, 0.5, 0.5))
 
 
 def test_label_to_box_accepts_box_and_polygon():
