@@ -156,3 +156,19 @@ la dirección del dashboard, y dejar corriendo:
 python -m reporte.envio
 ```
 
+## Modo foto: demo en vivo
+
+El jurado trae una rosa o una foto, y el robot la analiza con el mismo pipeline de la ronda (detector del equipo
++ RosaNet + reglas del robot). Muestra la foto con cada rosa marcada por estado y, en la consola, los consejos de
+la finca para reconocerla.
+
+```bash
+python modo_foto.py foto.jpg            # una o varias fotos
+python modo_foto.py --webcam            # cámara en vivo: ESPACIO analiza, Q sale
+python modo_foto.py foto.jpg --enviar   # además manda un mini reporte a la app (envio.metodo)
+```
+
+Las fotos anotadas quedan en `datos/modo_foto/`. Si la foto es de una sola rosa de cerca y el detector no la
+encuentra, se analiza la foto completa como una rosa; con la cámara, solo lo que está dentro del cuadro guía del
+centro. Sin profundidad no se predice "lista mañana".
+

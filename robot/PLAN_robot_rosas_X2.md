@@ -722,6 +722,27 @@ py modo_foto.py foto_del_jurado.jpg      # o --webcam
 - Genera un mini reporte (Excel + JSON) como si fuera un cuadrante, para que se vea en el dashboard.
 - Si hay tiempo, el mismo modo puede poner la foto como cartel en la simulación y hacer que el robot "la encuentre".
 
+**Hecho (`modo_foto.py`, 2026-10-24):**
+
+```bash
+python modo_foto.py foto.jpg            # una o varias fotos (acepta comodines)
+python modo_foto.py --webcam            # cámara en vivo: ESPACIO analiza, Q sale
+python modo_foto.py foto.jpg --reporte  # además un mini reporte (Excel + JSON) como una ronda
+python modo_foto.py foto.jpg --enviar   # y lo manda a la app con envio.metodo
+```
+
+- Usa las mismas piezas que la ronda real: **detector del equipo + RosaNet** (o la máscara roja si falta el detector) y las reglas de madurez del robot. Nunca usa el oráculo.
+- **Una sola rosa de cerca:** el detector del equipo descarta cajas de más del 8 % de la foto (está hecho para escenas del invernadero). Si se le quita ese límite (`max_box_fraction`), marca caras, manos, un termo rojo y hasta el ícono de "cámara tapada": **no sirve para una rosa en la mano** (para el equipo del modelo). Por eso:
+  - **Con la cámara:** la vista muestra un **cuadro guía** en el centro ("pon la rosa dentro del cuadro"). Si el detector no encuentra rosas en la escena, se analiza **solo lo que está dentro del cuadro**, nunca la imagen completa con la persona y el salón. Si el cuadro no tiene nada rojizo, dice que no ve una rosa. Límite: un objeto rojo dentro del cuadro se analiza como rosa.
+  - **Con una foto que se le pasa a propósito:** si el detector no encuentra rosas, se analiza la foto completa como una rosa (sin filtro de color: los botones inmaduros oscuros casi no tienen píxeles rojizos).
+  - **Siempre:** si la imagen está en blanco (cámara tapada o bloqueada), dice que la cámara no muestra imagen.
+- **Prueba real con webcam (2026-10-24):** las primeras 8 capturas fueron la pantalla gris de "cámara tapada" de Windows y el robot, sin estas protecciones, decía "inmaduro 78 %". Con el cuadro guía, la rosa mostrada en un celular sale "óptimo" (62–65 %) y la cámara tapada se reconoce. Las fotos de la prueba quedaron en `datos/modo_foto/2026-10-24_022736/`.
+- **Salida:** foto anotada (cajas del color de su estado, número, estado y confianza, conteo abajo; las fotos pequeñas se agrandan para que se lean) y en consola, por rosa, el estado, las probabilidades y los consejos de la finca (`tips` de RosaNet). Todo queda en `datos/modo_foto/<hora>/`.
+- **Mini reporte:** mismo formato que la ronda (lo lee la app de la tablet), con un solo cuadrante `INV1-DEMO` e `id_ronda` `INV1_DEMO_<fecha_hora>`. Ojo: si se envía, la app lo va a mostrar como el último reporte.
+- **Webcam:** OpenCV entrega BGR y se pasa a RGB antes del detector, como pide el equipo del modelo.
+- **Límite:** sin profundidad no se sabe el tamaño de la cabeza, así que el modo foto no predice "lista mañana" (en la ronda sí).
+- Con el modelo actual ("noche", sin terminar): de las 4 rosas de una escena de prueba con carteles, 3 salen como "dudosa" (óptimo con 51–53 %). Con una rosa de cerca, la reconoce mejor. Cuando el equipo suba el modelo completo a `modelos/`, este modo lo usa solo.
+
 ---
 
 ## 8. Eficiencia: varias rosas por foto
