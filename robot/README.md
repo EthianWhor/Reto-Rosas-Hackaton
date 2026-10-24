@@ -135,6 +135,10 @@ config): una caja que alguien quita mientras el robot espera y un balde que bloq
 con un sensor de rayos (como un LiDAR): pasa despacio sobre lo bajo, frena ante lo alto, espera hasta 30 s y, si
 sigue ahí, abandona ese camino y lo anota en el reporte.
 
+Acción física: después de las fotos de cada parada, el robot apunta la cabeza a cada rosa óptima nueva y la
+ilumina con un foco angosto (`accion` en el config; `tipo: ninguna` lo apaga). Así el operario ve en el momento
+qué rosas cortar. Cada rosa se señala una sola vez, aunque se vea desde dos paradas.
+
 La configuración está en `config/config.yaml`. Con `percepcion.candidatas: auto` y
 `percepcion.clasificador: auto`, el robot usa el modelo del equipo de `ml/` (detector + RosaNet, pesos en
 `modelos/`, contrato en `CLAUDE.md`). Con las rosas de la simulación como figuras usa el oráculo; para que

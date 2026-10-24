@@ -143,6 +143,33 @@ El código se divide en piezas. Cada pieza tiene una versión **sim** y una **re
 | Posición del robot | la da MuJoCo | odometría + marcas en las camas |
 | WiFi | simulado (se prende al volver a la base) | revisa la conexión real |
 
+### 1.1 Acción física: señalar las rosas óptimas (hecho)
+
+Para que se note por qué es un robot y no solo una cámara: después de las 4 fotos de cada parada, el robot
+**apunta la cabeza a cada rosa óptima nueva y la ilumina con un foco angosto** (1,5 s). Quien pase por el
+camino ve en el momento qué rosas cortar. Es la propuesta de ejemplo; **el equipo puede elegir otra** y se
+cambia en un solo lugar (`Cuerpo.senalar` y `accion` en el config; `accion.tipo: ninguna` la apaga).
+
+- **Cuáles:** las que salen "óptimo" con las mismas reglas del reporte (solo seguras; las dudosas no). Una rosa
+  vista desde dos paradas se señala una sola vez (radio de 8 cm, guardado en el checkpoint, así también al
+  seguir una ronda interrumpida).
+- **Cómo apunta:** gira la cintura hacia la rosa y reparte la inclinación entre cabeza y cintura. Después mide
+  con la pose real de la cámara dónde quedó la rosa y corrige (hasta 6 veces, solo el 60 % de la corrección
+  vertical: la cintura también mueve la cámara y con una rosa cerca la corrección completa oscila). Espera 1 s
+  entre correcciones: con menos, mide con la cámara todavía moviéndose y queda corrida. Queda a menos de
+  ~30 px del centro de la foto (unos 2 cm a 1 m).
+- **Alcance:** cabeza + cintura suben como máximo ~41°. Una rosa de 2 m justo encima del robot no se puede
+  centrar: el foco queda cerca y se cuenta como "fuera de alcance" en la hoja Ronda.
+- **Tiempo (simulación, 20 m de camas, 65 óptimas):** la ronda pasa de 7,2 a 12,6 min, unos 5 s por rosa.
+  En un invernadero con muchas óptimas esto suma; se puede bajar `accion.segundos` o señalar solo las del
+  lado del camino que se cosecha primero.
+- **Arreglo que salió de aquí:** con la cintura girada, el hombro del robot quedaba delante del sensor de
+  obstáculos (las piezas visuales del robot están en el mismo grupo que la escena) y salía un obstáculo
+  fantasma. Ahora el sensor salta las piezas del robot y, al terminar cada parada, el robot vuelve a la
+  postura neutra antes de caminar.
+- **En el robot real:** falta decidir el foco (un LED blanco angosto en la cabeza) y probar los tiempos de la
+  cabeza y la cintura del X2.
+
 ---
 
 ## 2. Estados de la rosa

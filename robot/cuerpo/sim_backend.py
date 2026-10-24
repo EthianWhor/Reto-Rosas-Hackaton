@@ -6,14 +6,15 @@ controlador oficial de AgiBot en el robot real. Los motores siguen una pose
 objetivo con un control PD.
 """
 
+import math
 import time
 
 import mujoco
 import numpy as np
 
 from cuerpo.interfaz import Captura, Cuerpo
-from cuerpo.posturas import NEUTRA
-from sim.escena_invernadero import ALTURA_PELVIS, CAMARA, Escena, resolucion
+from cuerpo.posturas import CINTURA_YAW, NEUTRA, limites_inclinacion, repartir_inclinacion
+from sim.escena_invernadero import ALTURA_PELVIS, CAMARA, PUNTERO, Escena, resolucion
 from sim.rosas import ids_carteles, mirar_a_la_camara
 
 KP, KD = 150.0, 5.0       # control PD de los motores
@@ -26,7 +27,17 @@ VELOCIDAD_GIRO = 0.6      # rad/s al girar en el lugar
 ALTURAS_RAYO_ALTO = (0.08, 0.25, 0.5, 1.0)
 ALTURAS_RAYO_BAJO = (0.015,)
 INICIO_RAYO_M = 0.25      # los rayos salen un poco delante del cuerpo
-GRUPOS_SENSOR = np.array([1, 1, 0, 0, 0, 0], dtype=np.uint8)
+GRUPOS_SENSOR = np.array([1, 1, 0, 0, 0, 0], dtype=np.uint8)   # el robot también dibuja en el 1: _rayo lo salta
+
+
+ITERACIONES_APUNTAR = 6
+ERROR_APUNTAR_RAD = 0.03     # ~1,7°: a 1 m de la rosa, menos de 2 cm del centro
+GANANCIA_INCLINACION = 0.6
+ESPERA_CORRECCION_S = 1.0
+
+
+def _limitar(valor: float, limites: tuple[float, float]) -> float:
+    return min(max(valor, limites[0]), limites[1])
 
 
 class CuerpoSim(Cuerpo):
@@ -41,6 +52,8 @@ class CuerpoSim(Cuerpo):
         self.obj = np.zeros(m.nu)
         self.guia = m.body("guia").mocapid[0]
         self.cam = m.camera(CAMARA).id
+        self.del_robot = m.body_rootid == m.body("pelvis").id   # cuerpos del robot (el sensor no los ve)
+        self.puntero = m.light(PUNTERO).id
         ancho, alto = resolucion(cfg)
         self.render = mujoco.Renderer(m, alto, ancho)
         self.velocidad = cfg["recorrido"]["velocidad_m_s"]
@@ -151,10 +164,22 @@ class CuerpoSim(Cuerpo):
             for h in alturas:
                 for desvio in (-0.25, 0.0, 0.25):
                     inicio = np.array([x, y, h]) + desvio * lado + INICIO_RAYO_M * adelante
-                    d = mujoco.mj_ray(self.m, self.d, inicio, adelante, GRUPOS_SENSOR, 1, -1, geomid)
+                    d = self._rayo(inicio, adelante, geomid)
                     if 0 <= d <= distancia_max - INICIO_RAYO_M:
                         cerca[tipo] = min(cerca.get(tipo, np.inf), float(d + INICIO_RAYO_M))
         return cerca.get("alto"), cerca.get("bajo")
+
+    def _rayo(self, inicio, direccion, geomid) -> float:
+        """Distancia a lo primero que no es el robot (un hombro o un brazo pueden quedar delante
+        del rayo si la cintura está girada). −1 si no hay nada."""
+        recorrido = 0.0
+        for _ in range(10):
+            d = mujoco.mj_ray(self.m, self.d, inicio, direccion, GRUPOS_SENSOR, 1, -1, geomid)
+            if d < 0 or not self.del_robot[self.m.geom_bodyid[geomid[0]]]:
+                return d if d < 0 else recorrido + d
+            paso = d + 0.02                   # sigue el rayo 2 cm más allá, hasta salir de esa pieza
+            inicio, recorrido = inicio + paso * direccion, recorrido + paso
+        return -1.0
 
     def esperar(self, segundos: float) -> None:
         """Quieto. En la simulación, un obstáculo con `se_quita_s` desaparece cuando el robot
@@ -172,6 +197,31 @@ class CuerpoSim(Cuerpo):
         self._poner(**angulos)
         self._esperar(ESPERA_POSTURA_S)
         return {k: round(float(self.d.qpos[self.qadr[self.id[k]]]), 3) for k in angulos}
+
+    def senalar(self, punto, segundos: float) -> bool:
+        """Gira la cintura y sube o baja la cabeza hasta que la rosa quede en el centro de la foto
+        (corrige con la pose real de la cámara, unas pocas veces) y prende el puntero."""
+        punto = np.asarray(punto, dtype=float)
+        x, y = self.posicion()
+        giro = (math.atan2(punto[1] - y, punto[0] - x) - self.rumbo() + math.pi) % (2 * math.pi) - math.pi
+        angulos, inclinacion = dict(NEUTRA, waist_yaw=_limitar(giro, CINTURA_YAW)), 0.0
+        for k in range(ITERACIONES_APUNTAR):
+            angulos["head_pitch"], angulos["waist_pitch"] = repartir_inclinacion(inclinacion)
+            self._poner(**angulos)
+            # corregir es un movimiento chico, pero hay que medir con la cámara quieta (si no, se pasa)
+            self._esperar(ESPERA_POSTURA_S if k == 0 else ESPERA_CORRECCION_S)
+            p = self.d.cam_xmat[self.cam].reshape(3, 3).T @ (punto - self.d.cam_xpos[self.cam])
+            error_x, error_y = math.atan2(p[0], -p[2]), math.atan2(p[1], -p[2])   # la cámara mira hacia −z
+            if max(abs(error_x), abs(error_y)) < ERROR_APUNTAR_RAD:
+                break
+            angulos["waist_yaw"] = _limitar(angulos["waist_yaw"] - error_x, CINTURA_YAW)
+            # negativo = más arriba. Solo una parte: la cintura también mueve la cámara y con una rosa
+            # cerca la corrección completa se pasa (oscila).
+            inclinacion = _limitar(inclinacion - GANANCIA_INCLINACION * error_y, limites_inclinacion())
+        self.m.light_active[self.puntero] = True
+        self._esperar(segundos)
+        self.m.light_active[self.puntero] = False
+        return max(abs(error_x), abs(error_y)) < ERROR_APUNTAR_RAD
 
     def foto(self) -> Captura:
         mirar_a_la_camara(self.m, self.d, self.carteles, self.d.cam_xpos[self.cam].copy())

@@ -27,6 +27,11 @@ def repartir_inclinacion(inclinacion: float) -> tuple[float, float]:
     return cabeza, cintura
 
 
+def limites_inclinacion() -> tuple[float, float]:
+    """Cuánto puede inclinarse la cámara sumando cabeza y cintura."""
+    return CABEZA_PITCH[0] + CINTURA_PITCH[0], CABEZA_PITCH[1] + CINTURA_PITCH[1]
+
+
 def posturas(cfg: dict) -> dict[str, dict]:
     rec = cfg["recorrido"]
     giro = _limitar(rec["giro_diagonal_rad"], CINTURA_YAW)

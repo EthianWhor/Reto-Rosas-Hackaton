@@ -80,6 +80,12 @@ class Cuerpo(ABC):
         a que lleguen. Devuelve los ángulos reales alcanzados."""
 
     @abstractmethod
+    def senalar(self, punto: tuple[float, float, float], segundos: float) -> bool:
+        """Acción física: apunta la cabeza (con la cintura) a `punto` (x, y, z del mundo) y prende el
+        puntero `segundos`, para que el operario vea qué rosa cortar. Devuelve True si quedó
+        apuntando; False si la rosa está fuera del alcance de las articulaciones."""
+
+    @abstractmethod
     def foto(self) -> Captura:
         """Foto RGB (+ profundidad si hay) de la cámara de la cabeza."""
 

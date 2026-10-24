@@ -112,6 +112,12 @@ madurez:
   dias_max_lista_manana: 1.5 # A CALIBRAR
   duda_entre_vecinas_min: 0.85 # duda solo entre inmaduro y óptimo → reglas de "lista mañana", no "dudosa"
 
+# Acción física del robot (sección 1.1 del plan): qué hace con cada rosa óptima.
+# senalar = apunta la cabeza y la ilumina con el puntero; ninguna = solo la anota. El equipo decide.
+accion:
+  tipo: senalar
+  segundos: 1.5     # cuánto tiempo deja el puntero prendido en cada rosa
+
 dedup:
   radio_m: 0.08
 

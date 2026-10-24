@@ -21,6 +21,7 @@ from sim.estructura import Obstaculo, agregar_estructura
 from sim.rosas import RosaVerdad, agregar_rosales
 
 CAMARA = "cam_cabeza"
+PUNTERO = "puntero"
 # Posición de la cámara en la cabeza y orientación "mirando al frente"
 # (las mismas de referencias/jardin_10_plantas.py).
 CAMARA_POS = [0.09, -0.014, -0.045]
@@ -76,6 +77,10 @@ def armar_escena(cfg: dict, camino: int | None = None, en_base: bool = False) ->
                       fovy=fovy_grados(cfg["camara"]["fov_h_grados"], ancho, alto))
     cabeza.add_light(name="linterna", pos=[0.07, 0, -0.03], dir=[1, 0, -0.4],
                      diffuse=[0.9, 0.9, 0.8], cutoff=40, exponent=5, castshadow=True)
+    # Puntero: foco blanco angosto y fuerte que sale de la cámara; se prende solo al señalar una
+    # rosa óptima (verde casi no se ve sobre una rosa roja).
+    cabeza.add_light(name=PUNTERO, pos=CAMARA_POS, dir=[1, 0, 0], diffuse=[3.0, 3.0, 3.0],
+                     cutoff=4, exponent=1, castshadow=False, active=False)
 
     # El robot y el punto guía arrancan juntos a la entrada del camino.
     if en_base:

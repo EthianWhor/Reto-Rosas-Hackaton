@@ -85,3 +85,17 @@ def test_dos_rondas_en_el_mismo_segundo_no_comparten_carpeta(tmp_path):
     cfg = cfg_con()
     a, b = ronda.nueva_carpeta(cfg, tmp_path), ronda.nueva_carpeta(cfg, tmp_path)
     assert a != b and a.is_dir() and b.is_dir()
+
+
+def test_el_sensor_no_se_ve_a_si_mismo_con_la_cintura_girada():
+    cfg = cfg_con(sim__obstaculos=[], sim__estructura={"postes": False, "mangueras_por_camino": [0, 0],
+                                                       "desniveles_por_camino": [0, 0]})
+    escena = armar_escena(cfg, 0)
+    cuerpo = CuerpoSim(escena, cfg)
+    try:
+        cuerpo.pararse()
+        for giro in (1.5, -1.5):          # el hombro queda delante del rayo de 1 m de altura
+            cuerpo.posar({"waist_yaw": giro, "waist_pitch": 0.0, "head_yaw": 0.0, "head_pitch": 0.0})
+            assert cuerpo.obstaculos_adelante(1.5) == (None, None)
+    finally:
+        cuerpo.cerrar()

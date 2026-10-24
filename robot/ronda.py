@@ -28,6 +28,7 @@ from cuerpo.interfaz import Captura, Cuerpo
 from cuerpo.posturas import NEUTRA, posturas
 from navegacion.plano import Plano
 from navegacion.ruta import Tramo, camino_a_la_base, numero_parada, paradas, serpiente
+from percepcion.madurez import decidir
 
 PROFUNDIDAD_MAX_M = 20.0   # más allá no se guarda (en sim es el cielo; una RGB-D real mide unos pocos metros)
 
@@ -137,6 +138,22 @@ class Avance:
              "hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
         self.guardar()
 
+    def anotar_senalada(self, punto: tuple[float, float, float], alcanza: bool) -> None:
+        self.datos.setdefault("senaladas", []).append([round(float(v), 3) for v in punto])
+        if not alcanza:
+            self.datos["fuera_de_alcance"] = self.fuera_de_alcance + 1
+        self.guardar()
+
+    @property
+    def fuera_de_alcance(self) -> int:
+        """Óptimas que la cabeza no pudo centrar (muy altas y muy cerca): el puntero quedó cerca."""
+        return self.datos.get("fuera_de_alcance", 0)
+
+    @property
+    def senaladas(self) -> list[list[float]]:
+        """Rosas óptimas que el robot ya señaló (x, y, z), para no señalar dos veces la misma."""
+        return self.datos.get("senaladas", [])
+
     @property
     def obstaculos(self) -> list[dict]:
         return self.datos.get("obstaculos", [])
@@ -163,10 +180,32 @@ class SeAcaboLaBateria(Exception):
     """Simula batería baja (`--parar-despues`): la ronda se interrumpe y el robot vuelve a la base."""
 
 
+def _senalar_optimas(cuerpo: Cuerpo, cfg: dict, detecciones: list, avance: Avance) -> int:
+    """Acción física (sección 1.1 del plan): después de las fotos de una parada, el robot apunta la
+    cabeza a cada rosa óptima nueva y la ilumina con el puntero, para que el operario la vea.
+    Solo las que salen "óptimo" con las mismas reglas del reporte (seguras); una rosa vista desde
+    dos paradas se señala una vez. `accion.tipo: ninguna` lo apaga."""
+    acc = cfg.get("accion") or {}
+    if acc.get("tipo", "ninguna") != "senalar":
+        return 0
+    radio = cfg["dedup"]["radio_m"]
+    n = 0
+    for det in sorted(detecciones, key=lambda d: (d.lado, d.altura_m)):   # un lado y después el otro
+        if decidir(det.clase, det.seguro, det.probs, det.diametro_cm, cfg).estado != "optimo":
+            continue
+        punto = (det.x, det.y, det.altura_m)
+        if any(math.dist(punto, p) < radio for p in avance.senaladas):
+            continue
+        avance.anotar_senalada(punto, cuerpo.senalar(punto, acc["segundos"]))
+        n += 1
+    return n
+
+
 def _parada(cuerpo: Cuerpo, cfg: dict, plano: Plano, tramo: Tramo, x: float, guardar: GuardarCapturas,
-            analizador, avisar) -> None:
+            analizador, avisar, avance: Avance | None = None) -> None:
     k = numero_parada(plano, cfg, x)
     vistas = 0
+    de_esta_parada = []
     for nombre, angulos in posturas(cfg).items():
         cuerpo.posar(angulos)
         cap = cuerpo.foto()
@@ -174,11 +213,15 @@ def _parada(cuerpo: Cuerpo, cfg: dict, plano: Plano, tramo: Tramo, x: float, gua
         if analizador is not None:
             nuevas = analizador.analizar(cap, fila["foto"], tramo.camino)
             vistas += len(nuevas)
+            de_esta_parada += nuevas
             with open(guardar.carpeta / "detecciones.jsonl", "a", encoding="utf-8") as f:
                 for det in nuevas:
                     f.write(json.dumps(det.a_dict(), ensure_ascii=False) + "\n")
+    senaladas = _senalar_optimas(cuerpo, cfg, de_esta_parada, avance) if avance is not None else 0
+    cuerpo.posar(NEUTRA)   # camina derecho: con la cintura girada, un hombro sale del camino
     flecha = "→" if tramo.sentido > 0 else "←"
-    avisar(f"  camino {tramo.camino} {flecha}, parada x = {x:4.1f} m: {len(posturas(cfg))} fotos, {vistas} rosas vistas")
+    avisar(f"  camino {tramo.camino} {flecha}, parada x = {x:4.1f} m: {len(posturas(cfg))} fotos, {vistas} rosas vistas"
+           + (f", {senaladas} óptimas señaladas" if senaladas else ""))
 
 
 class Bloqueado(Exception):
@@ -253,7 +296,7 @@ def recorrer(cuerpo: Cuerpo, cfg: dict, plano: Plano, guardar: GuardarCapturas, 
                     if parar_despues is not None and hechas_ahora >= parar_despues:
                         raise SeAcaboLaBateria
                     _avanzar(cuerpo, cfg, x, tramo.y, avance, tramo.camino, avisar)
-                    _parada(cuerpo, cfg, plano, tramo, x, guardar, analizador, avisar)
+                    _parada(cuerpo, cfg, plano, tramo, x, guardar, analizador, avisar, avance)
                     avance.marcar(tramo.camino, x)
                     hechas_ahora += 1
                 cuerpo.posar(NEUTRA)
