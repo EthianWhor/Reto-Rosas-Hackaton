@@ -1,7 +1,7 @@
 """Lo que la ronda le pide al cuerpo del robot, igual en simulación y en el robot real.
 
 `sim_backend.py` lo cumple con MuJoCo. `real_backend.py` lo cumplirá con el
-SDK AimDK_X2 (sección 14 del plan). La ronda solo usa estas funciones, así que
+SDK AimDK_X2 (sección 14 del plan; hoy es un esqueleto). La ronda solo usa estas funciones, así que
 pasar de simulación a real es cambiar `modo` en el config.
 """
 
@@ -88,6 +88,11 @@ class Cuerpo(ABC):
     @abstractmethod
     def foto(self) -> Captura:
         """Foto RGB (+ profundidad si hay) de la cámara de la cabeza."""
+
+    def nivel_bateria(self) -> float | None:
+        """Porcentaje de batería (0–100). None si no se puede leer (en la simulación la batería baja
+        se simula con `--parar-despues`)."""
+        return None
 
     def cerrar(self) -> None:
         pass

@@ -96,8 +96,8 @@ recorrido:
   espera_obstaculo_s: 30     # cuánto espera a que lo quiten antes de abandonar el camino
 
 camara:
-  ancho: 1920                # CONFIRMAR con el X2 real
-  alto: 1080
+  ancho: 1280                # cámara RGB-D de la cabeza del X2 según el SDK AimDK_X2 (confirmar en el robot)
+  alto: 720                  # ojo: en la simulación, a 1280 x 720 muchas rosas quedaban < 32 px (sección 14)
   fov_h_grados: 70           # en MuJoCo se convierte a fovy (vertical)
   distancia_max_m: 3.5
   # En sim se usa la misma resolución que la real: el tamaño de la rosa en píxeles

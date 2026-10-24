@@ -398,6 +398,7 @@ tamaño = 0,05 · 1371 / 3 = 23 px      → muy pequeño, toca zoom
 3. Las zonas con candidatas se **recortan a resolución completa**. Eso es el zoom digital, y se le pasa ese recorte al modelo (RosaNet lo reescala a 224 × 224).
 4. Si aun así salen pequeñas, se baja la **distancia máxima útil** (en config: `distancia_max_m`) y se ponen paradas más seguidas.
 
+> **Actualizado:** según el SDK AimDK_X2, la cámara RGB-D de la cabeza da **1280 × 720** (sección 14.1); el campo de visión sale de `camera_info`. Con esa resolución la cobertura simulada baja de 90 % a 68 %.
 > Hay que confirmar la **resolución y el campo de visión** de la cámara RGBD de la cabeza del X2 Ultra real. En la simulación se ponen los mismos valores. Por ahora quedan en config: `camara.ancho`, `camara.alto`, `camara.fov_h_grados`.
 
 **Detalles de MuJoCo para la cámara:**
@@ -1264,6 +1265,50 @@ Lo que cambia (todo en `robot/real_backend.py`):
 3. Probar con fotos de rosas impresas pegadas a 1–2 m de altura.
 4. Medir de verdad la cámara (resolución, campo de visión) y el ancho del robot, y actualizar `config.yaml`.
 5. Confirmar qué sensores trae la unidad (¿LiDAR? ¿RGB-D?), porque hay una versión del X2 Ultra sin ellos.
+
+### 14.1 Esqueleto hecho (`cuerpo/real_backend.py`)
+
+`CuerpoReal` cumple la misma interfaz que la simulación, así la ronda, la percepción y el reporte no cambian.
+Con `modo: real`, `python main.py` muestra la lista de lo que falta probar en el robot.
+
+- **Hecho y probado sin robot:** pasar la nube del LiDAR a "obstáculo alto / bajo" (mismas reglas que los
+  rayos de la simulación), la profundidad de milímetros a metros, la cámara de ROS a la convención de la
+  percepción (ROS mira hacia +z con y abajo; la percepción hacia −z con y arriba), el campo de visión desde
+  `camera_info`, la velocidad para ir a un punto y la lectura de la batería.
+- **Falta probar con el robot delante:** cada método dice qué tópico o servicio del SDK usa, con qué mensaje
+  y en qué modo, y por ahora levanta `NotImplementedError`.
+
+Lo que dice la documentación oficial (AimDK_X2 1.1.0, https://x2-aimdk.agibot.com/en/latest/), ROS 2 Humble:
+
+| Pieza | Tópico / servicio | Nota |
+|-------|-------------------|------|
+| Tomar el control | `SetMcInputSource` (fuente `sdk_rosas`, prioridad 40) | el control remoto siempre gana |
+| Modo | `SetMcAction`: `STAND_DEFAULT` (de pie y camina), `HEAD_ONLY` (cabeza) | |
+| Caminar | `/aima/mc/locomotion/velocity` (`McLocomotionVelocity`, 50 Hz) | lazo abierto; sin comandos 200 ms, frena |
+| Cabeza | `/mc/upper_body_command` (`head_pos` = [yaw, pitch]) | solo en modo `HEAD_ONLY` |
+| Cintura | `/aima/hal/joint/waist/command` (bajo nivel) | sin protección por tiempo |
+| Cámara | `/aima/hal/sensor/rgbd_head_front/rgb_image` y `depth_image` | **1280 × 720**, profundidad en mm |
+| LiDAR | `/aima/hal/sensor/lidar_chest_front/lidar_pointcloud` | `PointCloud2`, 10 Hz, en el pecho |
+| Batería | `/aima/hal/pmu/state` (`battery_remaining_capacity_percentage`) | 1 Hz |
+| Luces | `SetPmuLed` | solo la tira LED del pecho |
+| Posición | módulo SLAM / navegación | **opcional**: se pide a soporte de AgiBot |
+
+**Lo que esto cambia en el plan (riesgos):**
+1. **La cámara RGB-D de la cabeza es de 1280 × 720.** En la simulación, con esa resolución la cobertura baja
+   de **90 % a 68 %** (417 rosas descartadas por medir menos de 32 px). Opciones:
+   a) usar la cámara estéreo de la cabeza (2064 × 1552, 10 Hz, sin profundidad) para el color y la RGB-D
+   solo para la profundidad (hay que calibrar una contra la otra);
+   b) que el equipo del modelo entrene RosaNet también con recortes de 20–32 px;
+   c) más fotos por parada, más cerca de la cama (más tiempo por noche).
+2. **En el X2 Ultra original la cabeza solo gira (yaw).** La inclinación la hace toda la cintura, y esta llega
+   a ±0,31 rad, no a los −0,61 de la postura alta. En el "X2 Ultra (nueva versión)" la cabeza sí inclina.
+   Hay que saber cuál tenemos.
+3. **Cabeza y caminar van en modos distintos** (`HEAD_ONLY` / `STAND_DEFAULT`): en cada parada hay que
+   cambiar de modo y volver. La cintura solo tiene control de bajo nivel: preguntar a AgiBot cómo moverla con
+   el robot en equilibrio.
+4. **No hay foco en la cabeza.** Para la acción física (sección 1.1) hay que montar uno. Mientras tanto, la tira
+   LED del pecho puede parpadear cuando hay una rosa para cortar.
+5. **La posición del robot** sale del SLAM opcional o de odometría + marcas AprilTag: hay que pedirlo o armarlo.
 
 ---
 

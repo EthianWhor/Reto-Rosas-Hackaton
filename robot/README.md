@@ -135,6 +135,9 @@ config): una caja que alguien quita mientras el robot espera y un balde que bloq
 con un sensor de rayos (como un LiDAR): pasa despacio sobre lo bajo, frena ante lo alto, espera hasta 30 s y, si
 sigue ahí, abandona ese camino y lo anota en el reporte.
 
+Robot real: `cuerpo/real_backend.py` es el esqueleto para el AgiBot X2 Ultra con el SDK AimDK_X2 (ROS 2). Con
+`modo: real` en el config, `python main.py` muestra qué falta probar en el robot (sección 14.1 del plan).
+
 Acción física: después de las fotos de cada parada, el robot apunta la cabeza a cada rosa óptima nueva y la
 ilumina con un foco angosto (`accion` en el config; `tipo: ninguna` lo apaga). Así el operario ve en el momento
 qué rosas cortar. Cada rosa se señala una sola vez, aunque se vea desde dos paradas.

@@ -267,7 +267,11 @@ def main(argv=None) -> int:
         return 1
 
     if cfg["modo"] == "real":
-        print("Modo real: falta llenar cuerpo/real_backend.py con el SDK AimDK_X2 (sección 14 del plan).")
+        from cuerpo import real_backend
+        print("Modo real (AgiBot X2 Ultra, SDK AimDK_X2): cuerpo/real_backend.py es todavía un esqueleto.")
+        print("Falta probar en el robot (sección 14 del plan):")
+        for que, como in real_backend.pendientes():
+            print(f"  - {que}: {como}")
         return 0
     return correr_sim(cfg, eleccion, args, reanudar)
 
