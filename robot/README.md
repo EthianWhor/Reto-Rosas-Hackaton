@@ -130,6 +130,11 @@ python main.py --continuar         # sigue la última ronda que quedó a medias,
 python main.py --revisar    # solo revisa todo y toma una foto de prueba, sin caminar
 ```
 
+La escena tiene postes, alambres, mangueras y desniveles, y dos obstáculos de ejemplo (`sim.obstaculos` en el
+config): una caja que alguien quita mientras el robot espera y un balde que bloquea un camino. El robot los ve
+con un sensor de rayos (como un LiDAR): pasa despacio sobre lo bajo, frena ante lo alto, espera hasta 30 s y, si
+sigue ahí, abandona ese camino y lo anota en el reporte.
+
 La configuración está en `config/config.yaml`. Con `percepcion.candidatas: auto` y
 `percepcion.clasificador: auto`, el robot usa el modelo del equipo de `ml/` (detector + RosaNet, pesos en
 `modelos/`, contrato en `CLAUDE.md`). Con las rosas de la simulación como figuras usa el oráculo; para que

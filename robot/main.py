@@ -65,6 +65,27 @@ def guardar_json(ruta: Path, datos) -> None:
         json.dump(datos, f, ensure_ascii=False, indent=1)
 
 
+def cuadrantes_bloqueados(obstaculos: list[dict], plano, cfg: dict) -> list[str]:
+    """Cuadrantes junto a un camino bloqueado: los de las camas a los dos lados, en el tramo del
+    obstáculo. Quedaron revisados solo en parte (desde el otro camino de la cama, si lo hay).
+    Es lo que la app recibe en "obstaculos"."""
+    from navegacion.plano import tramo
+    from percepcion.dedup import cuadrante_id
+    salida = []
+    for o in obstaculos:
+        if o["resultado"] != "bloqueado":
+            continue
+        c = plano.camino(o["camino"])
+        t = min(tramo(min(max(o["x"], 0.0), plano.largo_m - 1e-6), plano.tramo_m),
+                math.ceil(plano.largo_m / plano.tramo_m))
+        for cama in (c.cama_der, c.cama_izq):
+            if cama is not None:
+                cid = cuadrante_id(cfg["invernadero"]["id"], cama, t)
+                if cid not in salida:
+                    salida.append(cid)
+    return salida
+
+
 def mostrar_resumen(rosas, resultado: dict, analizador) -> None:
     print(f"Rosas: {len(analizador.detecciones)} vistas en las fotos → {len(rosas)} sin repetir")
     print("Métricas contra la verdad:")
@@ -128,7 +149,6 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
         print(f"Continúa la ronda {carpeta.name}: {len(avance.datos['hechas'])} paradas ya hechas")
     else:
         carpeta = ronda.nueva_carpeta(cfg, base)
-        carpeta.mkdir(parents=True, exist_ok=True)
         avance = ronda.Avance.nuevo(carpeta, cfg, caminos)
         guardar_json(carpeta / "verdad.json",
                      {"semilla": cfg["sim"]["semilla"], "rosas": [r.a_dict() for r in escena.verdad]})
@@ -165,6 +185,7 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
         "inicio": f"{hora_inicio:%Y-%m-%d %H:%M:%S}",
         "fin": f"{hora_fin:%Y-%m-%d %H:%M:%S}",
         "fechas_fotos": guardar.fechas,
+        "obstaculos": cuadrantes_bloqueados(avance.obstaculos, plano, cfg),
         "ronda": [
             ("id_ronda", carpeta.name),
             ("modo", cfg["modo"]),
@@ -176,7 +197,8 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
             ("rosas vistas en las fotos", len(analizador.detecciones)),
             ("rosas sin repetir", len(rosas)),
             ("descartadas por pequeñas (< 32 px)", analizador.descartadas["pequenas"]),
-            ("obstáculos encontrados", 0),
+            ("obstáculos encontrados", "; ".join(
+                f"camino {o['camino']} metro {o['x']:.1f}: {o['resultado']}" for o in avance.obstaculos) or "ninguno"),
             ("factor de color (tarjeta)", "sin calibrar"),
             ("percepción", f"candidatas {eleccion['candidatas']}, clasificador {eleccion['clasificador']}"),
             ("versión del modelo", modelo_equipo.revisar(cfg)["clasificador"]["motivo"]
@@ -190,6 +212,10 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
     mostrar_resumen(rosas, resultado, analizador)
 
     rutas = archivos.guardar(rep, base / "salida", cfg["reporte"]["formatos"], ya_enviados=base / "enviados")
+    for o in avance.obstaculos:
+        print(f"Obstáculo en el camino {o['camino']}, metro {o['x']:.1f}: {o['resultado']}")
+    if rep.obstaculos:
+        print(f"Cuadrantes junto a un camino bloqueado (revisados solo en parte): {', '.join(rep.obstaculos)}")
     print("  orden  cuadrante      prioridad  óptimo  mañana  inmaduro  pasado  dudosa")
     for c in sorted(rep.cuadrantes, key=lambda f: f["orden"]):
         print(f"  {c['orden']:>5}  {c['cuadrante_id']:<14} {c['prioridad']:<9}  {c['optimo']:>6}  "

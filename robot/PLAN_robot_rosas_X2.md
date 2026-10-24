@@ -477,6 +477,17 @@ Qué hace el robot:
 - Camina **más lento** (0,2 m/s) en los tramos marcados como difíciles.
 - Si el LiDAR o la profundidad detectan algo más alto que 5 cm en el camino, **para** y lo anota en el reporte como "obstáculo en INV1-C07-T3".
 
+**Hecho en la simulación (`sim/estructura.py`, `ronda.py`, 2026-10-24):**
+- **Escena:** postes cada 3 m en los bordes de las camas, con alambres guía a 1,2 y 1,8 m (tapan la vista como en las fotos reales), 1–2 mangueras cruzando cada camino y 0–2 desniveles (parches de 1–3 cm). Usa su propio azar: no cambia las rosas de una semilla. Se configura en `sim.estructura`.
+- **Obstáculos altos** en `sim.obstaculos` (camino, metro, alto, y `se_quita_s` si alguien lo quita mientras el robot espera). Por defecto: una caja en el camino 1 que quitan a los 10 s y un balde en el camino 2 que se queda toda la noche.
+- **Sensor** (`obstaculos_adelante`): rayos hacia adelante, como un LiDAR, en el centro del camino y a 25 cm de cada lado. Los rayos altos (8 cm a 1 m) ven lo que obliga a frenar; uno bajo (1,5 cm) ve mangueras y desniveles. No ven al propio robot. En el robot real sale del LiDAR o de la cámara de profundidad.
+- **Comportamiento** (`_avanzar` en `ronda.py`): avanza de a 1 m mirando 1,5 m adelante.
+  - Obstáculo bajo en el tramo: lo cruza a 0,2 m/s (`velocidad_dificil_m_s`).
+  - Obstáculo alto: frena a 50 cm y espera hasta 30 s (`espera_obstaculo_s`), revisando cada 5 s. Si lo quitan, sigue.
+  - Si sigue ahí: abandona el camino, sale por donde entró (es la única vez que gira dentro de un camino) y sigue con los demás caminos desde ese lado (la serpiente se vuelve a planear).
+- **Reporte:** en `obstaculos` (lo que lee la app) van los cuadrantes junto a un camino bloqueado, en el tramo del obstáculo (quedaron revisados solo en parte). La hoja `Ronda` y el checkpoint guardan todos, también los que quitaron.
+- **Ronda de prueba con los obstáculos por defecto:** 84 fotos en vez de 108 (el camino 2 se abandonó en el metro 4,2), cobertura 90 % (la cama 2 se vio solo desde el camino 1), obstáculos reportados: `INV1-C02-T1`.
+
 ### 5.3 Caminar en simulación vs real
 
 | Modo | Cómo camina |

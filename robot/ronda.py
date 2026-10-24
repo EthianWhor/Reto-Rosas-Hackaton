@@ -16,6 +16,7 @@ Estructura de cada ronda:
 """
 
 import json
+import math
 import os
 from datetime import datetime
 from pathlib import Path
@@ -78,8 +79,18 @@ class GuardarCapturas:
 
 
 def nueva_carpeta(cfg: dict, base: Path) -> Path:
+    """Crea la carpeta de una ronda nueva. Si ya hay una con la misma hora (dos rondas en el
+    mismo segundo), le agrega _2, _3... para que nunca compartan checkpoint ni fotos."""
     id_ronda = f"{cfg['invernadero']['id']}_{datetime.now():%Y-%m-%d_%H%M%S}"
-    return base / "rondas" / id_ronda
+    (base / "rondas").mkdir(parents=True, exist_ok=True)
+    n = 1
+    while True:
+        carpeta = base / "rondas" / (id_ronda if n == 1 else f"{id_ronda}_{n}")
+        try:
+            carpeta.mkdir()
+            return carpeta
+        except FileExistsError:
+            n += 1
 
 
 class Avance:
@@ -118,6 +129,17 @@ class Avance:
     def marcar(self, camino: int, x: float) -> None:
         self.datos["hechas"].append([camino, round(x, 2)])
         self.guardar()
+
+    def anotar_obstaculo(self, camino: int, x: float, alto_m: float | None, resultado: str) -> None:
+        """resultado: "lo quitaron" (siguió) o "bloqueado" (abandonó el camino)."""
+        self.datos.setdefault("obstaculos", []).append(
+            {"camino": camino, "x": round(x, 2), "resultado": resultado,
+             "hora": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
+        self.guardar()
+
+    @property
+    def obstaculos(self) -> list[dict]:
+        return self.datos.get("obstaculos", [])
 
     def terminar(self) -> None:
         self.datos["terminada"] = True
@@ -159,36 +181,96 @@ def _parada(cuerpo: Cuerpo, cfg: dict, plano: Plano, tramo: Tramo, x: float, gua
     avisar(f"  camino {tramo.camino} {flecha}, parada x = {x:4.1f} m: {len(posturas(cfg))} fotos, {vistas} rosas vistas")
 
 
+class Bloqueado(Exception):
+    """El camino tiene un obstáculo que no quitaron."""
+
+    def __init__(self, x_obstaculo: float):
+        self.x_obstaculo = x_obstaculo
+
+
+def _avanzar(cuerpo: Cuerpo, cfg: dict, x_meta: float, y: float, avance: Avance, camino: int, avisar) -> None:
+    """Camina por el camino hasta x_meta revisando obstáculos (sección 5.2 y 15 del plan).
+
+    - Obstáculo alto adelante: frena a `distancia_frenado_m` y espera hasta `espera_obstaculo_s`
+      (revisa cada 5 s). Si lo quitan, sigue; si no, lanza Bloqueado.
+    - Obstáculo bajo (manguera, desnivel) en el tramo: lo cruza a `velocidad_dificil_m_s`.
+    """
+    rec = cfg["recorrido"]
+    frenado = rec["distancia_frenado_m"]
+    while True:
+        x0, _ = cuerpo.posicion()
+        falta = abs(x_meta - x0)
+        if falta < 1e-3:
+            return
+        sentido = 1 if x_meta > x0 else -1
+        cuerpo.orientar(0.0 if sentido > 0 else math.pi)
+        paso = min(falta, rec["mira_adelante_m"] - frenado)   # avanza de a poco, mirando adelante
+        alto, bajo = cuerpo.obstaculos_adelante(paso + frenado)
+        lenta = rec["velocidad_dificil_m_s"] if bajo is not None and bajo <= paso + 0.3 else None
+        if alto is None or alto - frenado >= paso:
+            cuerpo.ir_a(x0 + sentido * paso, y, lenta)
+            continue
+        if alto - frenado > 0.05:                             # se acerca hasta la distancia de frenado
+            cuerpo.ir_a(x0 + sentido * (alto - frenado), y, lenta)
+        x_obst = cuerpo.posicion()[0] + sentido * frenado
+        avisar(f"  obstáculo en el camino {camino}, metro {x_obst:.1f}: espera a que lo quiten")
+        esperado = 0.0
+        while esperado < rec["espera_obstaculo_s"]:
+            cuerpo.esperar(5.0)
+            esperado += 5.0
+            alto, _ = cuerpo.obstaculos_adelante(frenado + 0.3)
+            if alto is None:
+                break
+        if alto is not None:
+            avance.anotar_obstaculo(camino, x_obst, None, "bloqueado")
+            raise Bloqueado(x_obst)
+        avance.anotar_obstaculo(camino, x_obst, None, "lo quitaron")
+        avisar(f"  lo quitaron después de {esperado:.0f} s: sigue")
+
+
 def recorrer(cuerpo: Cuerpo, cfg: dict, plano: Plano, guardar: GuardarCapturas, avance: Avance,
              analizador=None, parar_despues: int | None = None, avisar=print) -> bool:
     """Ronda en serpiente desde la base y de vuelta a la base. Salta las paradas ya hechas.
 
-    Devuelve True si terminó todas las paradas; False si se interrumpió (batería).
+    Si un camino está bloqueado, el robot sale por donde entró (gira dentro del camino: es la única
+    vez que lo hace), anota el obstáculo y sigue con los demás caminos desde ese lado.
+    Devuelve True si terminó (aunque haya caminos bloqueados); False si se interrumpió (batería).
     """
     base = tuple(cfg["sim"]["base_xy"])
-    pendientes = [c for c in avance.caminos
-                  if not all(avance.hecha(c, x) for x in paradas(plano, cfg))]
+    cola = [c for c in avance.caminos if not all(avance.hecha(c, x) for x in paradas(plano, cfg))]
+    desde_cabecera = True
     hechas_ahora = 0
     tramo = None
     try:
-        for tramo in serpiente(plano, cfg, pendientes):
+        while cola:
+            tramo = serpiente(plano, cfg, [cola.pop(0)], desde_cabecera)[0]
             avisar(f"Camino {tramo.camino} {'hacia el fondo' if tramo.sentido > 0 else 'hacia la cabecera'}")
             cuerpo.ir_a(tramo.entrada_x, tramo.y)
-            for x in tramo.xs:
-                if avance.hecha(tramo.camino, x):
-                    continue
-                if parar_despues is not None and hechas_ahora >= parar_despues:
-                    raise SeAcaboLaBateria
-                cuerpo.ir_a(x, tramo.y)
-                _parada(cuerpo, cfg, plano, tramo, x, guardar, analizador, avisar)
-                avance.marcar(tramo.camino, x)
-                hechas_ahora += 1
-            cuerpo.posar(NEUTRA)
-            cuerpo.ir_a(tramo.salida_x, tramo.y)
+            try:
+                for x in tramo.xs:
+                    if avance.hecha(tramo.camino, x):
+                        continue
+                    if parar_despues is not None and hechas_ahora >= parar_despues:
+                        raise SeAcaboLaBateria
+                    _avanzar(cuerpo, cfg, x, tramo.y, avance, tramo.camino, avisar)
+                    _parada(cuerpo, cfg, plano, tramo, x, guardar, analizador, avisar)
+                    avance.marcar(tramo.camino, x)
+                    hechas_ahora += 1
+                cuerpo.posar(NEUTRA)
+                _avanzar(cuerpo, cfg, tramo.salida_x, tramo.y, avance, tramo.camino, avisar)
+                desde_cabecera = tramo.salida_x < 0
+            except Bloqueado:
+                avisar(f"  sigue ahí: abandona el camino {tramo.camino} y sale por donde entró")
+                cuerpo.posar(NEUTRA)
+                cuerpo.ir_a(tramo.entrada_x, tramo.y)
+                desde_cabecera = tramo.entrada_x < 0
     except SeAcaboLaBateria:
         avisar("Batería baja: se guardó el avance y el robot vuelve a la base.")
         cuerpo.posar(NEUTRA)
-        cuerpo.ir_a(tramo.salida_x, tramo.y)   # sigue de frente hasta salir del camino (no gira dentro)
+        try:
+            _avanzar(cuerpo, cfg, tramo.salida_x, tramo.y, avance, tramo.camino, avisar)  # sale de frente
+        except Bloqueado:
+            cuerpo.ir_a(tramo.entrada_x, tramo.y)
         for punto in camino_a_la_base(plano, cuerpo.posicion(), base):
             cuerpo.ir_a(*punto)
         return False

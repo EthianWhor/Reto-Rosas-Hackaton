@@ -10,13 +10,14 @@ pasos (sección 13.1 del plan).
 
 import math
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import mujoco
 import numpy as np
 
 from configuracion import ruta
 from navegacion.plano import Plano, armar_plano
+from sim.estructura import Obstaculo, agregar_estructura
 from sim.rosas import RosaVerdad, agregar_rosales
 
 CAMARA = "cam_cabeza"
@@ -36,6 +37,7 @@ class Escena:
     plano: Plano
     verdad: list[RosaVerdad]
     camino: int | None       # None = el robot arrancó en la base
+    obstaculos: list[Obstaculo] = field(default_factory=list)
 
 
 def fovy_grados(fov_h_grados: float, ancho: int, alto: int) -> float:
@@ -89,8 +91,9 @@ def armar_escena(cfg: dict, camino: int | None = None, en_base: bool = False) ->
                             pos=[bx, by, 0.005], rgba=[0.15, 0.45, 0.25, 1], contype=0, conaffinity=0)
     _agregar_camas(spec, plano, cfg["sim"]["altura_cama_m"])
     verdad = agregar_rosales(spec, plano, cfg, rng)
+    obstaculos = agregar_estructura(spec, plano, cfg)   # postes, mangueras, desniveles, obstáculos
 
     m = spec.compile()
     d = mujoco.MjData(m)
     mujoco.mj_forward(m, d)
-    return Escena(m, d, plano, verdad, camino)
+    return Escena(m, d, plano, verdad, camino, obstaculos)

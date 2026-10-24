@@ -52,13 +52,17 @@ def numero_parada(plano: Plano, cfg: dict, x: float) -> int:
     return min(range(len(xs)), key=lambda k: abs(xs[k] - x))
 
 
-def serpiente(plano: Plano, cfg: dict, caminos: list[int]) -> list[Tramo]:
-    """Tramos en orden: el primero hacia el fondo, el siguiente de vuelta, y así."""
+def serpiente(plano: Plano, cfg: dict, caminos: list[int], desde_cabecera: bool = True) -> list[Tramo]:
+    """Tramos en orden: el primero se aleja del lado donde está el robot, el siguiente vuelve, y así.
+
+    `desde_cabecera=False` sirve cuando el robot quedó en el pasillo del fondo (por ejemplo, después
+    de abandonar un camino bloqueado y volver a planear).
+    """
     xs = paradas(plano, cfg)
     cabecera, fondo = -SALIDA_M, plano.largo_m + SALIDA_M
     tramos = []
     for i, numero in enumerate(caminos):
-        sentido = 1 if i % 2 == 0 else -1
+        sentido = (1 if i % 2 == 0 else -1) * (1 if desde_cabecera else -1)
         tramos.append(Tramo(
             camino=numero, sentido=sentido, y=plano.camino(numero).y,
             xs=tuple(xs if sentido > 0 else reversed(xs)),

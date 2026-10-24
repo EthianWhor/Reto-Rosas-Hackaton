@@ -51,12 +51,28 @@ class Cuerpo(ABC):
         """Hacia dónde mira el cuerpo (rad; 0 = +x)."""
 
     @abstractmethod
-    def ir_a(self, x: float, y: float) -> None:
-        """Gira hacia el punto y camina en línea recta hasta él, mirando hacia donde va."""
+    def ir_a(self, x: float, y: float, velocidad: float | None = None) -> None:
+        """Gira hacia el punto y camina en línea recta hasta él, mirando hacia donde va.
+        `velocidad` (m/s) reemplaza la normal, por ejemplo en un tramo difícil."""
 
     def caminar_hasta(self, x: float) -> None:
         """Camina por el camino actual (a lo largo de x) hasta x."""
         self.ir_a(x, self.posicion()[1])
+
+    @abstractmethod
+    def orientar(self, rumbo: float) -> None:
+        """Gira en el lugar hasta mirar hacia `rumbo` (rad; 0 = +x)."""
+
+    @abstractmethod
+    def obstaculos_adelante(self, distancia_max: float) -> tuple[float | None, float | None]:
+        """(distancia al obstáculo alto más cercano, distancia al obstáculo bajo más cercano) hacia
+        donde mira el robot, dentro del ancho del camino; None si no hay hasta `distancia_max`.
+        Alto = más de `recorrido.alto_obstaculo_m` (frena); bajo = mangueras, desniveles (va despacio).
+        En el robot real sale del LiDAR o de la cámara de profundidad."""
+
+    @abstractmethod
+    def esperar(self, segundos: float) -> None:
+        """Se queda quieto (por ejemplo, esperando a que quiten un obstáculo)."""
 
     @abstractmethod
     def posar(self, angulos: dict) -> dict:
