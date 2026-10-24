@@ -11,6 +11,9 @@ percepcion:
   clasificador: auto         # auto | oraculo | rosanet | detector_equipo
   margen_recorte: 0.15       # el margen con el que se calibró RosaNet (robot/CLAUDE.md)
   tamano_min_px: 32          # igual que --min-size de ml/prepare_data.py
+  # El detector mira la foto sin achicarla (1920 px en la sim, 1280 en el X2) en vez de a 960 px.
+  # Con el detector de la finca (2026-10-24): cobertura en la sim 50 % → 71 %, 0 falsas (plan 7.11).
+  detector_tamano_nativo: true
   # Pinta de gris claro el fondo oscuro del recorte (con la profundidad) antes de
   # RosaNet. Hacía falta con la red de día (plan, sección 7.8). Con la red "noche"
   # (2026-10-24, entrenada con fondo oscuro) ya no ayuda y hace perder óptimas,

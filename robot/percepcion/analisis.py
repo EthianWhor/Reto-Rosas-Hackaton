@@ -79,7 +79,8 @@ def crear_analizador(cfg: dict, eleccion: dict, plano: Plano, verdad=None) -> An
     if eleccion_cand == "oraculo":
         candidatas = cands.CandidatasOraculo(verdad, cfg, rng)
     elif eleccion_cand == "detector_equipo":
-        candidatas = cands.CandidatasDetector(modelo_equipo.cargar(cfg, "detector"))
+        candidatas = cands.CandidatasDetector(modelo_equipo.cargar(cfg, "detector"),
+                                              cfg["percepcion"].get("detector_tamano_nativo", False))
     elif eleccion_cand == "color":
         candidatas = cands.CandidatasColor()
     else:

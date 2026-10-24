@@ -748,6 +748,34 @@ En el mismo pull el equipo de la app agregó `robot/subir_reporte.py`: sube el J
 
 Del lado del robot se agregó `envio.metodo: supabase` (`reporte/envio.py`): usa la función `subir()` de ellos sin modificarla, dentro de la bandeja de salida con sus reintentos. Solo sube el `.json`; el Excel se queda en el robot. Necesita `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en `robot/.env` (no se sube a git). En la simulación sigue por defecto `carpeta`, porque no hay claves; **no se probó contra el Supabase real.**
 
+### 7.11 Detector ajustado con escenas de la finca (pull del 2026-10-24)
+
+El equipo del modelo subió `modelos/detector_rosas.pt` ajustado con 95 escenas del invernadero (en sus 30
+escenas de prueba encuentra el 63 % de las rosas con 5 falsas alarmas; el anterior, el 25 %). También cambió
+`ml/detect.py` a 960 px y confianza 0,25. El robot lo usa solo (crea el detector solo con los pesos), sin
+cambiar nada de lo suyo. La versión anterior queda como `detector_rosas_v1_publico.pt`.
+
+**Medido en la simulación con carteles (fotos reales de la finca, `--rosas cartel`), misma escena:**
+
+| | Detector anterior | Detector de la finca (960 px) | **Detector de la finca, foto sin achicar (1920 px)** |
+|---|---|---|---|
+| Cobertura | 29 % | 50 % | **71 %** |
+| Clase correcta | 45 % | 61 % | **69 %** |
+| Rosas falsas | 0 | 0 | 0 |
+| Tiempo de cómputo (CPU, 84 fotos) | 63 s | 61 s | 78 s |
+
+- **Adaptación del lado del robot:** `percepcion.detector_tamano_nativo: true`. El detector mira la foto en su
+  tamaño (1920 px en la sim, 1280 en el X2 real) en vez de achicarla a 960: las rosas de la ronda ya son
+  pequeñas y al achicar la foto se perdían. No toca `ml/`: cambia el `imgsz` del detector ya creado, y nunca
+  por debajo del suyo (la webcam del modo foto sigue igual).
+- **Para el equipo del modelo:** ellos midieron 960 px con sus fotos; con las del robot rinde más a tamaño
+  completo. Conviene que lo midan también con sus escenas (¿suben las falsas alarmas a 1280–1920 px?).
+- **Modo foto:** el detector nuevo ya encuentra solo una rosa de cerca (antes hacía falta el cuadro guía).
+- **Lo que cortaría el robot (estado final, 1920 px):** de 12 "cortar hoy", 9 son óptimas, 2 inmaduras y 1
+  pasada. Lo que se pierde ahora es de RosaNet (sin cambios en este pull): 12 óptimas salen inmaduras, 8
+  dudosas, y las pasadas casi siempre van a "dudosa" (17 de 19). Queda para el paso de las reglas de
+  decisión, cuando llegue el RosaNet completo.
+
 ### 7.5 Modo foto: para la demo en vivo
 
 En la presentación el jurado **pone a prueba el prototipo con casos evaluados en ese momento** (CONTEXTO.md sección 1, "Funcionamiento y evidencia", 25 pts). Una ronda con oráculo no responde a una rosa que traiga el jurado. Por eso hay un modo aparte:

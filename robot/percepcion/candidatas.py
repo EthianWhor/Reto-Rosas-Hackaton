@@ -33,12 +33,21 @@ class Candidata:
 
 
 class CandidatasDetector:
-    """El detector del equipo. Solo ubica; la categoría la da RosaNet (robot/CLAUDE.md)."""
+    """El detector del equipo. Solo ubica; la categoría la da RosaNet (robot/CLAUDE.md).
 
-    def __init__(self, detector):
+    Con `tamano_nativo`, el detector mira la foto sin achicarla: usa el tamaño de la foto si es mayor
+    que el suyo (`imgsz`, 960 px). Las rosas de la ronda se ven pequeñas y al achicar la foto de
+    1920 px a 960 quedaban sin detectar (en la simulación, cobertura 50 % → 71 %; plan, sección 7.11).
+    Una foto más chica (la webcam del modo foto) sigue igual que antes.
+    """
+
+    def __init__(self, detector, tamano_nativo: bool = False):
         self.detector = detector   # ml.detect.RoseDetector (lo crea modelo_equipo.cargar)
+        self.tamano_equipo = getattr(detector, "imgsz", None) if tamano_nativo else None
 
     def buscar(self, cap: Captura) -> list[Candidata]:
+        if self.tamano_equipo:     # múltiplo de 32, como pide YOLO
+            self.detector.imgsz = max(self.tamano_equipo, -(-max(cap.ancho, cap.alto) // 32) * 32)
         salida = []
         for d in self.detector.detect(cap.rgb):           # cap.rgb ya es RGB
             x1, y1, x2, y2 = (round(v) for v in d["bbox"])

@@ -135,3 +135,21 @@ def test_carteles_miran_a_la_camara():
         hacia_camara = camara - escena.d.geom_xpos[g]
         assert np.dot(cara, hacia_camara / np.linalg.norm(hacia_camara)) == pytest.approx(1.0, abs=1e-6)
         assert escena.d.geom_xmat[g].reshape(3, 3)[2, 0] == pytest.approx(0.0, abs=1e-6)   # foto derecha
+
+
+def test_el_detector_mira_la_foto_sin_achicarla():
+    class DetectorConTamano:
+        imgsz = 960
+        def detect(self, img):
+            return []
+    det = DetectorConTamano()
+    nativo = CandidatasDetector(det, tamano_nativo=True)
+    nativo.buscar(captura(np.zeros((1080, 1920, 3), np.uint8)))
+    assert det.imgsz == 1920                       # foto de la ronda: sin achicar
+    nativo.buscar(captura(np.zeros((720, 1270, 3), np.uint8)))
+    assert det.imgsz == 1280                       # redondeado a múltiplo de 32
+    nativo.buscar(captura(np.zeros((480, 640, 3), np.uint8)))
+    assert det.imgsz == 960                        # foto chica (webcam): igual que antes
+    det.imgsz = 960
+    CandidatasDetector(det).buscar(captura(np.zeros((1080, 1920, 3), np.uint8)))
+    assert det.imgsz == 960                        # apagado: el tamaño del equipo

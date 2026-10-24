@@ -71,7 +71,12 @@ def test_con_la_camara_analiza_solo_el_cuadro_guia(cfg):
     guia = modo_foto.cuadro_guia(640, 480)
     cuadro[120:360, 200:440] = rosa_img                       # la rosa dentro del cuadro guía
     rosas = an.analizar(cuadro, guia)
-    assert len(rosas) == 1 and rosas[0].caja == list(guia) and rosas[0].foto_completa
+    assert len(rosas) == 1
+    x1, y1, x2, y2 = rosas[0].caja
+    if rosas[0].foto_completa:                                 # el detector no la vio: se analiza el cuadro guía
+        assert rosas[0].caja == list(guia)
+    else:                                                      # el detector (ajustado en la finca) la encuentra solo
+        assert 200 <= (x1 + x2) / 2 <= 440 and 120 <= (y1 + y2) / 2 <= 360
 
 
 def test_mini_reporte_tiene_el_formato_que_lee_la_app(cfg):
