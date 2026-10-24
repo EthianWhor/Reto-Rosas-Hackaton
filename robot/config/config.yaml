@@ -1,0 +1,110 @@
+# Configuración de la ronda del robot (ver PLAN_robot_rosas_X2.md).
+# Las rutas relativas son desde la carpeta robot/.
+# Lo marcado "A CALIBRAR" o "CONFIRMAR" son supuestos, no datos de la finca ni de AgiBot.
+
+modo: sim                    # sim | real
+
+percepcion:
+  # auto = usa lo que haya en ml/ (el modelo del equipo). Después de un git pull,
+  # si aparece el detector, el robot lo empieza a usar solo (ver modelo_equipo).
+  candidatas: auto           # auto | oraculo | color | detector_equipo
+  clasificador: auto         # auto | oraculo | rosanet | detector_equipo
+  margen_recorte: 0.10       # igual que --pad de ml/prepare_data.py
+  tamano_min_px: 32          # igual que --min-size de ml/prepare_data.py
+  # la confianza mínima ("seguro") la pone RosaNet (0,6); no se repite aquí
+
+# Lo que el robot sabe del modelo del equipo. Es lo único que se cambia si el
+# equipo usa otros nombres de módulo, clase o pesos.
+modelo_equipo:
+  clasificador:              # RosaNet (ya existe en ml/predict.py)
+    modulo: ml.predict
+    clase: RosePredictor
+    pesos: runs/rosanet/best.pt
+  detector:                  # todavía no existe: nombres SUPUESTOS, confirmar con el equipo
+    modulo: ml.detect
+    clase: RoseDetector
+    pesos: runs/detector/best.pt
+    clasifica: false         # true si el detector ya dice inmaduro/optimo/pasado por caja
+
+sim:
+  escena: escena_base.xml
+  rosas: figura              # figura (para oráculo) | cartel (para RosaNet)
+  carteles_dir: ../app-tablet/assets/rosas
+  semilla: 7
+  # Escena de prueba más pequeña que el invernadero (la completa pesa mucho).
+  # Sin estos dos valores se usa `invernadero` completo.
+  camas: 2
+  largo_cama_m: 10
+  camino_inicial: 1          # camino por el que arranca el robot (1 = entre la cama 1 y la 2)
+  altura_cama_m: 0.25
+  tallos_por_metro: [8, 12]
+  prob_estados:              # qué tan seguido sale cada estado en la escena
+    inmaduro: 0.50
+    lista_manana: 0.15
+    optimo: 0.25
+    pasado: 0.10
+
+# Errores a propósito del oráculo (sección 7.4): así se prueba el resto del
+# sistema como si el modelo se equivocara a veces.
+oraculo:
+  fallos: 0.07               # rosas visibles que "no ve"
+  errores_clase: 0.08        # rosas con la clase equivocada
+  confianza: [0.50, 0.98]    # rango de la confianza que inventa
+  ruido_caja: 0.10           # la caja se corre y cambia de tamaño hasta este % del tamaño
+
+invernadero:
+  id: INV1
+  camas: 20
+  largo_cama_m: 30
+  ancho_cama_m: 1.0
+  ancho_camino_m: 0.8
+  tramo_m: 5
+
+rosas:
+  altura_min_m: 1.0
+  altura_max_m: 2.0
+  diametro_punto3_cm: 5.0    # A CALIBRAR
+
+recorrido:
+  paso_entre_paradas_m: 1.25  # era 2,5: con 1,25 la cobertura sube de 47 % a ~75 % (sección 16.1)
+  velocidad_m_s: 0.3
+  velocidad_dificil_m_s: 0.2
+  giro_diagonal_rad: 0.61    # ~35°
+  inclinacion_alta_rad: -0.61
+
+camara:
+  ancho: 1920                # CONFIRMAR con el X2 real
+  alto: 1080
+  fov_h_grados: 70           # en MuJoCo se convierte a fovy (vertical)
+  distancia_max_m: 3.5
+  # En sim se usa la misma resolución que la real: el tamaño de la rosa en píxeles
+  # decide si RosaNet la puede leer (mínimo 32 px). Con 1280 x 720 se perdían casi todas.
+  sim_ancho: 1920
+  sim_alto: 1080
+
+madurez:
+  p3_min_candidata: 0.30     # A CALIBRAR
+  tamano_rel_min: 0.85       # A CALIBRAR
+  puntaje_lista_manana: 0.60 # A CALIBRAR
+  dias_max_lista_manana: 1.5 # A CALIBRAR
+  duda_entre_vecinas_min: 0.85 # duda solo entre inmaduro y óptimo → reglas de "lista mañana", no "dudosa"
+
+dedup:
+  radio_m: 0.08
+
+horario:
+  inicio: "22:00"
+  simular_noche: true
+
+reporte:
+  formatos: [excel, json]
+  optimo_prioridad_alta: 3   # rosas en óptimo para que un cuadrante sea "alta"
+
+envio:
+  metodo: carpeta            # api | carpeta | correo (acordar con el dashboard)
+  revisar_cada_s: 60
+
+bateria:
+  volver_a_base_pct: 25
+
+datos_dir: datos

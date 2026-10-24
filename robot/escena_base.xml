@@ -1,0 +1,42 @@
+<mujoco model="X2 invernadero de noche">
+  <!-- Va junto a X2-Ultra.xml: MuJoCo busca meshes/ al lado del archivo que se carga.
+       El resto del invernadero (camas, rosas, postes, cámara y linterna) lo agrega
+       sim/escena_invernadero.py con MjSpec. Basado en referencias/scene_jardin.xml. -->
+  <include file="X2-Ultra.xml"/>
+
+  <statistic center="1.5 0 0.9" extent="3.0"/>
+
+  <visual>
+    <headlight diffuse="0.05 0.05 0.05" ambient="0.04 0.04 0.05" specular="0 0 0"/>
+    <!-- Alcanza para la resolución real (1920 x 1080) y para la de simulación (1280 x 720) -->
+    <global azimuth="200" elevation="-20" offwidth="1920" offheight="1080"/>
+    <quality shadowsize="4096"/>
+    <!-- La "bruma" del horizonte por defecto es blanca y se ve como una raya; de noche va oscura -->
+    <rgba haze="0.01 0.01 0.03 1"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1="0.02 0.03 0.08" rgb2="0 0 0" width="512" height="3072"/>
+    <texture type="2d" name="piso" builtin="checker" rgb1="0.25 0.22 0.18" rgb2="0.2 0.18 0.15" width="300" height="300"/>
+    <material name="piso" texture="piso" texuniform="true" texrepeat="4 4" reflectance="0"/>
+  </asset>
+
+  <worldbody>
+    <!-- Luz de luna muy tenue -->
+    <light name="luna" directional="true" pos="0 0 5" dir="0.3 0.2 -1" diffuse="0.08 0.08 0.12" specular="0 0 0" castshadow="false"/>
+    <geom name="floor" size="0 0 0.05" type="plane" material="piso"/>
+
+    <!-- Punto invisible que el código mueve; el robot lo sigue -->
+    <body name="guia" mocap="true" pos="0 0 0.68"/>
+  </worldbody>
+
+  <!-- La malla de la cabeza toca el torso y la bloquea; se ignora ese choque -->
+  <contact>
+    <exclude body1="torso_link" body2="head_pitch_link"/>
+  </contact>
+
+  <!-- La pelvis queda pegada al punto guía: así el robot no se cae (no hay equilibrio real) -->
+  <equality>
+    <weld name="sostener" body1="pelvis" body2="guia"/>
+  </equality>
+</mujoco>

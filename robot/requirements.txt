@@ -8,3 +8,9 @@ numpy
 pyyaml
 pypdf
 pytest
+# Robot (simulación, reporte y envío)
+mujoco>=3.2
+opencv-python
+openpyxl
+requests
+python-dotenv

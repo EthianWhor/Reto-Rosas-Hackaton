@@ -10,3 +10,7 @@ descargas/
 # Resultados de entrenamiento
 runs/
 *.pt
+
+# Robot: fotos, reportes y logs de cada ronda; claves del envío
+robot/datos/
+.env
