@@ -14,6 +14,8 @@ percepcion:
   # El detector mira la foto sin achicarla (1920 px en la sim, 1280 en el X2) en vez de a 960 px.
   # Con el detector de la finca (2026-10-24): cobertura en la sim 50 % → 71 %, 0 falsas (plan 7.11).
   detector_tamano_nativo: true
+  # Analiza las fotos en otro hilo mientras el robot sigue posando y caminando (plan, sección 8).
+  analisis_en_paralelo: true
   # Pinta de gris claro el fondo oscuro del recorte (con la profundidad) antes de
   # RosaNet. Hacía falta con la red de día (plan, sección 7.8). Con la red "noche"
   # (2026-10-24, entrenada con fondo oscuro) ya no ayuda y hace perder óptimas,

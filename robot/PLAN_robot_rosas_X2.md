@@ -822,6 +822,21 @@ python modo_foto.py foto.jpg --enviar   # y lo manda a la app con envio.metodo
 6. **Respaldo** (poco probable que haga falta, porque la Orin NX corre RosaNet a bordo): en la ronda solo se toman y guardan fotos con su posición, y el análisis se hace al volver a la base.
 7. **Medir tiempos**: cada etapa guarda cuánto tardó (hoja `Ronda`), para ver dónde está el cuello de botella.
 
+**Hecho (punto 5, `ronda.AnalisisEnParalelo`, `percepcion.analisis_en_paralelo: true`):**
+- El robot toma cada foto, la guarda y se la pasa a un hilo de análisis (detector + RosaNet + ubicación). No
+  espera: sigue con la siguiente postura o camina a la siguiente parada. El hilo analiza en orden y escribe
+  `detecciones.jsonl`.
+- **Checkpoint seguro:** una parada se marca como hecha recién cuando se analizaron sus 4 fotos. Si se corta
+  (batería, ventana cerrada, falla), lo ya fotografiado se termina de analizar antes de guardar; y una parada
+  sin analizar se repite al continuar.
+- **Con la acción física** (señalar óptimas, sección 1.1) el robot necesita el resultado de esa parada: lo
+  espera al terminar las fotos, pero el análisis ya fue corriendo mientras posaba para las otras.
+- Si el modelo falla en el hilo, el error llega al robot (no sigue como si nada) y queda en el log.
+- **Medido en la simulación con carteles** (detector + RosaNet en CPU): mismas 142 rosas y mismo reporte;
+  la ronda pasa de **62 s a 52 s** (−16 %). En el robot real lo que se gana es el tiempo del modelo por parada
+  (~0,1–0,5 s por foto en la Orin NX según el equipo del modelo), que ahora se esconde detrás de posar y
+  caminar.
+
 ---
 
 ## 9. Ubicación, altura y no contar dos veces

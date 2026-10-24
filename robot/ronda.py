@@ -1,8 +1,8 @@
 """Recorrido de la ronda en serpiente: caminar, parar, posar, fotografiar y analizar (sección 13.3 del plan).
 
-Cada foto se guarda en disco y se analiza en seguida (candidatas → clase →
-ubicación). Más adelante el análisis irá en un hilo aparte con una cola, para
-que el robot camine mientras tanto.
+Cada foto se guarda en disco y se analiza (candidatas → clase → ubicación) en un hilo
+aparte (`AnalisisEnParalelo`): el robot sigue posando o caminando mientras el modelo piensa.
+Una parada se marca como hecha en el checkpoint recién cuando se analizaron sus fotos.
 
 Estructura de cada ronda:
     datos/rondas/<id_ronda>/
@@ -18,6 +18,8 @@ Estructura de cada ronda:
 import json
 import math
 import os
+import queue
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -211,27 +213,136 @@ def _senalar_optimas(cuerpo: Cuerpo, cfg: dict, detecciones: list, avance: Avanc
     return n
 
 
+class AnalisisEnParalelo:
+    """Analiza las fotos en otro hilo, en orden, mientras el robot sigue (sección 8 del plan).
+
+    El robot entrega cada foto con `foto()` y, al terminar una parada, `fin_parada()`. El hilo
+    analiza, guarda las rosas en detecciones.jsonl y avisa qué paradas quedaron listas
+    (`listas()`). `resultado()` espera el de una parada (para señalar sus óptimas). Con
+    `en_paralelo=False` analiza en el momento, como antes (sirve para comparar y para probar).
+    Un error del modelo en el hilo se vuelve a lanzar en el hilo del robot.
+    """
+
+    def __init__(self, analizador, carpeta: Path, en_paralelo: bool = True):
+        self.analizador = analizador
+        self.archivo = carpeta / "detecciones.jsonl"
+        self.trabajos: queue.Queue = queue.Queue()
+        self.terminadas: queue.Queue = queue.Queue()
+        self.resultados: dict = {}
+        self.listo: dict = {}
+        self.de_la_parada: list = []
+        self.error = None
+        self.hilo = None
+        if en_paralelo and analizador is not None:
+            self.hilo = threading.Thread(target=self._trabajar, name="analisis", daemon=True)
+            self.hilo.start()
+
+    def foto(self, cap: Captura, foto: str, camino: int) -> None:
+        self._revisar_error()
+        if self.analizador is None:
+            return
+        if self.hilo is None:
+            self._analizar(cap, foto, camino)
+        else:
+            self.trabajos.put(("foto", cap, foto, camino))
+
+    def fin_parada(self, clave) -> None:
+        self.listo[clave] = threading.Event()
+        if self.hilo is None:
+            self._cerrar_parada(clave)
+        else:
+            self.trabajos.put(("fin", clave))
+
+    def resultado(self, clave) -> list:
+        """Las rosas de una parada (espera a que se analicen)."""
+        while not self.listo[clave].wait(0.2):   # revisa seguido: si el modelo falló, no espera para siempre
+            self._revisar_error()
+        self._revisar_error()
+        return self.resultados[clave]
+
+    def listas(self) -> list:
+        """Paradas ya analizadas desde la última vez (no espera)."""
+        self._revisar_error()
+        salida = []
+        while not self.terminadas.empty():
+            salida.append(self.terminadas.get())
+        return salida
+
+    def esperar_todo(self) -> list:
+        """Espera a que se analice todo lo entregado y devuelve las paradas que faltaba avisar."""
+        if self.hilo is not None:
+            self.trabajos.join()
+        return self.listas()
+
+    def cerrar(self) -> None:
+        if self.hilo is not None:
+            self.trabajos.put(None)
+            self.hilo.join()
+            self.hilo = None
+
+    def _trabajar(self) -> None:
+        while True:
+            trabajo = self.trabajos.get()
+            try:
+                if trabajo is None:
+                    return
+                if self.error is None:               # después de un error no sigue analizando
+                    if trabajo[0] == "foto":
+                        self._analizar(*trabajo[1:])
+                    else:
+                        self._cerrar_parada(trabajo[1])
+            except Exception as e:                   # se lanza en el hilo del robot
+                self.error = e
+                for evento in list(self.listo.values()):
+                    evento.set()
+            finally:
+                self.trabajos.task_done()
+
+    def _analizar(self, cap: Captura, foto: str, camino: int) -> None:
+        nuevas = self.analizador.analizar(cap, foto, camino)
+        self.de_la_parada += nuevas
+        with open(self.archivo, "a", encoding="utf-8") as f:
+            for det in nuevas:
+                f.write(json.dumps(det.a_dict(), ensure_ascii=False) + "\n")
+
+    def _cerrar_parada(self, clave) -> None:
+        self.resultados[clave], self.de_la_parada = self.de_la_parada, []
+        self.terminadas.put(clave)
+        self.listo[clave].set()
+
+    def _revisar_error(self) -> None:
+        if self.error is not None:
+            raise RuntimeError("falló el análisis de una foto") from self.error
+
+
 def _parada(cuerpo: Cuerpo, cfg: dict, plano: Plano, tramo: Tramo, x: float, guardar: GuardarCapturas,
-            analizador, avisar, avance: Avance | None = None) -> None:
+            analisis: AnalisisEnParalelo, avance: Avance) -> tuple:
+    """Posa, fotografía y entrega las fotos al análisis. Si hay que señalar las óptimas, espera el
+    resultado de esta parada (el análisis ya fue corriendo mientras posaba para las otras fotos)."""
     k = numero_parada(plano, cfg, x)
-    vistas = 0
-    de_esta_parada = []
+    clave = (tramo.camino, round(x, 2), tramo.sentido)
     for nombre, angulos in posturas(cfg).items():
         cuerpo.posar(angulos)
         cap = cuerpo.foto()
         fila = guardar.guardar(cap, tramo.camino, k, nombre)
-        if analizador is not None:
-            nuevas = analizador.analizar(cap, fila["foto"], tramo.camino)
-            vistas += len(nuevas)
-            de_esta_parada += nuevas
-            with open(guardar.carpeta / "detecciones.jsonl", "a", encoding="utf-8") as f:
-                for det in nuevas:
-                    f.write(json.dumps(det.a_dict(), ensure_ascii=False) + "\n")
-    senaladas = _senalar_optimas(cuerpo, cfg, de_esta_parada, avance) if avance is not None else 0
+        analisis.foto(cap, fila["foto"], tramo.camino)
+    analisis.fin_parada(clave)
+    if (cfg.get("accion") or {}).get("tipo", "ninguna") != "ninguna" and analisis.analizador is not None:
+        avance.datos.setdefault("senaladas_parada", {})[f"{clave[0]}_{clave[1]}"] = _senalar_optimas(
+            cuerpo, cfg, analisis.resultado(clave), avance)
     cuerpo.posar(NEUTRA)   # camina derecho: con la cintura girada, un hombro sale del camino
-    flecha = "→" if tramo.sentido > 0 else "←"
-    avisar(f"  camino {tramo.camino} {flecha}, parada x = {x:4.1f} m: {len(posturas(cfg))} fotos, {vistas} rosas vistas"
-           + (f", {senaladas} óptimas señaladas" if senaladas else ""))
+    return clave
+
+
+def _marcar_listas(claves: list, analisis: AnalisisEnParalelo, avance: Avance, cfg: dict, avisar) -> None:
+    """Marca en el checkpoint las paradas ya analizadas y lo avisa (el robot puede ir más adelante)."""
+    for camino, x, sentido in claves:
+        avance.marcar(camino, x)
+        vistas = len(analisis.resultados.get((camino, x, sentido), []))
+        senaladas = avance.datos.get("senaladas_parada", {}).pop(f"{camino}_{x}", 0)
+        flecha = "→" if sentido > 0 else "←"
+        avisar(f"  camino {camino} {flecha}, parada x = {x:4.1f} m: {len(posturas(cfg))} fotos, {vistas} rosas vistas"
+               + (f", {senaladas} óptimas señaladas" if senaladas else ""))
 
 
 class Bloqueado(Exception):
@@ -289,6 +400,18 @@ def recorrer(cuerpo: Cuerpo, cfg: dict, plano: Plano, guardar: GuardarCapturas, 
     vez que lo hace), anota el obstáculo y sigue con los demás caminos desde ese lado.
     Devuelve True si terminó (aunque haya caminos bloqueados); False si se interrumpió (batería).
     """
+    analisis = AnalisisEnParalelo(analizador, guardar.carpeta, cfg["percepcion"].get("analisis_en_paralelo", True))
+    try:
+        return _recorrer(cuerpo, cfg, plano, guardar, avance, analisis, parar_despues, avisar)
+    finally:                                   # también si se cierra la ventana: lo ya fotografiado se analiza
+        try:
+            _marcar_listas(analisis.esperar_todo(), analisis, avance, cfg, avisar)
+        finally:
+            analisis.cerrar()
+
+
+def _recorrer(cuerpo: Cuerpo, cfg: dict, plano: Plano, guardar: GuardarCapturas, avance: Avance,
+              analisis: AnalisisEnParalelo, parar_despues: int | None, avisar) -> bool:
     base = tuple(cfg["sim"]["base_xy"])
     cola = [c for c in avance.caminos if not all(avance.hecha(c, x) for x in paradas(plano, cfg))]
     desde_cabecera = True
@@ -313,9 +436,9 @@ def recorrer(cuerpo: Cuerpo, cfg: dict, plano: Plano, guardar: GuardarCapturas, 
                     if bateria_baja(cuerpo, cfg, avance):
                         raise SeAcaboLaBateria
                     _avanzar(cuerpo, cfg, x, tramo.y, avance, tramo.camino, avisar)
-                    _parada(cuerpo, cfg, plano, tramo, x, guardar, analizador, avisar, avance)
-                    avance.marcar(tramo.camino, x)
+                    _parada(cuerpo, cfg, plano, tramo, x, guardar, analisis, avance)
                     hechas_ahora += 1
+                    _marcar_listas(analisis.listas(), analisis, avance, cfg, avisar)   # las ya analizadas
                 cuerpo.posar(NEUTRA)
                 _avanzar(cuerpo, cfg, tramo.salida_x, tramo.y, avance, tramo.camino, avisar)
                 desde_cabecera = tramo.salida_x < 0
@@ -339,11 +462,13 @@ def recorrer(cuerpo: Cuerpo, cfg: dict, plano: Plano, guardar: GuardarCapturas, 
         for punto in camino_a_la_base(plano, cuerpo.posicion(), base):
             cuerpo.ir_a(*punto)
         bateria_baja(cuerpo, cfg, avance)                  # anota con cuánto llegó a la base
+        _marcar_listas(analisis.esperar_todo(), analisis, avance, cfg, avisar)
         avance.guardar()
         return False
     avisar("Ronda completa: vuelve a la base.")
     for punto in camino_a_la_base(plano, cuerpo.posicion(), base):
         cuerpo.ir_a(*punto)
     bateria_baja(cuerpo, cfg, avance)                      # anota con cuánto llegó a la base
+    _marcar_listas(analisis.esperar_todo(), analisis, avance, cfg, avisar)   # lo que faltaba analizar
     avance.terminar()
     return True

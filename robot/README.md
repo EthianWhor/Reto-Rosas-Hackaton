@@ -143,6 +143,9 @@ config): una caja que alguien quita mientras el robot espera y un balde que bloq
 con un sensor de rayos (como un LiDAR): pasa despacio sobre lo bajo, frena ante lo alto, espera hasta 30 s y, si
 sigue ahí, abandona ese camino y lo anota en el reporte.
 
+Las fotos se analizan en otro hilo mientras el robot sigue posando y caminando (`percepcion.analisis_en_paralelo`);
+una parada queda como hecha en el checkpoint recién cuando se analizaron sus fotos.
+
 Log y batería: todo lo que sale en pantalla queda con la hora en `datos/logs/ronda_<id>.log`. Si la batería
 baja del 25 %, el robot guarda el avance y vuelve a la base; después se sigue con `--continuar`. Para verlo:
 `python main.py --bateria 30` (sale con 30 %).
