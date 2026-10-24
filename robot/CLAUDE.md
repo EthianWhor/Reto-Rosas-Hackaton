@@ -27,6 +27,7 @@ pip install -r requirements.txt
 | `modelos/rosanet.pt` | RosaNet (CNN propia): dice si una rosa **recortada** está `1_inmaduro`, `2_optimo` o `3_pasado`. **Versión "noche"**: entrenada con aumento de fondo oscuro (ver abajo) |
 | `modelos/rosanet_calibracion.json` | Métricas de la validación cruzada con las fotos de la finca (incluye las pruebas de fondo) |
 | `modelos/rosanet_v1_dia.pt` | Versión anterior, sin aumento de fondo oscuro: algo mejor de día, mucho peor de noche. Solo para comparar |
+| `modelos/forma.joblib` | **Clasificador de forma y color** (tipo plantilla, `ml/shape.py`). `RosePredictor` lo carga solo si está junto a `rosanet.pt` y promedia su opinión con la de RosaNet. Requiere `scikit-learn` y `scipy` |
 
 No hace falta copiar pesos de `runs/` (eso era antes; `runs/` no está en git).
 
@@ -71,8 +72,15 @@ recorte = imagen.crop(pad_box([int(v) for v in bbox], *imagen.size, 0.15))   # 1
 r = clf.predict(recorte)    # PIL.Image de UNA rosa
 # -> {"etapa": "2_optimo", "nombre": "Punto óptimo de corte", "confianza": 0.856, "seguro": True,
 #     "probabilidades": {"1_inmaduro": 0.1, "2_optimo": 0.856, "3_pasado": 0.044},
-#     "tips": {"mirar": [...], "diferencia": "..."}}
+#     "tips": {"mirar": [...], "diferencia": "..."},
+#     "fuentes": {"rosanet": {...}, "forma": {...} | None},     # cada opinión por separado
+#     "rasgos": {"alto_ancho": 1.0, "copa_arriba": 0.63, "rojo_saturacion": 0.46, ...} | None}
 ```
+- **Forma + RosaNet:** `probabilidades` es el promedio de RosaNet y del clasificador de forma
+  (`modelos/forma.joblib`, se carga solo). Si en el recorte no se encuentra una rosa roja, decide solo
+  RosaNet (`fuentes["forma"] = None`). Para usar solo RosaNet: `RosePredictor(..., shape_model=None)`.
+- `rasgos` son medidas de la silueta y el color (botón alargado frente a copa ancha, rojo vivo frente a
+  oscuro, sépalos pegados), útiles para **explicar** la decisión en el reporte o la pantalla.
 - `seguro` = `confianza >= 0.6`. Si es `False`, tratar la rosa como **dudosa / incierta**.
 - Las etapas llevan prefijo de orden. Para las clases del robot (`inmaduro`, `optimo`, `pasado`):
   `clase = r["etapa"].split("_", 1)[1]`; igual con las llaves de `probabilidades`.
@@ -102,9 +110,9 @@ python -m ml.evaluate --ckpt modelos/rosanet.pt --data data/propias
 python -m pytest
 ```
 
-## Rendimiento (medido el 2026-10-23)
-- **Velocidad:** ~86 ms por foto con GPU (GTX 1650 Ti) y ~540 ms solo con CPU, detector + RosaNet,
-  ~2,5 rosas por foto. La Orin NX del X2 Ultra debería quedar entre los dos.
+## Rendimiento (medido el 2026-10-23/24)
+- **Velocidad:** ~70-90 ms por foto con GPU (GTX 1650 Ti) y ~540 ms solo con CPU, detector + RosaNet
+  + forma, ~1,5-2,5 rosas por foto. La Orin NX del X2 Ultra debería quedar entre los dos.
 - **Detector en el invernadero** (30 escenas, 49 rosas con todas marcadas, IoU >= 0,5; "noche" = las
   mismas escenas oscurecidas con cielo negro y viñeta de linterna):
 
@@ -115,10 +123,15 @@ python -m pytest
 
   Las rosas que pierde suelen ser pequeñas y lejanas: **la cámara tiene que estar cerca de la cama**.
   La noche es simulada: falta medir con fotos de noche reales con la luz del robot.
-- **RosaNet "noche" (validación cruzada con 64 rosas de la finca, promedio de 4 semillas):**
-  ~70 % de exactitud con fondo de día y ~74 % con fondo "noche" (cielo y margen oscuros).
-  Con fondo nocturno marca como óptimas ~7 de 45 inmaduras (el error más costoso: cortar en punto 2);
-  la versión anterior marcaba ~25 de 45. `3_pasado` **no funciona** (la finca dio solo 2 ejemplos).
+- **Clasificación (validación cruzada con 64 rosas de la finca, promedio de 3 semillas):**
+
+  | | Exactitud día / noche | Óptimas reconocidas día / noche | Inmaduras → óptimo día / noche (de 45) |
+  |---|---|---|---|
+  | Solo RosaNet "noche" | 72 % / 76 % | 43 % / 61 % | 6,3 / 7,0 |
+  | **Forma + RosaNet (en uso)** | **77 % / 77 %** | **61 % / 63 %** | **6,3 / 6,7** |
+
+  Inmaduras → óptimo es el error más costoso (cortar en punto 2). `3_pasado` **no funciona** (la finca
+  dio solo 2 ejemplos).
 
 ## Fondo oscuro de noche (resuelto en parte, 2026-10-24)
 - El equipo del robot midió que con el **margen del recorte en negro** RosaNet confundía inmaduras con

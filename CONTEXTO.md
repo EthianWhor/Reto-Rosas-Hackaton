@@ -295,6 +295,26 @@ Una integrante del equipo que **asistió a la explicación de la finca** clasifi
 - **Decisión (2026-10-24):** como el robot opera de noche, **se mantiene el RosaNet actual** (`robot/modelos/rosanet.pt`). El candidato quedó solo localmente en `robot/runs/rosanet_v3/best.pt`; podría servir para uso de día, pero no se instaló.
 - **Lo que de verdad mejoraría las óptimas de noche:** más rosas óptimas **clasificadas por la finca**, y fotos reales de noche.
 
+### Forma y color tipo "plantilla" + RosaNet (2026-10-24)
+Idea tomada de otro equipo: comparar la rosa con la forma esperada de cada etapa. La finca define el punto de corte justo con forma y color (patrón de copa, caracol visible, cabeza pequeña, rojo oscuro, sépalos pegados).
+
+- `robot/ml/shape.py` separa la cabeza de la rosa por su **color rojo** y mide 10 rasgos: alto/ancho, copa (apertura de la punta), qué tan puntiaguda es, relleno, rugosidad del borde, brillo, saturación y tono del rojo, tamaño de la cabeza en el recorte y verde de los sépalos a los lados. Una **regresión logística** aprende los cortes (`modelos/forma.joblib`).
+- Los rasgos muestran las diferencias de la finca: alto/ancho **1,23** en inmaduras frente a **0,89** en óptimas (botón alargado frente a copa), cabeza el doble de grande en el recorte y rojo más saturado en óptimas.
+- Como solo mira el rojo de la rosa, **la silueta sale igual de día y de noche**.
+
+Validación cruzada (`ml/shape_cv.py`, mismos folds, semillas y modelos RosaNet por fold; 64 rosas de la finca; promedio de 3 semillas):
+
+| | Exactitud día / noche | Óptimas reconocidas día / noche | Inmaduras → óptimo día / noche (de 45) |
+|---|---|---|---|
+| Solo forma (10 números) | 71 % / 75 % | 67 % / 69 % | 11,7 / 9,3 |
+| Solo RosaNet "noche" | 72 % / 76 % | 43 % / 61 % | 6,3 / 7,0 |
+| **Forma + RosaNet (promedio, en uso)** | **77 % / 77 %** | **61 % / 63 %** | **6,3 / 6,7** |
+
+- **La combinación es igual o mejor en todo.** De día suma +18 puntos en óptimas sin aumentar el error más costoso; de noche mejora un poco (dentro del ruido). Es lo contrario de lo que pasó con las etiquetas del equipo.
+- **Para el pitch:** con solo 10 números medibles que traducen el criterio de la finca, la forma casi iguala a una CNN, y además es **explicable** ("copa abierta, rojo vivo → óptima"), lo que conecta con el aprendizaje de los operarios.
+- Integrado en `RosePredictor` (lo carga solo si `forma.joblib` está junto a `rosanet.pt`); la respuesta suma `fuentes` y `rasgos` sin cambiar los campos que ya usa el robot.
+- Límites: 4 de 47 inmaduras muy pálidas a contraluz no se segmentan (ahí decide solo RosaNet). Las vistas desde abajo y las rosas tapadas cambian la silueta.
+
 ### Siguiente paso con más impacto
 1. **RosaNet: más rosas óptimas clasificadas por la finca.** Es el punto más débil. Ya se probó con rosas clasificadas por una integrante del equipo, pero su criterio está corrido hacia "más abierto" (35 % de acuerdo con la finca) y de noche no ayudó (ver "Concordancia entre personas"). Hace falta que **alguien de la finca** clasifique los 178 recortes (`robot/data/para_clasificar/rosas_para_clasificar.zip`).
 2. **Fotos de noche reales** (30-50 Freedom con linterna) para validar el modelo "noche" y el detector de noche.

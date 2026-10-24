@@ -7,6 +7,9 @@ pillow
 numpy
 pyyaml
 pypdf
+scipy
+scikit-learn
+ultralytics
 pytest
 # Robot (simulación, reporte y envío)
 mujoco>=3.2

@@ -152,6 +152,46 @@ def test_darken_margin_keeps_scale_and_rose():
     assert RandomDarkBackground(1.0)(im).size == im.size
 
 
+def test_shape_features_measure_the_red_head():
+    import numpy as np
+
+    from ml.shape import FEATURES, shape_features
+
+    def rose(w, h):
+        im = Image.new("RGB", (200, 200), (225, 225, 230))
+        ImageDraw.Draw(im).ellipse((100 - w // 2, 100 - h // 2, 100 + w // 2, 100 + h // 2), fill=(150, 15, 45))
+        return im
+
+    tall, wide = shape_features(rose(60, 120)), shape_features(rose(120, 80))
+    alto_ancho = FEATURES.index("alto_ancho")
+    assert tall[alto_ancho] > 1.5 and wide[alto_ancho] < 1.0   # botón alargado vs copa ancha
+    assert np.isnan(shape_features(Image.new("RGB", (200, 200), (225, 225, 230)))).all()  # sin rosa roja
+
+
+def test_predictor_combines_shape_and_rosanet(tmp_path):
+    import joblib
+
+    from ml.shape import train_shape_model
+
+    samples = []
+    for i, (cls, (w, h)) in enumerate([(0, (50, 110)), (1, (110, 90)), (2, (150, 140))] * 4):
+        im = Image.new("RGB", (200, 200), (225, 225, 230))
+        ImageDraw.Draw(im).ellipse((100 - w // 2, 100 - h // 2, 100 + w // 2, 100 + h // 2), fill=(150, 15, 45))
+        im.save(tmp_path / f"r{i}.jpg")
+        samples.append((tmp_path / f"r{i}.jpg", cls))
+    save_checkpoint(tmp_path / "rosanet.pt", RosaNet(num_classes=3), STAGES)
+    joblib.dump(train_shape_model(samples, STAGES), tmp_path / "forma.joblib")
+
+    combined = RosePredictor(tmp_path / "rosanet.pt", device="cpu")          # encuentra forma.joblib solo
+    alone = RosePredictor(tmp_path / "rosanet.pt", device="cpu", shape_model=None)
+    result = combined.predict(Image.open(samples[0][0]))
+    assert combined.shape is not None and alone.shape is None
+    assert result["fuentes"]["forma"] is not None and result["rasgos"]["alto_ancho"] > 1.5
+    net, shape = result["fuentes"]["rosanet"], result["fuentes"]["forma"]
+    assert all(abs(result["probabilidades"][c] - (net[c] + shape[c]) / 2) < 0.002 for c in STAGES)
+    assert alone.predict(Image.open(samples[0][0]))["fuentes"]["forma"] is None
+
+
 def test_model_output_shape():
     model = RosaNet(num_classes=4)
     out = model(torch.randn(2, 3, IMAGE_SIZE, IMAGE_SIZE))

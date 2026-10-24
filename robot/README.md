@@ -71,6 +71,11 @@ python -m ml.train --data data/pre --out runs/rosanet_pre --epochs 40 --batch-si
 # Etapa 2: calibrar con la finca + validación cruzada por foto -> runs/rosanet/best.pt
 # (--oscuro 0.5: aumento de fondo oscuro para que funcione de noche; ver robot/CLAUDE.md)
 python -m ml.calibrate --init runs/rosanet_pre/best.pt --freeze 0 --oscuro 0.5 --out runs/rosanet
+
+# Etapa 3: clasificador de forma y color (tipo plantilla) que se promedia con RosaNet
+python -m ml.shape --out modelos/forma.joblib     # va junto a rosanet.pt; RosePredictor lo carga solo
+python -m ml.shape_cv --runs runs/sweep_oscuro --prefijo o0.5-   # compara forma / RosaNet / combinadas
+
 # --extra CARPETA suma rosas etiquetadas por otras personas solo al entrenamiento (la medición sigue
 # siendo con la finca). Probado con las del equipo: de noche no ayudó (ver CONTEXTO.md).
 ```
