@@ -1,0 +1,2949 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+  <meta name="theme-color" content="#12251c">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>GHT · Escuela de corte Freedom</title>
+  <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
+  <style>
+    :root {
+      --pine: #153d2d;
+      --mint: #d8f1e3;
+      --cream: #f7f5ef;
+      --gold: #e2c68f;
+      --seal: #2f7dff;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      color: white;
+      background: #12251c;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+    a-scene { position: fixed; inset: 0; }
+    button { font: inherit; cursor: pointer; border: 0; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    #topbar {
+      position: fixed;
+      z-index: 5;
+      top: 16px;
+      left: 18px;
+      right: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .brand, .stat, #hud, .icon-btn {
+      background: rgba(11, 33, 25, .92);
+      border: 1px solid #ffffff28;
+      box-shadow: 0 12px 40px #0004;
+      backdrop-filter: blur(12px);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 13px;
+      border-radius: 14px;
+      pointer-events: auto;
+    }
+    .brand-mark {
+      display: grid;
+      width: 30px;
+      height: 30px;
+      place-items: center;
+      border-radius: 9px;
+      color: var(--pine);
+      background: var(--mint);
+      font-weight: 950;
+    }
+    .brand small {
+      display: block;
+      color: #bce7c9;
+      font-size: 9px;
+      font-weight: 850;
+      letter-spacing: 1.7px;
+    }
+    .brand strong { font-size: 13px; }
+    #stats { display: flex; gap: 8px; pointer-events: auto; }
+    .stat {
+      min-width: 78px;
+      padding: 8px 11px;
+      border-radius: 12px;
+    }
+    .stat span {
+      display: block;
+      color: #adc3b4;
+      font-size: 9px;
+      letter-spacing: 1.1px;
+      text-transform: uppercase;
+    }
+    .stat b { font-size: 14px; }
+    .icon-btn {
+      display: grid;
+      place-items: center;
+      min-width: 46px;
+      padding: 0 12px;
+      border-radius: 12px;
+      color: white;
+    }
+    .icon-btn svg { width: 18px; height: 18px; }
+    #hud {
+      position: fixed;
+      z-index: 5;
+      left: 18px;
+      bottom: 18px;
+      width: min(390px, calc(100vw - 36px));
+      padding: 15px;
+      border-radius: 17px;
+    }
+    .eyebrow {
+      color: #a8dbb8;
+      font-size: 9px;
+      font-weight: 850;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+    }
+    #tool {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin: 7px 0 6px;
+      font-size: 15px;
+      font-weight: 750;
+    }
+    #toolDot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #f2f2f2;
+      box-shadow: 0 0 0 3px #ffffff22;
+    }
+    #tool.seal #toolDot { background: var(--seal); box-shadow: 0 0 0 3px #2f7dff55; }
+    #tool.classify #toolDot { background: #f2c94c; box-shadow: 0 0 0 3px #f2c94c55; }
+    #mission {
+      margin: 0;
+      color: #c2d0c5;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .buttons { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 11px; }
+    .btn {
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 850;
+    }
+    .btn.primary { color: var(--pine); background: var(--mint); }
+    .btn.secondary {
+      color: white;
+      background: #ffffff12;
+      border: 1px solid #ffffff30;
+    }
+    .buttons .btn { flex: 1 1 auto; }
+    #xrStatus {
+      margin-top: 9px;
+      color: #e5c98e;
+      font-size: 10px;
+      line-height: 1.4;
+    }
+    .overlay {
+      position: fixed;
+      z-index: 10;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: radial-gradient(ellipse at 70% 25%, #416e4dce, #0a2018f5 72%);
+      backdrop-filter: blur(8px);
+    }
+    #coach {
+      position: fixed;
+      z-index: 6;
+      top: 80px;
+      right: 18px;
+      display: none;
+      width: min(470px, calc(100vw - 36px));
+      padding: 8px;
+      border: 1px solid #ffffff28;
+      border-radius: 18px;
+      background: rgba(11, 33, 25, .92);
+      box-shadow: 0 20px 60px #0006;
+    }
+    #coach canvas { display: block; width: 100%; height: auto; border-radius: 12px; }
+    .coach-actions { display: flex; gap: 8px; margin-top: 8px; }
+    .coach-actions .btn { flex: 1; padding: 11px; }
+    #msg {
+      display: none;
+      z-index: 11;
+      background: #06140ea8;
+      backdrop-filter: blur(3px);
+    }
+    .card {
+      width: min(760px, 100%);
+      max-height: 92vh;
+      overflow: auto;
+      padding: clamp(20px, 5vw, 34px);
+      border: 1px solid #315a42;
+      border-radius: 22px;
+      color: var(--pine);
+      background: var(--cream);
+      box-shadow: 0 28px 90px #0008;
+    }
+    .card h1 {
+      margin: 14px 0 10px;
+      font-size: clamp(26px, 5vw, 40px);
+      letter-spacing: -1.2px;
+      line-height: 1.05;
+    }
+    .card p, .card li { color: #4c6254; font-size: 13px; line-height: 1.55; }
+    .tiles {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      margin: 14px 0;
+    }
+    .tile {
+      padding: 11px;
+      border: 1px solid #dae5da;
+      border-radius: 13px;
+      background: #eaf0e8;
+    }
+    .tile.ok { border-color: #64b57a; background: #dff2e3; }
+    .tile b { display: block; margin: 5px 0; font-size: 12px; }
+    .tile p { margin: 0; font-size: 10.5px; }
+    .tag { font-size: 9px; font-weight: 900; letter-spacing: 1px; }
+    .tag.no { color: #b23a3a; }
+    .tag.yes { color: #23804a; }
+    .rules {
+      margin: 0;
+      padding: 12px 14px 12px 30px;
+      border-left: 3px solid #caa567;
+      border-radius: 0 10px 10px 0;
+      background: #f2eddf;
+    }
+    .rules li { margin: 3px 0; color: #5d5541; font-size: 11.5px; }
+    .controls { width: 100%; margin: 12px 0 4px; border-collapse: collapse; font-size: 11.5px; color: #314a3b; }
+    .controls th { text-align: left; padding: 6px 8px; color: #347451; font-size: 9.5px; letter-spacing: 1.2px; text-transform: uppercase; border-bottom: 1px solid #d5e2d6; }
+    .controls td { padding: 6px 8px; border-bottom: 1px solid #e6ece4; }
+    .actions { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 16px; }
+    .actions .btn { flex: 1 1 160px; padding: 13px; font-size: 12px; }
+    .actions .btn.secondary { color: var(--pine); border-color: #153d2d33; }
+    #msgCard { width: min(560px, 100%); border-top: 6px solid #64b57a; }
+    #msgCard.bad { border-top-color: #d65252; }
+    #msgCard.seal { border-top-color: var(--seal); }
+    #msgCard.info { border-top-color: #caa567; }
+    #msgCard h2 { margin: 8px 0; font-size: 22px; }
+    #msgPoints { font-weight: 900; }
+    #msgCard.bad #msgPoints { color: #b23a3a; }
+    #msgCard.good #msgPoints { color: #23804a; }
+    #msgTip {
+      display: none;
+      margin-top: 12px;
+      padding: 11px 13px;
+      border-radius: 10px;
+      background: #fff4d6;
+      color: #5d4a1a;
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+    #msgTip b { display: block; margin-bottom: 3px; font-size: 10px; letter-spacing: 1.2px; text-transform: uppercase; }
+    #msgOk { width: 100%; margin-top: 16px; padding: 14px; font-size: 14px; }
+    #hint {
+      position: fixed;
+      z-index: 4;
+      bottom: 18px;
+      right: 18px;
+      max-width: 40vw;
+      padding: 9px 14px;
+      border: 1px solid #ffffff28;
+      border-radius: 20px;
+      color: #e6efe8;
+      background: #0b2119e8;
+      font-size: 10px;
+      pointer-events: none;
+    }
+    @media(max-width:900px) { #hint { display: none; } }
+    @media(max-width:640px) {
+      #topbar { top: 8px; left: 8px; right: 8px; }
+      .brand { padding: 7px 9px; }
+      .brand small, .brand strong { display: none; }
+      .stat { min-width: 52px; padding: 7px; }
+      .stat b { font-size: 12px; }
+      #hud { left: 8px; bottom: 8px; width: calc(100vw - 16px); padding: 12px; }
+      .tiles { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <div class="brand">
+      <div class="brand-mark">G</div>
+      <div><small>GROWERS HUB TRADING</small><strong>Escuela de corte · Freedom</strong></div>
+    </div>
+    <div id="stats">
+      <div class="stat"><span>Puntos</span><b id="points">0</b></div>
+      <div class="stat"><span>Cosecha</span><b id="harvested">0</b></div>
+      <div class="stat"><span>Desecho</span><b id="discarded">0</b></div>
+      <div class="stat"><span>Errores</span><b id="errors">0</b></div>
+      <button class="icon-btn" id="fullscreen" title="Pantalla completa" aria-label="Pantalla completa">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="hud">
+    <div class="eyebrow">Paso actual</div>
+    <div id="tool"><span id="toolDot"></span><span id="toolName">Tijeras</span></div>
+    <p id="mission"></p>
+    <div class="buttons">
+      <button class="btn primary" id="enterVR">Entrar en VR</button>
+      <button class="btn secondary" id="turnMode">Giro: suave</button>
+      <button class="btn secondary" id="guide">Guía</button>
+      <button class="btn secondary" id="tutorialBtn">Tutorial</button>
+      <button class="btn secondary" id="reset">Reiniciar</button>
+    </div>
+    <div id="xrStatus"></div>
+  </div>
+
+  <div id="intro" class="overlay">
+    <div class="card">
+      <div class="eyebrow" style="color:#347451">GHT · CAPACITACIÓN INMERSIVA · ROSA FREEDOM</div>
+      <h1>Cosecha como un operario experto</h1>
+      <p>Recorres los senderos de 80 cm entre camas de rosas de unos 2 m, con tu carrito de cosecha. Por cada rosa: <b>1)</b> eliges y cortas, <b>2)</b> sellas el corte con sellante azul y <b>3)</b> la clasificas en el carrito.</p>
+      <div class="tiles">
+        <div class="tile"><span class="tag no">NO CORTAR</span><b>Cerrada (botón)</b><p>Botón alargado y apretado, rojo oscuro; los sépalos todavía abrazan la flor.</p></div>
+        <div class="tile ok"><span class="tag yes">CORTAR</span><b>Punto de corte</b><p>Copa un poco abierta que se ve <b>cuadrada</b>; sépalos doblados hacia abajo.</p></div>
+        <div class="tile"><span class="tag no">NO CORTAR · DESECHO</span><b>Muy abierta</b><p>Flor ancha y plana, pétalos hacia afuera, centro visible. Ya pasó el punto.</p></div>
+      </div>
+      <ol class="rules">
+        <li>Corta <b>sobre una hoja de 5 foliolos</b>, nunca sobre una de 3.</li>
+        <li>Deja en la planta al menos <b>2 hojas de 5 foliolos</b>: corta sobre la <b>2.ª o la 3.ª</b> contando desde abajo.</li>
+        <li><b>Alterna el lado:</b> observa la planta: el tallo salió del tocón del corte anterior y se inclina hacia ese lado; corta hacia el <b>lado contrario</b> (gatillo derecho = derecha, gatillo izquierdo = izquierda) para que la planta crezca derecha.</li>
+        <li>El tallo cosechado debe medir entre <b>50 y 100 cm</b> (copa a menos de 1 m del corte).</li>
+        <li>Sella cada corte con <b>sellante azul</b>.</li>
+        <li>Clasifica: en punto y bien cortada → <b>COSECHA</b> (de pie, copa arriba, en orden). Muy abierta, cerrada o mal cortada → <b>DESECHO</b>.</li>
+        <li>Aciertos suman puntos, errores restan. Cada mensaje se cierra con <b>OK</b> (botón X).</li>
+      </ol>
+      <table class="controls">
+        <tr><th>Acción</th><th>Meta Quest 3</th><th>Computador</th></tr>
+        <tr><td>Caminar / girar</td><td>Joystick izquierdo / derecho</td><td>WASD o flechas / arrastrar</td></tr>
+        <tr><td>Cortar a la derecha →</td><td>Gatillo <b>derecho</b> apuntando al tallo</td><td>Clic derecho en el tallo</td></tr>
+        <tr><td>Cortar a la izquierda ←</td><td>Gatillo <b>izquierdo</b> apuntando al tallo</td><td>Clic izquierdo en el tallo</td></tr>
+        <tr><td>Sellar</td><td>Cualquier gatillo apuntando al anillo azul</td><td>Clic en el anillo azul</td></tr>
+        <tr><td>Cosecha</td><td>Botón <b>B</b></td><td>Tecla B</td></tr>
+        <tr><td>Desecho</td><td>Botón <b>Y</b></td><td>Tecla Y</td></tr>
+        <tr><td>OK en mensajes</td><td>Botón <b>X</b></td><td>Enter</td></tr>
+        <tr><td>Guía</td><td>Botón <b>A</b></td><td>Botón «Guía»</td></tr>
+      </table>
+      <p>El carrito va siempre delante de ti. La franja verde en el tallo marca el rango de corte de la empresa y sobre cada mando ves qué hace cada botón en ese momento.</p>
+      <div class="actions">
+        <button class="btn primary" id="tutorialVR">Tutorial en VR (recomendado)</button>
+        <button class="btn primary" id="tutorialScreen">Tutorial en pantalla</button>
+        <button class="btn secondary" id="beginVR">Jugar en VR</button>
+        <button class="btn secondary" id="begin">Jugar en pantalla</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="coach">
+    <div id="coachImg"></div>
+    <div class="coach-actions">
+      <button class="btn primary" id="coachNext">Continuar</button>
+      <button class="btn secondary" id="coachExit">Salir del tutorial</button>
+    </div>
+  </div>
+
+  <div id="msg" class="overlay">
+    <div class="card" id="msgCard">
+      <div class="eyebrow" id="msgEyebrow" style="color:#347451">RESULTADO</div>
+      <h2 id="msgTitle"></h2>
+      <p id="msgBody"></p>
+      <p id="msgPoints"></p>
+      <div id="msgTip"><b>Consejo · proceso correcto</b><span id="msgTipText"></span></div>
+      <button class="btn primary" id="msgOk">OK</button>
+    </div>
+  </div>
+
+  <div id="hint">Clic izq./der. en el tallo: cortar ←/→ · clic en el anillo azul: sellar · B: cosecha · Y: desecho · Enter: OK</div>
+
+  <a-scene
+    renderer="colorManagement:true; antialias:true; foveationLevel:1; toneMapping:ACESFilmic; exposure:1.05"
+    background="color:#e8eee9"
+    fog="type:linear; color:#e4ebe5; near:7; far:20"
+    vr-mode-ui="enabled:false"
+    xr-mode-ui="enabled:false"
+    webxr="requiredFeatures: local-floor; optionalFeatures: bounded-floor"
+    loading-screen="enabled:false"
+    rose-farm
+    cut-game>
+
+    <a-entity id="rig" position="0 0 1.3" joystick-locomotion>
+      <a-camera id="camera" position="0 1.62 0"
+        wasd-controls="acceleration:18"
+        look-controls="pointerLockEnabled:false; magicWindowTrackingEnabled:false">
+      </a-camera>
+      <a-entity id="leftController"
+        laser-controls="hand:left"
+        raycaster="objects:.sin-objetivo; far:2; showLine:false">
+      </a-entity>
+      <a-entity id="rightController"
+        laser-controls="hand:right"
+        raycaster="objects:.sin-objetivo; far:2; showLine:false">
+      </a-entity>
+    </a-entity>
+  </a-scene>
+
+<script>
+const $ = selector => document.querySelector(selector);
+const scene = $('a-scene');
+const deg = THREE.MathUtils.degToRad;
+
+// ---------- Parámetros del cultivo ----------
+const AISLES = [-1.5, 0, 1.5];              // centro de cada sendero (80 cm de ancho)
+const AISLE_HALF = .4;
+const BEDS = [-2.25, -.75, .75, 2.25];      // centro de cada cama (70 cm de ancho)
+const BED_TOP = .22;                        // altura del lomo de tierra
+const AGOBIO_TOP = .62;                     // altura de la masa de tallos agobiados
+const ROW_START = -1, ROW_END = -11;
+const REACH = 2.0;
+const STEM_TOLERANCE = .05;
+const RANGE_MIN = .5, RANGE_MAX = 1.0;      // largo de tallo aceptado por la empresa (m)
+const CART_SLOTS = 24;
+const STAGE = { CLOSED: 0, CUT: 1, OPEN: 2 };
+const POINTS = { goodCut: 100, error: -50, seal: 20, goodSort: 30, badSort: -50, fullCart: 100 };
+
+const game = {
+  playing: false,
+  points: 0,
+  harvested: 0,
+  discarded: 0,
+  errors: 0,
+  active: null,           // rosa cortada pendiente: { rose, node, evaluation, piece, sealed, classified }
+  modal: null,
+  snapTurn: false
+};
+
+// ---------- Locomoción con joysticks (WebXR estándar, cualquier visor) ----------
+function readStick(gamepad) {
+  const axes = gamepad.axes || [];
+  // Mapeo "xr-standard": [0,1] touchpad, [2,3] joystick.
+  if (axes.length >= 4 && (Math.abs(axes[2]) > .01 || Math.abs(axes[3]) > .01)) {
+    return { x: axes[2], y: axes[3] };
+  }
+  return { x: axes[0] || 0, y: axes[1] || 0 };
+}
+
+function inBedZone(z) { return z < ROW_START + .15 && z > ROW_END - .15; }
+function aisleAt(x) { return AISLES.find(c => Math.abs(x - c) <= AISLE_HALF - .14); }
+function validSpot(x, z) {
+  if (x < -3.2 || x > 3.2 || z < -12.6 || z > 2.8) return false;
+  return !inBedZone(z) || aisleAt(x) !== undefined;
+}
+
+AFRAME.registerComponent('joystick-locomotion', {
+  schema: {
+    speed: { default: 1.4 },        // m/s, paso de operario
+    turnSpeed: { default: 100 },    // grados/s en giro suave
+    snapAngle: { default: 30 },
+    deadZone: { default: .18 }
+  },
+
+  init: function () {
+    this.up = new THREE.Vector3(0, 1, 0);
+    this.forward = new THREE.Vector3();
+    this.right = new THREE.Vector3();
+    this.head = new THREE.Vector3();
+    this.offset = new THREE.Vector3();
+    this.prevHead = null;
+    this.snapReady = true;
+  },
+
+  tick: function (time, deltaMs) {
+    const sceneEl = this.el.sceneEl;
+    const obj = this.el.object3D;
+    const cam = sceneEl.camera;
+    if (!cam || !deltaMs) return;
+    const xr = sceneEl.renderer && sceneEl.renderer.xr;
+    const session = xr && xr.isPresenting ? xr.getSession() : null;
+
+    if (session) {
+      let move = { x: 0, y: 0 };
+      let turn = 0;
+      for (const source of session.inputSources) {
+        if (!source.gamepad) continue;
+        const stick = readStick(source.gamepad);
+        if (source.handedness === 'left') move = stick;
+        else if (source.handedness === 'right') turn = stick.x;
+      }
+
+      const dz = this.data.deadZone;
+      const dt = Math.min(deltaMs, 50) / 1000;
+
+      cam.getWorldDirection(this.forward);
+      this.forward.y = 0;
+      if (this.forward.lengthSq() < 1e-6) this.forward.set(0, 0, -1);
+      this.forward.normalize();
+      this.right.crossVectors(this.forward, this.up).normalize();
+
+      // Joystick izquierdo: traslación (adelante = eje Y negativo).
+      const mx = Math.abs(move.x) > dz ? move.x : 0;
+      const my = Math.abs(move.y) > dz ? move.y : 0;
+      if (mx || my) {
+        const step = this.data.speed * dt;
+        obj.position.addScaledVector(this.right, mx * step);
+        obj.position.addScaledVector(this.forward, -my * step);
+      }
+
+      // Joystick derecho: rotación alrededor de la cabeza.
+      let angle = 0;
+      if (game.snapTurn) {
+        if (Math.abs(turn) > .7 && this.snapReady) {
+          angle = -Math.sign(turn) * deg(this.data.snapAngle);
+          this.snapReady = false;
+        } else if (Math.abs(turn) < .3) {
+          this.snapReady = true;
+        }
+      } else if (Math.abs(turn) > dz) {
+        angle = -turn * deg(this.data.turnSpeed) * dt;
+      }
+      if (angle) {
+        cam.getWorldPosition(this.head);
+        this.offset.copy(obj.position).sub(this.head);
+        this.offset.y = 0;
+        this.offset.applyAxisAngle(this.up, angle);
+        obj.position.x = this.head.x + this.offset.x;
+        obj.position.z = this.head.z + this.offset.z;
+        obj.rotation.y += angle;
+      }
+    }
+
+    // Colisión: la cabeza solo puede estar en los senderos, no dentro de las camas.
+    obj.updateMatrixWorld(true);
+    cam.getWorldPosition(this.head);
+    const h = this.head;
+    if (!this.prevHead) this.prevHead = h.clone();
+    if (!validSpot(h.x, h.z)) {
+      const p = this.prevHead;
+      let fix;
+      if (validSpot(h.x, p.z)) fix = { x: h.x, z: p.z };
+      else if (validSpot(p.x, h.z)) fix = { x: p.x, z: h.z };
+      else fix = { x: p.x, z: p.z };
+      obj.position.x += fix.x - h.x;
+      obj.position.z += fix.z - h.z;
+      h.x = fix.x;
+      h.z = fix.z;
+    }
+    this.prevHead.copy(h);
+  }
+});
+
+// ---------- Texturas procedurales ----------
+function canvasTexture(w, h, draw, repeat) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  draw(canvas.getContext('2d'), w, h);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  if (repeat) {
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(repeat[0], repeat[1]);
+  }
+  return tex;
+}
+
+function speckle(ctx, w, h, base, colors, count, size) {
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, w, h);
+  for (let i = 0; i < count; i++) {
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.globalAlpha = .25 + Math.random() * .5;
+    const r = Math.random() * size + .5;
+    ctx.beginPath();
+    ctx.ellipse(Math.random() * w, Math.random() * h, r, r * (.5 + Math.random() * .6), Math.random() * 3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Hoja compuesta de rosa (3 o 5 foliolos) con borde aserrado y nervaduras.
+function drawRoseLeaf(ctx, w, h, leaflets, tint) {
+  ctx.clearRect(0, 0, w, h);
+  const cx = w / 2;
+  ctx.strokeStyle = '#4c6b2c';
+  ctx.lineWidth = w * .018;
+  ctx.beginPath();
+  ctx.moveTo(cx, h);
+  ctx.lineTo(cx, h * .28);
+  ctx.stroke();
+  const spots = leaflets === 5
+    ? [[0, .2, .2], [-1, .45, .18], [1, .45, .18], [-1, .7, .16], [1, .7, .16]]
+    : [[0, .26, .24], [-1, .58, .21], [1, .58, .21]];
+  for (const [side, y, size] of spots) {
+    const lx = cx + side * w * .2;
+    const ly = h * y;
+    const lw = w * size * .62;
+    const lh = h * size;
+    ctx.save();
+    ctx.translate(lx, ly);
+    ctx.rotate(side * -.9);
+    // Contorno aserrado.
+    const g = ctx.createLinearGradient(-lw, 0, lw, 0);
+    g.addColorStop(0, tint[0]);
+    g.addColorStop(.5, tint[1]);
+    g.addColorStop(1, tint[0]);
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    const steps = 26;
+    for (let i = 0; i <= steps; i++) {
+      const a = (i / steps) * Math.PI * 2;
+      const tooth = (i % 2 ? 1 : .9);
+      const px = Math.sin(a) * lw * tooth;
+      const py = -Math.cos(a) * lh * tooth * (Math.cos(a) < 0 ? 1.05 : .85);
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(20,45,15,.55)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(200,225,150,.55)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, lh * .85);
+    ctx.lineTo(0, -lh * .9);
+    ctx.stroke();
+    ctx.lineWidth = 1;
+    for (let k = -3; k <= 3; k++) {
+      if (!k) continue;
+      ctx.beginPath();
+      ctx.moveTo(0, k * lh * .2);
+      ctx.lineTo(lw * .8, k * lh * .2 - lh * .18);
+      ctx.moveTo(0, k * lh * .2);
+      ctx.lineTo(-lw * .8, k * lh * .2 - lh * .18);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  // Conectar foliolos laterales con el raquis.
+  ctx.strokeStyle = '#4c6b2c';
+  ctx.lineWidth = w * .012;
+  for (const [side, y] of spots) {
+    if (!side) continue;
+    ctx.beginPath();
+    ctx.moveTo(cx, h * y);
+    ctx.lineTo(cx + side * w * .12, h * y - h * .03);
+    ctx.stroke();
+  }
+}
+
+function makeTextures() {
+  return {
+    soil: canvasTexture(256, 256, (c, w, h) => speckle(c, w, h, '#5b4630', ['#3e2f20', '#7a6044', '#2f2418', '#8b7356'], 2200, 3), [3, 30]),
+    path: canvasTexture(256, 256, (c, w, h) => speckle(c, w, h, '#9a8460', ['#7d6a4b', '#b49d77', '#6b5a40'], 1800, 2.5), [1, 14]),
+    floor: canvasTexture(256, 256, (c, w, h) => speckle(c, w, h, '#8b7552', ['#6d5a3e', '#a68f6a', '#5c4b33'], 1800, 2.5), [10, 20]),
+    wood: canvasTexture(64, 256, (c, w, h) => {
+      c.fillStyle = '#8a6a45';
+      c.fillRect(0, 0, w, h);
+      for (let i = 0; i < 40; i++) {
+        c.strokeStyle = Math.random() < .5 ? 'rgba(60,40,20,.35)' : 'rgba(180,150,110,.3)';
+        c.lineWidth = Math.random() * 2 + .5;
+        const x = Math.random() * w;
+        c.beginPath();
+        c.moveTo(x, 0);
+        c.bezierCurveTo(x + 4, h * .3, x - 4, h * .6, x + 2, h);
+        c.stroke();
+      }
+    }),
+    plastic: canvasTexture(128, 128, (c, w, h) => {
+      c.fillStyle = '#f4f7f2';
+      c.fillRect(0, 0, w, h);
+      for (let i = 0; i < 18; i++) {
+        c.strokeStyle = 'rgba(160,175,160,.25)';
+        c.lineWidth = Math.random() * 3;
+        c.beginPath();
+        const y = Math.random() * h;
+        c.moveTo(0, y);
+        c.lineTo(w, y + (Math.random() - .5) * 20);
+        c.stroke();
+      }
+    }, [4, 4]),
+    leaf5: canvasTexture(256, 256, (c, w, h) => drawRoseLeaf(c, w, h, 5, ['#244f22', '#3d7334'])),
+    leaf3: canvasTexture(256, 256, (c, w, h) => drawRoseLeaf(c, w, h, 3, ['#2a5a26', '#4a8238'])),
+    oldLeaf: canvasTexture(256, 256, (c, w, h) => drawRoseLeaf(c, w, h, 5, ['#1f4120', '#30602c']))
+  };
+}
+
+function signTexture(lines, bg, fg) {
+  return canvasTexture(512, 192, (c, w, h) => {
+    c.fillStyle = bg;
+    c.fillRect(0, 0, w, h);
+    c.strokeStyle = fg;
+    c.lineWidth = 8;
+    c.strokeRect(6, 6, w - 12, h - 12);
+    c.fillStyle = fg;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.font = '900 64px Inter, system-ui, sans-serif';
+    c.fillText(lines[0], w / 2, lines[1] ? h * .38 : h / 2);
+    if (lines[1]) {
+      c.font = '700 34px Inter, system-ui, sans-serif';
+      c.fillText(lines[1], w / 2, h * .75);
+    }
+  });
+}
+
+// ---------- Geometría de la flor ----------
+// Pétalo curvo: base estrecha, borde redondeado, ahuecado (cup) y con la punta
+// que se enrolla hacia afuera (curl) cuando la flor abre.
+function petalGeometry(w, h, cup, curl, base, tip, sepal) {
+  const su = 4, sv = 5;
+  const pos = [], col = [], idx = [];
+  const cBase = new THREE.Color(base), cTip = new THREE.Color(tip), c = new THREE.Color();
+  for (let j = 0; j <= sv; j++) {
+    const v = j / sv;
+    const width = sepal ? w * (1 - v) * (.6 + .4 * Math.sin(Math.PI * Math.min(1, v * 3)))
+      : w * Math.sqrt(Math.max(.05, Math.sin(Math.PI * (.12 + .78 * v))));
+    for (let i = 0; i <= su; i++) {
+      const u = i / su - .5;
+      const x = u * width;
+      let z = -cup * 4 * u * u * w * .5;
+      let y = v * h;
+      z += curl * h * Math.pow(v, 2.4);
+      y -= curl * h * .25 * Math.pow(v, 3);
+      pos.push(x, y, z);
+      c.copy(cBase).lerp(cTip, Math.min(1, v * 1.4));
+      const edge = 1 - Math.abs(u) * .25;
+      col.push(c.r * edge, c.g * edge, c.b * edge);
+    }
+  }
+  for (let j = 0; j < sv; j++) {
+    for (let i = 0; i < su; i++) {
+      const a = j * (su + 1) + i, b = a + 1, d = a + su + 1, e = d + 1;
+      idx.push(a, d, b, b, d, e);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setIndex(idx);
+  g.computeVertexNormals();
+  return g;
+}
+
+const UNIT_SPHERE = new THREE.SphereGeometry(1, 8, 6);
+
+function place(geo, a, t, r0, y0) {
+  const m = new THREE.Matrix4().makeTranslation(Math.sin(a) * r0, y0, Math.cos(a) * r0)
+    .multiply(new THREE.Matrix4().makeRotationY(a))
+    .multiply(new THREE.Matrix4().makeRotationX(t));
+  return { geo, matrix: m };
+}
+function blob(x, y, z, sx, sy, sz, color) {
+  const g = UNIT_SPHERE.clone();
+  const cc = new THREE.Color(color);
+  const colors = [];
+  for (let i = 0; i < g.attributes.position.count; i++) colors.push(cc.r, cc.g, cc.b);
+  g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  const m = new THREE.Matrix4().makeTranslation(x, y, z).multiply(new THREE.Matrix4().makeScale(sx, sy, sz));
+  return { geo: g, matrix: m };
+}
+function ring(n, offsetDeg, fn) {
+  const parts = [];
+  for (let i = 0; i < n; i++) parts.push(fn(deg(offsetDeg + i * 360 / n), i));
+  return parts;
+}
+
+function mergeParts(parts) {
+  const list = [];
+  let total = 0;
+  for (const part of parts) {
+    const g = part.geo.clone().applyMatrix4(part.matrix).toNonIndexed();
+    list.push(g);
+    total += g.attributes.position.count;
+  }
+  const pos = new Float32Array(total * 3);
+  const nor = new Float32Array(total * 3);
+  const col = new Float32Array(total * 3);
+  let offset = 0;
+  for (const g of list) {
+    pos.set(g.attributes.position.array, offset * 3);
+    nor.set(g.attributes.normal.array, offset * 3);
+    col.set(g.attributes.color.array, offset * 3);
+    offset += g.attributes.position.count;
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
+  out.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  out.computeBoundingSphere();
+  return out;
+}
+
+function buildHeadGeometries() {
+  const SEP_B = '#2e5a25', SEP_T = '#4f7f35';
+  const sepal = (len, w) => petalGeometry(w, len, .3, 0, SEP_B, SEP_T, true);
+  const recept = () => blob(0, -.004, 0, .011, .014, .011, '#3f6e2d');
+  // Rojo Freedom: base casi vino tinto, borde rojo intenso.
+  const R_DARK = '#4a0610', R_MID = '#9e0f24', R_BRIGHT = '#c8142e';
+
+  const closed = mergeParts([
+    recept(),
+    ...ring(3, 0, a => place(petalGeometry(.026, .05, 1.1, 0, R_DARK, '#7a0c1d'), a, deg(3), .003, .004)),
+    ...ring(5, 20, a => place(petalGeometry(.036, .056, .95, .02, R_DARK, R_MID), a, deg(9), .008, .002)),
+    // Sépalos todavía abrazando el botón.
+    ...ring(5, 0, a => place(sepal(.05, .013), a, deg(16), .01, -.002))
+  ]);
+
+  const cut = mergeParts([
+    recept(),
+    ...ring(4, 10, a => place(petalGeometry(.03, .052, 1.0, 0, R_DARK, R_MID), a, deg(5), .004, .006)),
+    ...ring(4, 55, a => place(petalGeometry(.045, .058, .7, .08, R_DARK, R_BRIGHT), a, deg(17), .01, .004)),
+    // Pétalos externos en cruz, un poco abiertos: silueta cuadrada.
+    ...ring(4, 0, a => place(petalGeometry(.058, .058, .45, .32, R_MID, R_BRIGHT), a, deg(32), .015, .002)),
+    // Sépalos ya doblados hacia abajo.
+    ...ring(5, 36, a => place(sepal(.045, .012), a, deg(118), .011, 0))
+  ]);
+
+  const open = mergeParts([
+    recept(),
+    blob(0, .014, 0, .014, .007, .014, '#c99a3a'),
+    ...ring(5, 10, a => place(petalGeometry(.05, .05, .35, .35, R_DARK, '#a8132a'), a, deg(52), .01, .01)),
+    ...ring(8, 0, a => place(petalGeometry(.06, .058, .25, .5, R_DARK, '#ad1730'), a, deg(78), .018, .006)),
+    ...ring(8, 22.5, a => place(petalGeometry(.064, .06, .2, .6, '#5c0a16', '#9c1a2e'), a, deg(98), .024, .002)),
+    ...ring(5, 0, a => place(sepal(.045, .012), a, deg(150), .011, 0))
+  ]);
+  return [closed, cut, open];
+}
+
+// Une dos puntos con un cilindro instanciado (tallos).
+function segmentMatrix(a, b, radiusScale) {
+  const dir = new THREE.Vector3().subVectors(b, a);
+  const len = dir.length();
+  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize());
+  return new THREE.Matrix4().compose(a, q, new THREE.Vector3(radiusScale, len, radiusScale));
+}
+
+// Matriz de una hoja (quad) que nace en p, apunta hacia dir y cae un poco.
+function leafMatrix(p, dirX, dirZ, size, droop, roll) {
+  const yaw = Math.atan2(-dirX, -dirZ);
+  return new THREE.Matrix4().makeTranslation(p.x, p.y, p.z)
+    .multiply(new THREE.Matrix4().makeRotationY(yaw))
+    .multiply(new THREE.Matrix4().makeRotationX(-Math.PI / 2 - droop))
+    .multiply(new THREE.Matrix4().makeRotationY(roll))
+    .multiply(new THREE.Matrix4().makeScale(size * .75, size, 1));
+}
+
+// ---------- Invernadero ----------
+AFRAME.registerComponent('rose-farm', {
+  init: function () {
+    const root = new THREE.Group();
+    this.el.object3D.add(root);
+    this.root = root;
+    const tex = this.tex = makeTextures();
+
+    // Luz difusa de invernadero con plástico (cielo nublado andino).
+    root.add(new THREE.HemisphereLight(0xf6fbf4, 0x6b5a40, 2.1));
+    const sun = new THREE.DirectionalLight(0xfff4e2, 1.1);
+    sun.position.set(-3, 9, 2);
+    root.add(sun);
+
+    const mat = (opts) => new THREE.MeshLambertMaterial(opts);
+
+    // Suelo, senderos y cabeceras.
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(7, 16), mat({ map: tex.floor }));
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.set(0, -.005, -4.9);
+    root.add(floor);
+    for (const x of AISLES) {
+      const path = new THREE.Mesh(new THREE.PlaneGeometry(.8, 10.4), mat({ map: tex.path }));
+      path.rotation.x = -Math.PI / 2;
+      path.position.set(x, .002, -6);
+      root.add(path);
+    }
+
+    // Camas: lomos de tierra con cinta de goteo.
+    for (const x of BEDS) {
+      const bed = new THREE.Mesh(new THREE.BoxGeometry(.7, BED_TOP, 10.2), mat({ map: tex.soil }));
+      bed.position.set(x, BED_TOP / 2, -6);
+      root.add(bed);
+      for (const side of [-.12, .12]) {
+        const drip = new THREE.Mesh(new THREE.CylinderGeometry(.007, .007, 10.2, 5), mat({ color: 0x1b1b1b }));
+        drip.rotation.x = Math.PI / 2;
+        drip.position.set(x + side, BED_TOP + .007, -6);
+        root.add(drip);
+      }
+      // Tutorado: alambres a lado y lado y postes de madera con cruceta.
+      for (const y of [.75, 1.15, 1.55]) {
+        for (const side of [-.34, .34]) {
+          const wire = new THREE.Mesh(new THREE.CylinderGeometry(.0025, .0025, 10.2, 4), mat({ color: 0xb9c0bb }));
+          wire.rotation.x = Math.PI / 2;
+          wire.position.set(x + side, y, -6);
+          root.add(wire);
+        }
+      }
+      for (let z = ROW_START; z >= ROW_END; z -= 2.5) {
+        const stake = new THREE.Mesh(new THREE.BoxGeometry(.035, 1.65, .035), mat({ map: tex.wood }));
+        stake.position.set(x, .82, z);
+        root.add(stake);
+        for (const y of [.75, 1.15, 1.55]) {
+          const cross = new THREE.Mesh(new THREE.BoxGeometry(.72, .025, .025), mat({ map: tex.wood }));
+          cross.position.set(x, y, z);
+          root.add(cross);
+        }
+      }
+      // Letrero de cama.
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(.34, .13),
+        new THREE.MeshBasicMaterial({ map: signTexture(['CAMA ' + (12 + BEDS.indexOf(x)), 'Freedom · Bloque 7'], '#f4f1e6', '#1d4a33') })
+      );
+      label.position.set(x, .55, ROW_START + .35);
+      root.add(label);
+      const labelPost = new THREE.Mesh(new THREE.BoxGeometry(.03, .5, .03), mat({ map: tex.wood }));
+      labelPost.position.set(x, .25, ROW_START + .34);
+      root.add(labelPost);
+    }
+
+    // Estructura de madera tipo capilla con cubierta de polietileno.
+    const wood = mat({ map: tex.wood });
+    const spans = [-2.25, -.75, .75, 2.25];
+    for (let z = 2.4; z >= -12.4; z -= 3) {
+      for (const x of [-3, -1.5, 0, 1.5, 3]) {
+        const post = new THREE.Mesh(new THREE.CylinderGeometry(.05, .06, 3.6, 8), wood);
+        post.position.set(x, 1.8, z);
+        // Los postes intermedios van dentro de las camas, no en los senderos.
+        if (Math.abs(x) < 3) post.position.x += x === 0 ? .47 : Math.sign(x) * .47;
+        root.add(post);
+      }
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(6.1, .08, .06), wood);
+      beam.position.set(0, 3.6, z);
+      root.add(beam);
+    }
+    const plastic = new THREE.MeshLambertMaterial({
+      map: tex.plastic, color: 0xffffff, emissive: 0xdfe8de, emissiveIntensity: .55,
+      transparent: true, opacity: .82, side: THREE.DoubleSide, depthWrite: false
+    });
+    for (const cx of spans) {
+      for (const side of [-1, 1]) {
+        const roof = new THREE.Mesh(new THREE.PlaneGeometry(.86, 15), plastic);
+        roof.position.set(cx + side * .37, 3.85, -5);
+        roof.rotation.x = -Math.PI / 2;
+        roof.rotateY(side * .62);
+        root.add(roof);
+      }
+      const ridge = new THREE.Mesh(new THREE.BoxGeometry(.05, .05, 15), wood);
+      ridge.position.set(cx, 4.1, -5);
+      root.add(ridge);
+    }
+    for (const x of [-3.05, 3.05]) {
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(15, 3.6), plastic);
+      wall.rotation.y = Math.PI / 2;
+      wall.position.set(x, 1.8, -5);
+      root.add(wall);
+    }
+    for (const z of [2.6, -12.6]) {
+      const wall = new THREE.Mesh(new THREE.PlaneGeometry(6.1, 3.6), plastic);
+      wall.position.set(0, 1.8, z);
+      root.add(wall);
+    }
+
+    this.buildRoses();
+  },
+
+  buildRoses: function () {
+    const tex = this.tex;
+    const roses = [];
+    for (const bed of BEDS) {
+      for (const side of [-1, 1]) {
+        for (let z = ROW_START - .1; z >= ROW_END + .1; z -= .26) {
+          roses.push({
+            bed,
+            out: side,                                   // hacia qué sendero mira la fila
+            x: bed + side * .19 + (Math.random() - .5) * .05,
+            z: z + (Math.random() - .5) * .06
+          });
+        }
+      }
+    }
+    this.roses = roses;
+    const n = roses.length;
+    this.nodesPerRose = 11;
+
+    const stemGeo = new THREE.CylinderGeometry(.0065, .0075, 1, 6, 1).translate(0, .5, 0);
+    const stemMat = new THREE.MeshLambertMaterial({ color: '#3d6b2c' });
+    this.stems = new THREE.InstancedMesh(stemGeo, stemMat, n);
+    this.oldStems = new THREE.InstancedMesh(stemGeo, new THREE.MeshLambertMaterial({ color: '#5a6a34' }), n);
+    this.oldCaps = new THREE.InstancedMesh(new THREE.CylinderGeometry(1, 1, 1, 8), new THREE.MeshLambertMaterial({ color: '#33507a' }), n);
+
+    const quad = new THREE.PlaneGeometry(1, 1).translate(0, .5, 0);
+    const leafMat = map => new THREE.MeshLambertMaterial({ map, alphaTest: .5, side: THREE.DoubleSide });
+    this.leaves5 = new THREE.InstancedMesh(quad, leafMat(tex.leaf5), n * 7);
+    this.leaves3 = new THREE.InstancedMesh(quad, leafMat(tex.leaf3), n * 4);
+    this.leafMats = { 5: this.leaves5.material, 3: this.leaves3.material };
+
+    this.headGeos = buildHeadGeometries();
+    this.headMaterial = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
+    this.heads = this.headGeos.map(g => new THREE.InstancedMesh(g, this.headMaterial, n));
+
+    // Agobio: masa de tallos doblados y follaje a la base de cada cama.
+    const perBedSide = 170;
+    this.agobioLeaves = new THREE.InstancedMesh(quad, leafMat(tex.oldLeaf), BEDS.length * 2 * perBedSide * 3);
+    this.agobioStems = new THREE.InstancedMesh(stemGeo, new THREE.MeshLambertMaterial({ color: '#4d6a2e' }), BEDS.length * 2 * perBedSide);
+    let li = 0, si = 0;
+    const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3(), c = new THREE.Color();
+    for (const bed of BEDS) {
+      for (const side of [-1, 1]) {
+        for (let k = 0; k < perBedSide; k++) {
+          const z = ROW_START - Math.random() * (ROW_START - ROW_END);
+          const x = bed + side * (.1 + Math.random() * .12);
+          tmp.set(x, BED_TOP + .05 + Math.random() * .12, z);
+          tmp2.set(x + side * (.15 + Math.random() * .15), AGOBIO_TOP - .15 + Math.random() * .15, z + (Math.random() - .5) * .5);
+          this.agobioStems.setMatrixAt(si++, segmentMatrix(tmp, tmp2, 1.2));
+          for (let j = 0; j < 3; j++) {
+            const p = tmp.clone().lerp(tmp2, .3 + j * .3);
+            p.x += (Math.random() - .5) * .05;
+            const m = leafMatrix(p, side * (.4 + Math.random()), (Math.random() - .5) * 2, .13 + Math.random() * .05, .2 + Math.random() * .6, (Math.random() - .5) * 1.4);
+            this.agobioLeaves.setMatrixAt(li, m);
+            c.setScalar(.75 + Math.random() * .3);
+            this.agobioLeaves.setColorAt(li++, c);
+          }
+        }
+      }
+    }
+
+    for (const mesh of [this.stems, this.oldStems, this.oldCaps, this.leaves5, this.leaves3, ...this.heads, this.agobioLeaves, this.agobioStems]) {
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      mesh.frustumCulled = false;
+      this.root.add(mesh);
+    }
+
+    this.zero = new THREE.Matrix4().makeScale(0, 0, 0);
+    this.generate();
+  },
+
+  // Crea una planta nueva en cada posición: estado de la flor, tocón del corte
+  // anterior y nudos (hojas de 3 o 5 foliolos, alternando de lado).
+  generate: function () {
+    const counts = [0, 0, 0];
+    let l5 = 0, l3 = 0;
+    const c = new THREE.Color();
+    const up = new THREE.Vector3(0, 1, 0);
+
+    this.roses.forEach((rose, i) => {
+      const r = Math.random();
+      rose.stage = r < .38 ? STAGE.CUT : r < .7 ? STAGE.CLOSED : STAGE.OPEN;
+      rose.cut = false;
+      rose.cutNode = null;
+
+      // Corte anterior: el tallo nuevo salió de una yema hacia prevSide (±z).
+      rose.prevSide = Math.random() < .5 ? -1 : 1;
+      const stubTop = new THREE.Vector3(rose.x, AGOBIO_TOP + .02 + Math.random() * .06, rose.z);
+      const stubBase = new THREE.Vector3(rose.x - rose.out * .05, BED_TOP + .05, rose.z);
+      this.oldStems.setMatrixAt(i, segmentMatrix(stubBase, stubTop, 1.45));
+      this.oldCaps.setMatrixAt(i, new THREE.Matrix4().compose(stubTop, new THREE.Quaternion(), new THREE.Vector3(.011, .006, .011)));
+
+      rose.base = stubTop.clone().add(new THREE.Vector3(0, -.03, rose.prevSide * .028));
+      rose.length = 1.06 + Math.random() * .2;
+      rose.dir = new THREE.Vector3(rose.out * .03, 1, rose.prevSide * .1).normalize();
+      rose.top = rose.base.clone().addScaledVector(rose.dir, rose.length);
+      this.stems.setMatrixAt(i, segmentMatrix(rose.base, rose.top, 1));
+
+      // Nudos: 2 hojas de 3 foliolos abajo, 7 de 5 foliolos, 2 de 3 arriba.
+      const L = rose.length;
+      const heights = [.05, .11, .19, .29, .4, .51, .62, .73, .84, L - .2, L - .12];
+      const firstSide = Math.random() < .5 ? -1 : 1;
+      rose.nodes = heights.map((h, j) => {
+        const type = (j >= 2 && j <= 8) ? 5 : 3;
+        const side = j % 2 ? -firstSide : firstSide;
+        const p = rose.base.clone().addScaledVector(rose.dir, h);
+        const size = type === 5 ? .15 + Math.random() * .03 : (j < 2 ? .09 : .075);
+        const m = leafMatrix(p, rose.out * .55, side, size, .25 + Math.random() * .25, rose.out * side * .5);
+        const mesh = type === 5 ? this.leaves5 : this.leaves3;
+        const index = type === 5 ? l5++ : l3++;
+        mesh.setMatrixAt(index, m);
+        c.setScalar(.82 + Math.random() * .18);
+        mesh.setColorAt(index, c);
+        return { h, type, side, k: type === 5 ? j - 1 : 0, mesh, index, matrix: m, color: c.clone(), pos: p };
+      });
+
+      rose.headIndex = counts[rose.stage]++;
+      const q = new THREE.Quaternion().setFromUnitVectors(up, rose.dir)
+        .multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler((Math.random() - .5) * .2, Math.random() * Math.PI * 2, (Math.random() - .5) * .2)));
+      const k = 1.12 * (.92 + Math.random() * .16);
+      rose.headMatrix = new THREE.Matrix4().compose(rose.top, q, new THREE.Vector3(k, k, k));
+      this.heads[rose.stage].setMatrixAt(rose.headIndex, rose.headMatrix);
+    });
+
+    this.leaves5.count = l5;
+    this.leaves3.count = l3;
+    this.heads.forEach((mesh, stage) => { mesh.count = counts[stage]; });
+    for (const mesh of [this.stems, this.oldStems, this.oldCaps, this.leaves5, this.leaves3, ...this.heads, this.agobioLeaves, this.agobioStems]) {
+      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    }
+  },
+
+  cutHeight: function (rose, nodeIndex) {
+    return rose.nodes[nodeIndex].h + .012;
+  },
+
+  // Corta el tallo justo encima del nudo y devuelve la pieza cosechada.
+  cutRose: function (i, nodeIndex) {
+    const rose = this.roses[i];
+    const h = this.cutHeight(rose, nodeIndex);
+    rose.cut = true;
+    rose.cutNode = nodeIndex;
+    rose.cutPoint = rose.base.clone().addScaledVector(rose.dir, h);
+    this.stems.setMatrixAt(i, segmentMatrix(rose.base, rose.cutPoint, 1));
+    this.heads[rose.stage].setMatrixAt(rose.headIndex, this.zero);
+
+    // Pieza cosechada: tallo, hojas por encima del corte y flor.
+    const piece = new THREE.Group();
+    const inv = new THREE.Matrix4().makeTranslation(-rose.cutPoint.x, -rose.cutPoint.y, -rose.cutPoint.z);
+    const stem = new THREE.Mesh(this.stems.geometry, this.stems.material);
+    stem.applyMatrix4(segmentMatrix(rose.cutPoint, rose.top, 1).premultiply(inv));
+    piece.add(stem);
+    rose.nodes.forEach((node, j) => {
+      if (j <= nodeIndex) return;
+      node.mesh.setMatrixAt(node.index, this.zero);
+      node.mesh.instanceMatrix.needsUpdate = true;
+      const leaf = new THREE.Mesh(node.mesh.geometry, this.leafMats[node.type]);
+      leaf.applyMatrix4(node.matrix.clone().premultiply(inv));
+      piece.add(leaf);
+    });
+    const head = new THREE.Mesh(this.headGeos[rose.stage], this.headMaterial);
+    head.applyMatrix4(rose.headMatrix.clone().premultiply(inv));
+    piece.add(head);
+    // Enderezar la pieza (el tallo inclinado pasa a vertical).
+    const straighten = new THREE.Quaternion().setFromUnitVectors(rose.dir, new THREE.Vector3(0, 1, 0));
+    piece.children.forEach(child => {
+      child.position.applyQuaternion(straighten);
+      child.quaternion.premultiply(straighten);
+    });
+    piece.userData.length = rose.length - h;
+
+    for (const mesh of [this.stems, this.heads[rose.stage]]) mesh.instanceMatrix.needsUpdate = true;
+    return piece;
+  },
+
+  setStage: function (i, stage) {
+    const rose = this.roses[i];
+    if (rose.stage === stage) return;
+    if (rose.stage === STAGE.CUT) this.totalCut--;
+    if (stage === STAGE.CUT) this.totalCut++;
+    const old = this.heads[rose.stage];
+    old.setMatrixAt(rose.headIndex, this.zero);
+    old.instanceMatrix.needsUpdate = true;
+    const mesh = this.heads[stage];
+    rose.stage = stage;
+    rose.headIndex = mesh.count++;
+    mesh.setMatrixAt(rose.headIndex, rose.headMatrix);
+    mesh.instanceMatrix.needsUpdate = true;
+  },
+
+  highlight: function (rose, nodeIndex) {
+    if (this.lit) {
+      const { node } = this.lit;
+      node.mesh.setColorAt(node.index, node.color);
+      node.mesh.instanceColor.needsUpdate = true;
+      this.lit = null;
+    }
+    if (rose && nodeIndex !== null && nodeIndex !== undefined) {
+      const node = rose.nodes[nodeIndex];
+      node.mesh.setColorAt(node.index, new THREE.Color(1.7, 1.55, .55));
+      node.mesh.instanceColor.needsUpdate = true;
+      this.lit = { node };
+    }
+  }
+});
+
+// ---------- Carrito de cosecha ----------
+function buildCart(tex) {
+  const cart = new THREE.Group();
+  const metal = new THREE.MeshLambertMaterial({ color: 0x9aa3a6 });
+  const dark = new THREE.MeshLambertMaterial({ color: 0x2a2d2e });
+  const platform = new THREE.Mesh(new THREE.BoxGeometry(.5, .035, .9), metal);
+  platform.position.y = .27;
+  cart.add(platform);
+  for (const x of [-.22, .22]) {
+    for (const z of [-.38, .38]) {
+      const wheel = new THREE.Mesh(new THREE.CylinderGeometry(.09, .09, .04, 14), dark);
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(x, .09, z);
+      cart.add(wheel);
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(.03, .18, .03), metal);
+      leg.position.set(x, .18, z);
+      cart.add(leg);
+    }
+  }
+  // Manija.
+  for (const x of [-.22, .22]) {
+    const bar = new THREE.Mesh(new THREE.CylinderGeometry(.012, .012, .75, 8), metal);
+    bar.position.set(x, .64, .44);
+    cart.add(bar);
+  }
+  const handle = new THREE.Mesh(new THREE.CylinderGeometry(.016, .016, .5, 8), dark);
+  handle.rotation.z = Math.PI / 2;
+  handle.position.set(0, 1.0, .44);
+  cart.add(handle);
+
+  // Tanque de hidratación con malla: aquí van las rosas de pie, copa arriba.
+  const tankMat = new THREE.MeshLambertMaterial({ color: 0x3f7fbf, side: THREE.DoubleSide });
+  const tank = new THREE.Group();
+  const walls = [
+    [.46, .5, .01, 0, .53, -.04], [.46, .5, .01, 0, .53, -.6],
+    [.01, .5, .56, -.23, .53, -.32], [.01, .5, .56, .23, .53, -.32]
+  ];
+  for (const [w, h, d, x, y, z] of walls) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), tankMat);
+    wall.position.set(x, y, z);
+    tank.add(wall);
+  }
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(.44, .54), new THREE.MeshLambertMaterial({ color: 0x6fa8d6, transparent: true, opacity: .7 }));
+  water.rotation.x = -Math.PI / 2;
+  water.position.set(0, .66, -.32);
+  tank.add(water);
+  const grid = new THREE.MeshLambertMaterial({ color: 0xeeeeee });
+  for (let i = 0; i <= 3; i++) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(.46, .008, .008), grid);
+    bar.position.set(0, .78, -.04 - i * .187);
+    tank.add(bar);
+  }
+  for (let i = 0; i <= 8; i++) {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(.008, .008, .56), grid);
+    bar.position.set(-.23 + i * .0575, .78, -.32);
+    tank.add(bar);
+  }
+  cart.add(tank);
+
+  // Caneca de desecho junto a la manija.
+  const bin = new THREE.Mesh(new THREE.CylinderGeometry(.13, .11, .42, 16, 1, true), new THREE.MeshLambertMaterial({ color: 0x1c1c1c, side: THREE.DoubleSide }));
+  bin.position.set(0, .5, .2);
+  cart.add(bin);
+
+  const harvestSign = new THREE.Mesh(new THREE.PlaneGeometry(.36, .135),
+    new THREE.MeshBasicMaterial({ map: signTexture(['COSECHA', 'en punto · copa arriba'], '#1f6a3f', '#ffffff'), side: THREE.DoubleSide, toneMapped: false }));
+  harvestSign.position.set(0, 1.42, -.32);
+  cart.add(harvestSign);
+  const wasteSign = new THREE.Mesh(new THREE.PlaneGeometry(.3, .11),
+    new THREE.MeshBasicMaterial({ map: signTexture(['DESECHO', 'abierta · mal cortada'], '#8f2a2a', '#ffffff'), side: THREE.DoubleSide, toneMapped: false }));
+  wasteSign.position.set(0, .86, .2);
+  cart.add(wasteSign);
+
+  // Zonas de selección (invisibles, más grandes que el objeto).
+  const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+  const harvestZone = new THREE.Mesh(new THREE.BoxGeometry(.6, 1.0, .7), hitMat);
+  harvestZone.position.set(0, .95, -.32);
+  harvestZone.userData.zone = 'cosecha';
+  const wasteZone = new THREE.Mesh(new THREE.BoxGeometry(.45, .75, .34), hitMat);
+  wasteZone.position.set(0, .55, .22);
+  wasteZone.userData.zone = 'desecho';
+  cart.add(harvestZone, wasteZone);
+
+  const slots = [];
+  for (let row = 0; row < 3; row++) {
+    for (let col = 0; col < 8; col++) {
+      slots.push(new THREE.Vector3(-.2 + col * .0575, .32, -.13 - row * .187));
+    }
+  }
+  return { group: cart, zones: [harvestZone, wasteZone], signs: [harvestSign, wasteSign], slots, stored: [] };
+}
+
+// ---------- Panel VR con texto (canvas, admite tildes) ----------
+function wrapText(ctx, text, maxWidth) {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const word of words) {
+    const test = line ? line + ' ' + word : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function makeVRPanel() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 720;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.1, 1.1 * 720 / 1024),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, toneMapped: false })
+  );
+  mesh.renderOrder = 20;
+  mesh.visible = false;
+  const button = { x: 312, y: 600, w: 400, h: 90 };
+
+  function draw(msg) {
+    const ctx = canvas.getContext('2d');
+    const accent = { good: '#64b57a', bad: '#d65252', seal: '#2f7dff', info: '#caa567' }[msg.kind] || '#64b57a';
+    ctx.clearRect(0, 0, 1024, 720);
+    ctx.fillStyle = '#f7f5ef';
+    roundRect(ctx, 0, 0, 1024, 720, 36);
+    ctx.fill();
+    ctx.fillStyle = accent;
+    ctx.fillRect(0, 0, 1024, 16);
+    ctx.fillStyle = '#347451';
+    ctx.font = '800 26px Inter, system-ui, sans-serif';
+    ctx.fillText((msg.eyebrow || 'RESULTADO').toUpperCase(), 48, 70);
+    ctx.fillStyle = '#153d2d';
+    ctx.font = '850 50px Inter, system-ui, sans-serif';
+    let y = 132;
+    for (const line of wrapText(ctx, msg.title, 930)) { ctx.fillText(line, 48, y); y += 58; }
+    ctx.fillStyle = '#41584a';
+    ctx.font = '500 31px Inter, system-ui, sans-serif';
+    y += 4;
+    for (const line of wrapText(ctx, msg.body || '', 930)) { ctx.fillText(line, 48, y); y += 40; }
+    if (msg.points) {
+      ctx.fillStyle = msg.kind === 'bad' ? '#b23a3a' : '#23804a';
+      ctx.font = '900 34px Inter, system-ui, sans-serif';
+      ctx.fillText(msg.points, 48, y + 8);
+      y += 50;
+    }
+    if (msg.tip) {
+      ctx.font = '500 28px Inter, system-ui, sans-serif';
+      const lines = wrapText(ctx, msg.tip, 890);
+      const boxH = 58 + lines.length * 36;
+      ctx.fillStyle = '#fff4d6';
+      roundRect(ctx, 40, y, 944, Math.min(boxH, 585 - y), 18);
+      ctx.fill();
+      ctx.fillStyle = '#7a5a12';
+      ctx.font = '800 22px Inter, system-ui, sans-serif';
+      ctx.fillText('CONSEJO · PROCESO CORRECTO', 62, y + 36);
+      ctx.fillStyle = '#5d4a1a';
+      ctx.font = '500 28px Inter, system-ui, sans-serif';
+      let ty = y + 74;
+      for (const line of lines) {
+        if (ty > 575) break;
+        ctx.fillText(line, 62, ty);
+        ty += 36;
+      }
+    }
+    ctx.fillStyle = '#d8f1e3';
+    roundRect(ctx, button.x, button.y, button.w, button.h, 22);
+    ctx.fill();
+    ctx.strokeStyle = '#153d2d';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+    ctx.fillStyle = '#153d2d';
+    ctx.font = '900 44px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(msg.button || 'OK', 512, button.y + 60);
+    ctx.textAlign = 'left';
+    tex.needsUpdate = true;
+  }
+
+  // ¿El punto (uv) del impacto cae sobre el botón OK?
+  function isButton(uv) {
+    const px = uv.x * 1024, py = (1 - uv.y) * 720;
+    return px >= button.x - 20 && px <= button.x + button.w + 20 && py >= button.y - 20 && py <= button.y + button.h + 20;
+  }
+  return { mesh, draw, isButton };
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function makeVRHud() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 150;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(.62, .62 * 150 / 1024),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, toneMapped: false })
+  );
+  mesh.renderOrder = 19;
+  mesh.position.set(0, -.3, -.85);
+  mesh.rotation.x = -.3;
+  let last = '';
+  function draw(top, bottom, color) {
+    const key = top + '|' + bottom + '|' + color;
+    if (key === last) return;
+    last = key;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 1024, 150);
+    ctx.fillStyle = 'rgba(11,33,25,.85)';
+    roundRect(ctx, 0, 0, 1024, 150, 34);
+    ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '800 36px Inter, system-ui, sans-serif';
+    ctx.fillText(top, 512, 55);
+    ctx.fillStyle = color || '#f5d97a';
+    ctx.font = '700 32px Inter, system-ui, sans-serif';
+    ctx.fillText(bottom, 512, 112);
+    tex.needsUpdate = true;
+  }
+  return { mesh, draw };
+}
+
+// Etiqueta pequeña sobre cada mando que dice qué hace cada botón ahora mismo.
+function makeControllerLabel() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 200;
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(.15, .15 * 200 / 512),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthTest: false, toneMapped: false })
+  );
+  mesh.renderOrder = 18;
+  mesh.position.set(0, .07, .03);
+  mesh.rotation.x = -.7;
+  let last = '';
+  function draw(lines) {
+    const key = JSON.stringify(lines);
+    if (key === last) return;
+    last = key;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 200);
+    mesh.visible = lines.length > 0;
+    if (!lines.length) return;
+    ctx.fillStyle = 'rgba(11,33,25,.88)';
+    roundRect(ctx, 0, 0, 512, 40 + lines.length * 52, 26);
+    ctx.fill();
+    lines.forEach(([button, text, color], i) => {
+      const y = 22 + i * 52;
+      ctx.fillStyle = color;
+      roundRect(ctx, 16, y, 150, 40, 12);
+      ctx.fill();
+      ctx.fillStyle = '#0b2119';
+      ctx.font = '900 26px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(button, 91, y + 29);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '800 28px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(text, 182, y + 30);
+    });
+    tex.needsUpdate = true;
+  }
+  return { mesh, draw };
+}
+
+// ---------- Lógica del juego ----------
+function closestRaySegment(o, d, a, b) {
+  const v = new THREE.Vector3().subVectors(b, a);
+  const w = new THREE.Vector3().subVectors(o, a);
+  const bb = d.dot(v), c = v.dot(v), dd = d.dot(w), e = v.dot(w);
+  const den = c - bb * bb;
+  if (den < 1e-8) return null;
+  let t = THREE.MathUtils.clamp((e - bb * dd) / den, 0, 1);   // fracción del segmento
+  const s = Math.max(0, bb * t - dd);                          // distancia por el rayo
+  const p1 = o.clone().addScaledVector(d, s);
+  const p2 = a.clone().addScaledVector(v, t);
+  return { s, t, dist: p1.distanceTo(p2), point: p2 };
+}
+
+// Controles (mapeo "xr-standard": 0 gatillo, 4 A/X, 5 B/Y).
+const BTN = { TRIGGER: 0, LOWER: 4, UPPER: 5 };
+const KEY_COLORS = { cut: '#ffffff', seal: '#8cc2ff', harvest: '#7fe0a0', waste: '#ff9c9c', ok: '#f5d97a', off: '#7f8f86' };
+
+function vr() { return scene.is('vr-mode'); }
+
+// Lado (izquierda/derecha) visto por el operario desde el sendero frente a la fila.
+// worldSide es ±1 en el eje z; mirando la fila, la derecha es -out.
+function sideName(rose, worldSide) { return worldSide * -rose.out > 0 ? 'derecha' : 'izquierda'; }
+function handWorldSide(rose, hand) { return hand === 'right' ? -rose.out : rose.out; }
+
+
+function pendingText() {
+  const a = game.active;
+  if (!a) return '';
+  const steps = [];
+  if (!a.sealed) steps.push(vr() ? 'sella (gatillo apuntando al anillo azul)' : 'sella (clic en el anillo azul)');
+  if (!a.classified) steps.push(vr() ? 'clasifica (B cosecha · Y desecho)' : 'clasifica (tecla B cosecha · Y desecho)');
+  return 'Antes de cortar otra: ' + steps.join(' y ');
+}
+
+AFRAME.registerComponent('cut-game', {
+  init: function () {
+    this.farm = null;
+    this.raycaster = new THREE.Raycaster();
+    this.targets = {};
+    this.mouse = new THREE.Vector2(0, 0);
+    this.mouseInside = false;
+    this.effects = [];
+    this.seals = [];
+    this.prevButtons = {};
+    this.flashMsg = null;
+    this.cartSide = -1;
+    this.controllers = { left: $('#leftController'), right: $('#rightController') };
+
+    this.marker = new THREE.Mesh(
+      new THREE.TorusGeometry(.022, .004, 6, 20),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false, transparent: true })
+    );
+    this.marker.renderOrder = 10;
+    this.marker.visible = false;
+    this.el.object3D.add(this.marker);
+
+    // Franja verde: rango de corte de la empresa (50–100 cm bajo la copa).
+    const band = new THREE.Group();
+    const bandMat = new THREE.MeshBasicMaterial({ color: 0x4cd07a, transparent: true, opacity: .3, depthWrite: false, side: THREE.DoubleSide });
+    band.add(new THREE.Mesh(new THREE.CylinderGeometry(.024, .024, 1, 14, 1, true).translate(0, .5, 0), bandMat));
+    const edgeMat = new THREE.MeshBasicMaterial({ color: 0x4cd07a, transparent: true, opacity: .9 });
+    for (const y of [0, 1]) {
+      const edge = new THREE.Mesh(new THREE.TorusGeometry(.026, .0025, 6, 20), edgeMat);
+      edge.rotation.x = Math.PI / 2;
+      edge.position.y = y;
+      band.add(edge);
+    }
+    band.visible = false;
+    this.rangeBand = band;
+    this.el.object3D.add(band);
+
+    this.sealHint = new THREE.Mesh(
+      new THREE.TorusGeometry(.03, .005, 6, 24),
+      new THREE.MeshBasicMaterial({ color: 0x2f7dff, depthTest: false, transparent: true })
+    );
+    this.sealHint.renderOrder = 10;
+    this.sealHint.visible = false;
+    this.el.object3D.add(this.sealHint);
+
+    this.lasers = {};
+    for (const hand of ['left', 'right']) {
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+      const line = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: .85 }));
+      line.frustumCulled = false;
+      line.visible = false;
+      this.el.object3D.add(line);
+      this.lasers[hand] = line;
+    }
+
+    // Derecha: tijeras. Izquierda: frasco de sellante azul.
+    this.controllers.right.object3D.add(this.makeShears());
+    this.controllers.left.object3D.add(this.makeSealant());
+
+    this.labels = { left: makeControllerLabel(), right: makeControllerLabel() };
+    this.controllers.left.object3D.add(this.labels.left.mesh);
+    this.controllers.right.object3D.add(this.labels.right.mesh);
+
+    this.sealGeo = new THREE.CylinderGeometry(.009, .008, .008, 10);
+    this.sealMat = new THREE.MeshLambertMaterial({ color: 0x1f6fff, emissive: 0x0a2a66 });
+    this.dropGeo = new THREE.SphereGeometry(.005, 6, 4);
+    this.dropMat = new THREE.MeshBasicMaterial({ color: 0x3d8bff, transparent: true });
+
+    this.panel = makeVRPanel();
+    this.el.object3D.add(this.panel.mesh);
+    this.hud = makeVRHud();
+    this.hud.mesh.visible = false;
+    $('#camera').object3D.add(this.hud.mesh);
+
+    // La rosa cortada queda en la mano derecha (VR) o abajo a la derecha (pantalla).
+    this.handHold = new THREE.Group();
+    this.handHold.position.set(.02, -.03, -.05);
+    this.handHold.rotation.x = -.6;
+    this.controllers.right.object3D.add(this.handHold);
+    this.screenHold = new THREE.Group();
+    this.screenHold.position.set(.3, -.4, -.75);
+    this.screenHold.rotation.set(.15, 0, -.2);
+    this.screenHold.scale.setScalar(.45);
+    $('#camera').object3D.add(this.screenHold);
+  },
+
+  makeShears: function () {
+    const metal = new THREE.MeshLambertMaterial({ color: 0xc9cfd2 });
+    const handle = new THREE.MeshLambertMaterial({ color: 0xc23b2f });
+    const shears = new THREE.Group();
+    shears.position.set(0, -.01, -.06);
+    for (const side of [-1, 1]) {
+      const blade = new THREE.Mesh(new THREE.BoxGeometry(.008, .004, .06), metal);
+      blade.position.set(side * .005, 0, -.04);
+      blade.rotation.y = side * .1;
+      const grip = new THREE.Mesh(new THREE.BoxGeometry(.012, .012, .07), handle);
+      grip.position.set(side * .012, 0, .02);
+      grip.rotation.y = -side * .15;
+      shears.add(blade, grip);
+    }
+    return shears;
+  },
+
+  makeSealant: function () {
+    const bottle = new THREE.Group();
+    bottle.position.set(0, -.01, -.06);
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(.018, .018, .07, 12), new THREE.MeshLambertMaterial({ color: 0x1f6fff }));
+    body.rotation.x = Math.PI / 2;
+    const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(.004, .008, .025, 8), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+    nozzle.rotation.x = -Math.PI / 2;
+    nozzle.position.z = -.047;
+    bottle.add(body, nozzle);
+    return bottle;
+  },
+
+  setupCart: function () {
+    this.cart = buildCart(this.farm.tex);
+    this.cart.group.position.set(0, 0, .3);
+    this.el.object3D.add(this.cart.group);
+  },
+
+  controllerRay: function (el) {
+    const rc = el.components.raycaster;
+    if (!rc || !el.object3D.visible) return null;
+    const mw = el.object3D.matrixWorld;
+    const origin = new THREE.Vector3().copy(rc.data.origin).applyMatrix4(mw);
+    const dir = new THREE.Vector3().copy(rc.data.direction).transformDirection(mw);
+    return { origin, dir };
+  },
+
+  // Rosa más cercana al rayo (los tallos son finos; se acepta un margen).
+  nearestShoot: function (origin, dir, far) {
+    let best = null;
+    const roses = this.farm.roses;
+    for (let i = 0; i < roses.length; i++) {
+      const rose = roses[i];
+      if (rose.cut || (tutorial.active && i !== tutorial.rose)) continue;
+      const hit = closestRaySegment(origin, dir, rose.base, rose.top);
+      if (!hit || hit.s <= 0 || hit.s > far || hit.dist > STEM_TOLERANCE) continue;
+      if (best && hit.s >= best.s) continue;
+      best = { index: i, s: hit.s, height: hit.t * rose.length };
+    }
+    return best;
+  },
+
+  sealTarget: function (origin, dir, far) {
+    const rose = this.farm.roses[game.active.rose];
+    const p = rose.cutPoint;
+    const along = p.clone().sub(origin).dot(dir);
+    if (along > 0 && along < far && this.raycaster.ray.distanceSqToPoint(p) < .07 * .07) {
+      return { type: 'seal', point: p.clone(), distance: along };
+    }
+    const hit = closestRaySegment(origin, dir, rose.base, p);
+    if (hit && hit.dist < STEM_TOLERANCE && hit.s < far) return { type: 'seal', point: p.clone(), distance: hit.s };
+    return null;
+  },
+
+  // mode: 'cut' (mano derecha), 'seal' (mano izquierda) o 'mouse' (pantalla).
+  findTarget: function (origin, dir, far, mode) {
+    this.raycaster.set(origin, dir);
+    this.raycaster.far = 8;
+
+    if (game.modal) {
+      const hit = this.raycaster.intersectObject(this.panel.mesh, false)[0];
+      if (!hit) return null;
+      return { type: this.panel.isButton(hit.uv) ? 'ok' : 'panel', point: hit.point, distance: hit.distance };
+    }
+    if (!game.playing) return null;
+    this.raycaster.far = far;
+    const a = game.active;
+
+    if (mode === 'mouse' && a && !a.classified) {
+      const hit = this.raycaster.intersectObjects(this.cart.zones, false)[0];
+      if (hit) return { type: 'classify', zone: hit.object.userData.zone, point: hit.point, distance: hit.distance };
+    }
+    if (a && !a.sealed) {
+      return a && !a.sealed ? this.sealTarget(origin, dir, far) : null;
+    }
+    if (a || (tutorial.active && !stepIs('cut'))) return null;
+
+    const shoot = this.nearestShoot(origin, dir, far);
+    if (!shoot) return null;
+    const rose = this.farm.roses[shoot.index];
+    // Se corta justo encima del nudo que queda debajo del punto apuntado.
+    let node = 0;
+    rose.nodes.forEach((n, j) => { if (n.h <= shoot.height + .02) node = j; });
+    const h = this.farm.cutHeight(rose, node);
+    return {
+      type: 'cut',
+      rose: shoot.index,
+      node,
+      point: rose.base.clone().addScaledVector(rose.dir, h),
+      distance: shoot.s
+    };
+  },
+
+  tick: function (time, deltaMs) {
+    if (!this.farm) {
+      this.farm = this.el.components['rose-farm'];
+      if (!this.farm || !this.farm.roses) { this.farm = null; return; }
+      this.setupCart();
+    }
+    const inVR = this.el.is('vr-mode');
+    const dt = Math.min(deltaMs || 16, 50) / 1000;
+    this.targets = {};
+
+    this.followCart(dt);
+    if (!coachMesh.parent) this.el.object3D.add(coachMesh);
+    updateCoach(time, dt);
+
+    let focus = null;
+    if (inVR) {
+      const a = game.active;
+      const aiming = !!game.modal || !a || !a.sealed;
+      for (const hand of ['right', 'left']) {
+        const el = this.controllers[hand];
+        const laser = this.lasers[hand];
+        const ownLine = el.getObject3D('line');
+        if (ownLine) ownLine.visible = false;
+        const ray = this.controllerRay(el);
+        if (!ray || !aiming) { laser.visible = false; continue; }
+        const target = this.findTarget(ray.origin, ray.dir, REACH, 'hand');
+        this.targets[hand] = target;
+        const length = target ? target.distance : (game.modal ? 3 : REACH);
+        const end = ray.origin.clone().addScaledVector(ray.dir, length);
+        const pos = laser.geometry.attributes.position;
+        pos.setXYZ(0, ray.origin.x, ray.origin.y, ray.origin.z);
+        pos.setXYZ(1, end.x, end.y, end.z);
+        pos.needsUpdate = true;
+        laser.material.color.set(!game.modal && a && !a.sealed ? 0x3d8bff : 0xffffff);
+        laser.visible = true;
+        if (!focus && target) focus = target;
+      }
+      this.pollButtons();
+      this.updateLabels();
+    } else {
+      this.lasers.left.visible = this.lasers.right.visible = false;
+      if (this.mouseInside && this.el.camera) {
+        this.raycaster.setFromCamera(this.mouse, this.el.camera);
+        const ray = this.raycaster.ray;
+        const target = this.findTarget(ray.origin.clone(), ray.direction.clone(), REACH + 1, 'mouse');
+        this.targets.mouse = target;
+        focus = target;
+      }
+      if (this.el.canvas) {
+        this.el.canvas.style.cursor = focus && focus.type !== 'panel' ? 'crosshair' : '';
+      }
+    }
+
+    // Marcador del corte, hoja resaltada y franja del rango permitido.
+    if (focus && focus.type === 'cut') {
+      const rose = this.farm.roses[focus.rose];
+      this.marker.visible = true;
+      this.marker.position.copy(focus.point);
+      this.marker.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), rose.dir);
+      this.rangeBand.visible = true;
+      this.rangeBand.position.copy(rose.base).addScaledVector(rose.dir, rose.length - RANGE_MAX);
+      this.rangeBand.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), rose.dir);
+      this.rangeBand.scale.set(1, RANGE_MAX - RANGE_MIN, 1);
+      if (!this.lit || this.lit.rose !== focus.rose || this.lit.node !== focus.node) {
+        this.farm.highlight(rose, focus.node);
+        this.lit = { rose: focus.rose, node: focus.node };
+      }
+    } else {
+      this.marker.visible = false;
+      this.rangeBand.visible = false;
+      if (this.lit) { this.farm.highlight(null); this.lit = null; }
+    }
+
+    if (game.active && !game.active.sealed) {
+      const rose = this.farm.roses[game.active.rose];
+      this.sealHint.visible = !game.modal;
+      this.sealHint.position.copy(rose.cutPoint);
+      this.sealHint.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), rose.dir);
+      const k = 1 + .35 * Math.sin(time / 160);
+      this.sealHint.scale.set(k, k, k);
+    } else {
+      this.sealHint.visible = false;
+    }
+
+    // Letreros del carrito orientados hacia el operario.
+    if (this.cart && this.el.camera) {
+      const head = new THREE.Vector3();
+      this.el.camera.getWorldPosition(head);
+      for (const sign of this.cart.signs) {
+        const p = new THREE.Vector3();
+        sign.getWorldPosition(p);
+        sign.rotation.set(0, Math.atan2(head.x - p.x, head.z - p.z) - this.cart.group.rotation.y, 0);
+      }
+    }
+
+    if (this.flashMsg && performance.now() > this.flashMsg.until) {
+      this.flashMsg = null;
+      updateHUD();
+    }
+
+    this.effects = this.effects.filter(fx => {
+      fx.age += dt;
+      fx.update(fx, dt);
+      if (fx.age >= fx.life) {
+        fx.object.parent && fx.object.parent.remove(fx.object);
+        return false;
+      }
+      return true;
+    });
+  },
+
+  // Botones de los mandos, leídos cada cuadro (detecta el momento en que se pulsan).
+  pollButtons: function () {
+    const xr = this.el.renderer && this.el.renderer.xr;
+    const session = xr && xr.isPresenting ? xr.getSession() : null;
+    if (!session) return;
+    for (const source of session.inputSources) {
+      const gp = source.gamepad;
+      const hand = source.handedness;
+      if (!gp || (hand !== 'left' && hand !== 'right')) continue;
+      for (const idx of [BTN.TRIGGER, BTN.LOWER, BTN.UPPER]) {
+        const button = gp.buttons[idx];
+        const now = !!(button && button.pressed);
+        const key = hand + idx;
+        if (now && !this.prevButtons[key]) this.onButton(hand, idx);
+        this.prevButtons[key] = now;
+      }
+    }
+  },
+
+  onButton: function (hand, idx) {
+    if (game.modal) {
+      if (hand === 'left' && idx === BTN.LOWER) closeMessage();
+      else if (idx === BTN.TRIGGER && this.targets[hand] && this.targets[hand].type === 'ok') closeMessage();
+      else this.flash('Lee el mensaje y pulsa X (control izquierdo) para continuar');
+      return;
+    }
+    if (!game.playing) return;
+    if (tutorialButton(hand, idx)) return;
+    if (idx === BTN.TRIGGER) {
+      if (game.active && !game.active.sealed) this.sealAction(this.targets[hand], hand);
+      else this.cutAction(this.targets[hand], hand);
+    }
+    else if (hand === 'right' && idx === BTN.UPPER) this.classifyAction('cosecha', hand);
+    else if (hand === 'left' && idx === BTN.UPPER) this.classifyAction('desecho', hand);
+    else if (hand === 'right' && idx === BTN.LOWER) showMessage(guideMessage());
+    else if (hand === 'left' && idx === BTN.LOWER) this.flash('X sirve para dar OK a los mensajes');
+  },
+
+  updateLabels: function () {
+    const a = game.active;
+    if (tutorial.active && !game.modal) {
+      const l = pick(tutorialStep().labels) || {};
+      const paint = list => (list || []).map(([b, t, c]) => [b, t, KEY_COLORS[c]]);
+      this.labels.left.draw(paint(l.left));
+      this.labels.right.draw(paint(l.right));
+      return;
+    }
+    let left = [], right = [];
+    if (game.modal) {
+      left = [['X', 'OK', KEY_COLORS.ok]];
+    } else if (game.playing) {
+      if (!a) {
+        left = [['GATILLO', 'Cortar  ←', KEY_COLORS.cut]];
+        right = [['GATILLO', 'Cortar  →', KEY_COLORS.cut], ['A', 'Guía', KEY_COLORS.off]];
+      } else {
+        if (!a.sealed) {
+          left.push(['GATILLO', 'Sellar', KEY_COLORS.seal]);
+          right.push(['GATILLO', 'Sellar', KEY_COLORS.seal]);
+        }
+        if (!a.classified) right.push(['B', 'Cosecha', KEY_COLORS.harvest]);
+        if (!a.classified) left.push(['Y', 'Desecho', KEY_COLORS.waste]);
+      }
+    }
+    this.labels.left.draw(left);
+    this.labels.right.draw(right);
+  },
+
+  flash: function (text) {
+    this.flashMsg = { text, until: performance.now() + 2800 };
+    updateHUD();
+  },
+
+  // El carrito va siempre delante del operario: en el sendero, hacia donde mira.
+  followCart: function (dt) {
+    if (!this.cart || !this.el.camera) return;
+    const g = this.cart.group;
+    const head = new THREE.Vector3();
+    const f = new THREE.Vector3();
+    this.el.camera.getWorldPosition(head);
+    this.el.camera.getWorldDirection(f);
+    f.y = 0;
+    if (f.lengthSq() < 1e-6) f.set(0, 0, -1);
+    f.normalize();
+    let target, yaw;
+    const aisle = aisleAt(head.x);
+    if (inBedZone(head.z) && aisle !== undefined) {
+      // Al mirar hacia la cama (de lado) se conserva el sentido anterior.
+      if (Math.abs(f.z) > .55) this.cartSide = Math.sign(f.z);
+      target = new THREE.Vector3(aisle, 0, head.z + this.cartSide * .95);
+      yaw = this.cartSide < 0 ? 0 : Math.PI;       // manija hacia el operario
+    } else {
+      target = new THREE.Vector3(head.x + f.x * .95, 0, head.z + f.z * .95);
+      yaw = Math.atan2(-f.x, -f.z);
+      if (Math.abs(f.z) > .55) this.cartSide = Math.sign(f.z);
+    }
+    target.x = THREE.MathUtils.clamp(target.x, -2.9, 2.9);
+    target.z = THREE.MathUtils.clamp(target.z, -12.3, 2.4);
+    if (g.position.distanceTo(target) > 2.5) g.position.copy(target);
+    else g.position.lerp(target, 1 - Math.exp(-dt * 4));
+    let delta = yaw - g.rotation.y;
+    delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+    g.rotation.y += delta * (1 - Math.exp(-dt * 5));
+  },
+
+  // Clic en pantalla: la acción depende de a qué se apunta.
+  act: function (source, hand) {
+    const target = this.targets[source];
+    if (game.modal || !game.playing) return;
+    if (!target) {
+      if (game.active) this.flash(pendingText());
+      return;
+    }
+    if (target.type === 'cut') this.cutAction(Object.assign({}, target, { hand }), source);
+    else if (target.type === 'seal') this.sealAction(target, source);
+    else if (target.type === 'classify') this.classifyAction(target.zone, source);
+  },
+
+  cutAction: function (target, source) {
+    if (!tutorialAllows('cut')) return;
+    if (game.active) { this.flash(pendingText()); pulse(source, .2, 30); return; }
+    if (!target || target.type !== 'cut') {
+      this.flash(vr() ? 'Apunta al tallo con el control derecho y aprieta el gatillo' : 'Haz clic sobre el tallo de una rosa');
+      return;
+    }
+    this.cut(target, source);
+  },
+
+  sealAction: function (target, source) {
+    if (!tutorialAllows('seal')) return;
+    if (!game.active) { this.flash(vr() ? 'Primero corta una rosa (gatillo derecho)' : 'Primero corta una rosa'); return; }
+    if (game.active.sealed) { this.flash('Este corte ya está sellado'); return; }
+    if (!target || target.type !== 'seal') {
+      this.flash(vr() ? 'Apunta al corte (anillo azul) con el control izquierdo' : 'Haz clic en el corte (anillo azul)');
+      return;
+    }
+    this.seal(source);
+  },
+
+  classifyAction: function (zone, source) {
+    if (!tutorialAllows('classify')) return;
+    if (!game.active) { this.flash('Primero corta una rosa'); return; }
+    if (game.active.classified) { this.flash('Esta rosa ya está clasificada'); return; }
+    this.classify(zone, source);
+  },
+
+  nextStepText: function () {
+    const a = game.active;
+    if (!a) return 'Busca la siguiente rosa en punto.';
+    const steps = [];
+    if (!a.sealed) steps.push(vr() ? 'sella: apunta al anillo azul y aprieta un GATILLO' : 'sella: clic en el anillo azul');
+    if (!a.classified) {
+      steps.push(vr()
+        ? 'clasifícala: B = cosecha o Y = desecho'
+        : 'clasifícala: tecla B = cosecha o Y = desecho (o clic en el carrito)');
+    }
+    return steps.length ? 'Ahora ' + steps.join(' y ') + '.' : 'Rosa terminada: busca la siguiente rosa en punto.';
+  },
+
+  finishIfDone: function () {
+    if (game.active && game.active.sealed && game.active.classified) game.active = null;
+  },
+
+  cut: function (target, source) {
+    const rose = this.farm.roses[target.rose];
+    const hand = source === 'left' || source === 'right' ? source : (target.hand || 'right');
+    const cutSide = handWorldSide(rose, hand);
+    const evaluation = evaluateCut(rose, target.node, this.farm, cutSide);
+    const piece = this.farm.cutRose(target.rose, target.node);
+    this.farm.highlight(null);
+    this.lit = null;
+    const holder = vr() ? this.handHold : this.screenHold;
+    piece.position.set(0, -.12, 0);
+    holder.add(piece);
+    game.active = { rose: target.rose, node: target.node, evaluation, piece, sealed: false, classified: false };
+    pulse(source, .5, 60);
+
+    const delta = evaluation.ok ? POINTS.goodCut : POINTS.error * evaluation.errors.length;
+    game.points += delta;
+    if (!evaluation.ok) game.errors += evaluation.errors.length;
+    updateHUD();
+
+    const len = Math.round(evaluation.length * 100);
+    if (evaluation.ok) {
+      showMessage({
+        kind: 'good',
+        eyebrow: 'Corte',
+        title: '¡Corte correcto!',
+        body: 'Rosa en punto, sobre la ' + evaluation.k + '.ª hoja de 5 foliolos, cortada hacia la ' + evaluation.cutSideName + ' (contrario al corte anterior). Tallo de ' + len + ' cm. ' + this.nextStepText(),
+        points: '+' + delta + ' puntos'
+      });
+    } else {
+      pulse(source, 1, 220);
+      showMessage({
+        kind: 'bad',
+        eyebrow: 'Corte',
+        title: evaluation.errors.length > 1 ? 'Corte con ' + evaluation.errors.length + ' errores' : evaluation.errors[0].title,
+        body: evaluation.errors.map(e => e.detail).join(' ') + ' Esta flor va a desecho. ' + this.nextStepText(),
+        points: delta + ' puntos',
+        tip: evaluation.errors.map(e => e.tip).join(' ')
+      });
+    }
+  },
+
+  seal: function (source) {
+    const rose = this.farm.roses[game.active.rose];
+    game.active.sealed = true;
+    game.points += POINTS.seal;
+    pulse(source, .3, 40);
+
+    const cap = new THREE.Mesh(this.sealGeo, this.sealMat);
+    cap.position.copy(rose.cutPoint);
+    cap.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), rose.dir);
+    this.el.object3D.add(cap);
+    this.seals.push(cap);
+    for (let i = 0; i < 10; i++) {
+      const drop = new THREE.Mesh(this.dropGeo, this.dropMat);
+      drop.position.copy(cap.position);
+      const vel = new THREE.Vector3((Math.random() - .5) * .4, Math.random() * .4, (Math.random() - .5) * .4);
+      this.el.object3D.add(drop);
+      this.effects.push({
+        object: drop, age: 0, life: .45,
+        update: (fx, dt) => {
+          vel.y -= 2.5 * dt;
+          drop.position.addScaledVector(vel, dt);
+          const k = 1 - fx.age / fx.life;
+          drop.scale.set(k, k, k);
+        }
+      });
+    }
+    const next = this.nextStepText();
+    this.finishIfDone();
+    updateHUD();
+    showMessage({
+      kind: 'seal',
+      eyebrow: 'Sellado',
+      title: 'Corte sellado',
+      body: 'El sellante azul protege la herida de hongos y deshidratación. ' + next,
+      points: '+' + POINTS.seal + ' puntos'
+    });
+  },
+
+  classify: function (zone, source) {
+    const { evaluation, piece } = game.active;
+    const correctZone = evaluation.ok ? 'cosecha' : 'desecho';
+    const right = zone === correctZone;
+    const delta = right ? POINTS.goodSort : POINTS.badSort;
+    game.points += delta;
+    if (!right) game.errors++;
+    game.active.classified = true;
+    pulse(source, right ? .3 : 1, right ? 40 : 200);
+
+    piece.parent && piece.parent.remove(piece);
+    if (zone === 'cosecha') {
+      // De pie en el tanque, copa arriba, ocupando el siguiente puesto en orden.
+      const slot = this.cart.slots[this.cart.stored.length % CART_SLOTS];
+      piece.position.copy(slot);
+      piece.rotation.set(0, 0, 0);
+      piece.scale.setScalar(1);
+      this.cart.group.add(piece);
+      this.cart.stored.push(piece);
+      game.harvested++;
+    } else {
+      piece.position.set(0, .75, .2);
+      piece.rotation.set(Math.PI / 2, 0, 0);
+      piece.scale.setScalar(.6);
+      this.cart.group.add(piece);
+      this.effects.push({
+        object: piece, age: 0, life: .5,
+        update: (fx) => { piece.position.y = .75 - fx.age * .8; }
+      });
+      game.discarded++;
+    }
+    const next = this.nextStepText();
+    this.finishIfDone();
+    updateHUD();
+
+    const msg = right
+      ? {
+          kind: 'good',
+          eyebrow: 'Clasificación',
+          title: zone === 'cosecha' ? 'Bien: a cosecha' : 'Bien: a desecho',
+          body: (zone === 'cosecha'
+            ? 'La rosa quedó de pie en el tanque de hidratación, con la copa hacia arriba y en orden. '
+            : 'Correcto: ' + (evaluation.reasonForWaste || 'esta flor no cumple la calidad') + '. ') + next,
+          points: '+' + delta + ' puntos'
+        }
+      : {
+          kind: 'bad',
+          eyebrow: 'Clasificación',
+          title: zone === 'cosecha' ? 'Esta flor no era de cosecha' : 'Esta flor sí era de cosecha',
+          body: (zone === 'cosecha'
+            ? 'Pusiste en cosecha una flor que debía ir a desecho: ' + (evaluation.reasonForWaste || 'no cumple la calidad') + '. '
+            : 'Botaste una rosa en punto y bien cortada: era de cosecha. ') + next,
+          points: delta + ' puntos',
+          tip: 'Solo va a COSECHA (botón B) la rosa en punto —copa un poco abierta y cuadrada— cortada correctamente. Las muy abiertas, cerradas o mal cortadas van a DESECHO (botón Y).'
+        };
+    const afterFull = () => {
+      if (zone === 'cosecha' && this.cart.stored.length >= CART_SLOTS) {
+        game.points += POINTS.fullCart;
+        updateHUD();
+        showMessage({
+          kind: 'good',
+          eyebrow: 'Carrito lleno',
+          title: '¡Malla completa!',
+          body: 'Completaste ' + CART_SLOTS + ' rosas de cosecha. El carrito se lleva a poscosecha para hidratación y clasificación; te traen uno vacío.',
+          points: '+' + POINTS.fullCart + ' puntos'
+        }, () => this.emptyCart());
+      }
+    };
+    showMessage(msg, afterFull);
+  },
+
+  emptyCart: function () {
+    this.cart.stored.forEach(p => p.parent && p.parent.remove(p));
+    this.cart.stored = [];
+  },
+
+  clearAll: function () {
+    this.seals.forEach(cap => cap.parent && cap.parent.remove(cap));
+    this.seals = [];
+    this.effects.forEach(fx => fx.object.parent && fx.object.parent.remove(fx.object));
+    this.effects = [];
+    if (game.active && game.active.piece && game.active.piece.parent) game.active.piece.parent.remove(game.active.piece);
+    if (this.cart) this.emptyCart();
+  },
+
+  showPanel: function (msg) {
+    this.panel.draw(Object.assign({}, msg, { button: 'OK  ·  botón X' }));
+    const cam = this.el.camera;
+    const head = new THREE.Vector3();
+    const dir = new THREE.Vector3();
+    cam.getWorldPosition(head);
+    cam.getWorldDirection(dir);
+    dir.y = 0;
+    if (dir.lengthSq() < 1e-6) dir.set(0, 0, -1);
+    dir.normalize();
+    const p = this.panel.mesh.position;
+    p.copy(head).addScaledVector(dir, .95);
+    p.y = head.y - .08;
+    this.panel.mesh.lookAt(head.x, p.y, head.z);
+    this.panel.mesh.visible = true;
+  },
+
+  hidePanel: function () {
+    this.panel.mesh.visible = false;
+  }
+});
+
+// ---------- Evaluación del corte ----------
+function evaluateCut(rose, nodeIndex, farm, cutSide) {
+  const node = rose.nodes[nodeIndex];
+  const length = rose.length - farm.cutHeight(rose, nodeIndex);
+  const errors = [];
+  const firstFive = rose.nodes.findIndex(n => n.type === 5);
+
+  if (rose.stage === STAGE.CLOSED) {
+    errors.push({
+      title: 'La rosa estaba cerrada',
+      detail: 'Era un botón cerrado: todavía no estaba en punto.',
+      tip: 'Corta solo cuando la copa está un poco abierta y se ve cuadrada. Un botón cerrado no abre bien en el florero.'
+    });
+  } else if (rose.stage === STAGE.OPEN) {
+    errors.push({
+      title: 'La rosa ya estaba muy abierta',
+      detail: 'La flor estaba abierta y plana: se pasó del punto de corte.',
+      tip: 'Una rosa muy abierta va a desecho. Córtala antes, cuando la copa apenas empieza a abrir.'
+    });
+  }
+
+  if (node.type === 3) {
+    errors.push({
+      title: 'Cortaste sobre una hoja de 3 foliolos',
+      detail: 'Cortaste sobre una hoja de 3 foliolos' + (nodeIndex < firstFive ? ', muy abajo en el tallo.' : ', muy arriba, cerca de la flor.'),
+      tip: 'Esa yema brota débil. La hoja que se ilumina debajo del corte debe tener 5 foliolos.'
+    });
+  } else if (node.k === 1) {
+    errors.push({
+      title: 'Corte muy bajo',
+      detail: 'Cortaste sobre la 1.ª hoja de 5 foliolos: en la planta queda solo una hoja completa.',
+      tip: 'Deja al menos 2 hojas de 5 foliolos en la planta: corta sobre la 2.ª o la 3.ª, contando desde abajo.'
+    });
+  } else if (node.k >= 4) {
+    errors.push({
+      title: 'Corte muy alto',
+      detail: 'Cortaste sobre la ' + node.k + '.ª hoja de 5 foliolos: dejaste demasiado tallo en la planta.',
+      tip: 'El tallo queda corto y la planta crece cada vez más alta. Corta sobre la 2.ª o 3.ª hoja de 5 foliolos.'
+    });
+  }
+  if (cutSide === rose.prevSide) {
+    const side = sideName(rose, cutSide);
+    errors.push({
+      title: 'Cortaste hacia el mismo lado',
+      detail: 'El corte anterior fue hacia la ' + side + ' y volviste a cortar hacia la ' + side + '.',
+      tip: 'Observa la planta: el tallo sale del tocón viejo y se inclina hacia el lado del corte anterior. Corta hacia el otro lado (gatillo derecho = derecha, izquierdo = izquierda) para que crezca derecha.'
+    });
+  }
+
+  if ((length < RANGE_MIN || length > RANGE_MAX) && !errors.some(e => /muy (bajo|alto)/i.test(e.title))) {
+    errors.push({
+      title: 'Fuera del rango de la empresa',
+      detail: 'El tallo cosechado mide ' + Math.round(length * 100) + ' cm, fuera del rango de 50 a 100 cm.',
+      tip: 'La copa debe quedar a menos de 1 m del corte y el tallo no puede ser menor de 50 cm.'
+    });
+  }
+
+  let reasonForWaste = null;
+  if (rose.stage === STAGE.OPEN) reasonForWaste = 'la rosa estaba muy abierta';
+  else if (rose.stage === STAGE.CLOSED) reasonForWaste = 'la rosa estaba cerrada, fuera de punto';
+  else if (errors.length) reasonForWaste = 'el corte quedó mal hecho';
+
+  return { ok: errors.length === 0, errors, length, k: node.k, reasonForWaste, cutSideName: sideName(rose, cutSide) };
+}
+
+// ---------- Mensajes con OK ----------
+let onMessageClose = null;
+function showMessage(msg, after) {
+  game.modal = msg;
+  onMessageClose = after || null;
+  const card = $('#msgCard');
+  card.className = 'card ' + (msg.kind || 'good');
+  $('#msgEyebrow').textContent = msg.eyebrow || 'Resultado';
+  $('#msgTitle').textContent = msg.title;
+  $('#msgBody').textContent = msg.body || '';
+  $('#msgPoints').textContent = msg.points || '';
+  $('#msgTip').style.display = msg.tip ? 'block' : 'none';
+  $('#msgTipText').textContent = msg.tip || '';
+  const cg = scene.components['cut-game'];
+  if (scene.is('vr-mode')) {
+    cg.showPanel(msg);
+  } else {
+    $('#msg').style.display = 'grid';
+    setTimeout(() => $('#msgOk').focus(), 50);
+  }
+  updateHUD();
+}
+
+function closeMessage() {
+  if (!game.modal) return;
+  game.modal = null;
+  $('#msg').style.display = 'none';
+  scene.components['cut-game'].hidePanel();
+  updateHUD();
+  const next = onMessageClose;
+  onMessageClose = null;
+  if (next) next();
+}
+
+$('#msgOk').addEventListener('click', closeMessage);
+document.addEventListener('keydown', event => {
+  const key = event.key.toLowerCase();
+  if (game.modal) {
+    if (key === 'enter' || key === ' ' || key === 'escape' || key === 'x') {
+      event.preventDefault();
+      closeMessage();
+    }
+    return;
+  }
+  if (tutorialStep() && tutorialStep().ok && (key === 'enter' || key === ' ')) {
+    event.preventDefault();
+    nextTutorialStep();
+    return;
+  }
+  if (!game.playing || scene.is('vr-mode')) return;
+  const cg = scene.components['cut-game'];
+  if (key === 'b') cg.classifyAction('cosecha', 'mouse');
+  else if (key === 'y') cg.classifyAction('desecho', 'mouse');
+});
+
+// ---------- Interfaz ----------
+function pulse(source, intensity, ms) {
+  const session = scene.renderer && scene.renderer.xr.getSession && scene.renderer.xr.getSession();
+  if (!session || (source !== 'left' && source !== 'right')) return;
+  for (const input of session.inputSources) {
+    if (input.handedness !== source || !input.gamepad) continue;
+    const actuator = input.gamepad.hapticActuators && input.gamepad.hapticActuators[0];
+    if (actuator && actuator.pulse) actuator.pulse(intensity, ms).catch(() => {});
+  }
+}
+
+function stepInfo() {
+  const a = game.active;
+  if (!a) {
+    return {
+      name: 'Cortar',
+      cls: '',
+      text: vr()
+        ? 'Apunta al tallo de una rosa en punto, dentro de la franja verde. Corta hacia el lado contrario al corte anterior (hacia donde se inclina el tallo): gatillo derecho = derecha, gatillo izquierdo = izquierda.'
+        : 'Apunta al tallo de una rosa en punto, dentro de la franja verde. Corta hacia el lado contrario al corte anterior (hacia donde se inclina el tallo): clic derecho = derecha, clic izquierdo = izquierda.',
+      vrLine: 'GATILLO DER.: cortar →   ·   GATILLO IZQ.: cortar ←   ·   A: guía'
+    };
+  }
+  const todo = [];
+  if (!a.sealed) todo.push(vr() ? 'GATILLO: sellar (anillo azul)' : 'clic en el anillo azul: sellar');
+  if (!a.classified) todo.push(vr() ? 'B: cosecha  ·  Y: desecho' : 'tecla B: cosecha · Y: desecho');
+  return {
+    name: !a.sealed && !a.classified ? 'Sellar y clasificar' : !a.sealed ? 'Sellar' : 'Clasificar',
+    cls: !a.sealed ? 'seal' : 'classify',
+    text: 'Pendiente: ' + todo.join(' · ') + '.',
+    vrLine: todo.join('   ·   ')
+  };
+}
+
+function updateHUD() {
+  $('#points').textContent = game.points;
+  $('#harvested').textContent = game.harvested;
+  $('#discarded').textContent = game.discarded;
+  $('#errors').textContent = game.errors;
+  let info = stepInfo();
+  if (tutorial.active) {
+    const step = tutorialStep();
+    info = { name: 'Tutorial · ' + step.title, cls: '', text: pick(step.action), vrLine: 'TUTORIAL  ·  ' + pick(step.action) };
+  }
+  const cg = scene.components['cut-game'];
+  const flash = cg && cg.flashMsg;
+  $('#tool').className = info.cls;
+  $('#toolName').textContent = info.name;
+  $('#mission').textContent = flash ? '⚠ ' + flash.text : info.text;
+  $('#mission').style.color = flash ? '#f5d97a' : '';
+  if (cg && cg.hud) {
+    cg.hud.draw(
+      'PUNTOS ' + game.points + '   ·   COSECHA ' + game.harvested + '   ·   DESECHO ' + game.discarded,
+      game.modal ? 'X: OK para continuar' : flash ? flash.text : info.vrLine,
+      flash ? '#ffcf6b' : '#bfe8cc'
+    );
+  }
+}
+
+function resetGame() {
+  const farm = scene.components['rose-farm'];
+  const cg = scene.components['cut-game'];
+  cg.clearAll();
+  farm.highlight(null);
+  farm.generate();
+  Object.assign(game, { points: 0, harvested: 0, discarded: 0, errors: 0, active: null, playing: true });
+  game.modal = null;
+  $('#msg').style.display = 'none';
+  cg.hidePanel();
+  updateHUD();
+}
+
+function guideMessage() {
+  return {
+    kind: 'info',
+    eyebrow: 'Guía',
+    title: 'Cómo cosechar una rosa',
+    body: vr()
+      ? '1) Busca una rosa en punto: copa un poco abierta y cuadrada. 2) Apunta al tallo dentro de la franja verde, sobre la 2.ª o 3.ª hoja de 5 foliolos. 3) Corta hacia el lado contrario al corte anterior (el tallo se inclina hacia ese lado): gatillo derecho = derecha, izquierdo = izquierda. 4) Sella: gatillo apuntando al anillo azul. 5) B = cosecha, Y = desecho. X = OK.'
+      : '1) Busca una rosa en punto: copa un poco abierta y cuadrada. 2) Apunta al tallo dentro de la franja verde, sobre la 2.ª o 3.ª hoja de 5 foliolos. 3) Corta hacia el lado contrario al corte anterior (el tallo se inclina hacia ese lado): clic derecho = derecha, clic izquierdo = izquierda. 4) Sella: clic en el anillo azul. 5) Tecla B = cosecha, Y = desecho. Enter = OK.',
+    tip: 'Aciertos suman puntos, errores restan.'
+  };
+}
+
+// ---------- Tutorial interactivo ----------
+// Cada paso explica una acción, muestra qué botón usar y solo avanza cuando el
+// operario la hace de verdad.
+const tutorial = { active: false, index: 0, rose: null, helpers: [], base: null };
+
+const TUTORIAL_STEPS = [
+  {
+    id: 'welcome', ok: true,
+    title: 'Bienvenido',
+    text: 'Vas a cosechar rosas en punto: cortar, sellar y clasificar. Los aciertos suman puntos y los errores restan.',
+    action: { vr: 'Pulsa X para continuar', screen: 'Pulsa Enter para continuar' },
+    keys: { vr: ['X'], screen: ['Enter'] },
+    labels: { left: [['X', 'Continuar', 'ok']] }
+  },
+  {
+    id: 'move',
+    title: 'Caminar',
+    text: { vr: 'Empuja el joystick izquierdo y camina hasta el círculo verde.', screen: 'Usa W A S D y camina hasta el círculo verde.' },
+    action: { vr: 'Joystick izquierdo: caminar', screen: 'W A S D: caminar' },
+    keys: { vr: ['LSTICK'], screen: ['W', 'A', 'S', 'D'] },
+    labels: { left: [['JOYSTICK', 'Caminar', 'cut']] },
+    enter: () => addFloorTarget(new THREE.Vector3(0, .02, -1.25)),
+    check: () => headPosition().setY(0).distanceTo(new THREE.Vector3(0, 0, -1.25)) < .45,
+    exit: () => removeHelpers('floor')
+  },
+  {
+    id: 'turn',
+    title: 'Girar',
+    text: { vr: 'Mueve el joystick derecho para girar hacia la rosa con luz verde.', screen: 'Arrastra el ratón para girar hacia la rosa con luz verde.' },
+    action: { vr: 'Joystick derecho: girar', screen: 'Arrastrar el ratón: girar' },
+    keys: { vr: ['RSTICK'], screen: ['Ratón'] },
+    labels: { right: [['JOYSTICK', 'Girar', 'cut']] },
+    enter: () => { tutorial.base = currentYaw(); addBeacon(); },
+    check: () => Math.abs(angleDelta(currentYaw(), tutorial.base)) > .7
+  },
+  {
+    id: 'stages', ok: true,
+    title: '¿Cuál se corta?',
+    text: 'Solo la rosa EN PUNTO: copa un poco abierta y cuadrada. La CERRADA todavía no. La MUY ABIERTA va a desecho.',
+    action: { vr: 'Mira las muestras y pulsa X', screen: 'Mira las muestras y pulsa Enter' },
+    keys: { vr: ['X'], screen: ['Enter'] },
+    labels: { left: [['X', 'Continuar', 'ok']] },
+    enter: () => addStageSamples(),
+    exit: () => removeHelpers('samples')
+  },
+  {
+    id: 'cut',
+    title: 'Cortar',
+    text: {
+      vr: 'Apunta al tallo de la rosa con luz verde, dentro de la franja verde. Observa hacia qué lado se inclina el tallo desde el tocón viejo (ese fue el corte anterior) y corta hacia el otro lado: gatillo DERECHO = derecha, gatillo IZQUIERDO = izquierda.',
+      screen: 'Apunta al tallo de la rosa con luz verde, dentro de la franja verde. Observa hacia qué lado se inclina el tallo desde el tocón viejo (ese fue el corte anterior) y corta hacia el otro lado: clic DERECHO = derecha, clic IZQUIERDO = izquierda.'
+    },
+    action: { vr: 'Gatillo del lado contrario al corte anterior', screen: 'Clic del lado contrario al corte anterior' },
+    keys: { vr: ['LTRIGGER', 'RTRIGGER', 'DIR'], screen: ['Clic izq. ←', 'Clic der. →'] },
+    labels: { left: [['GATILLO', 'Cortar  ←', 'cut']], right: [['GATILLO', 'Cortar  →', 'cut']] },
+    check: () => !!game.active,
+    exit: () => removeHelpers('beacon')
+  },
+  {
+    id: 'seal',
+    title: 'Sellar',
+    text: { vr: 'Apunta al anillo azul del corte y aprieta un gatillo.', screen: 'Haz clic en el anillo azul del corte.' },
+    action: { vr: 'Gatillo en el anillo azul: sellar', screen: 'Clic en el anillo azul: sellar' },
+    keys: { vr: ['LTRIGGER', 'RTRIGGER'], screen: ['Clic'] },
+    labels: { left: [['GATILLO', 'Sellar', 'seal']], right: [['GATILLO', 'Sellar', 'seal']] },
+    check: () => !game.active || game.active.sealed
+  },
+  {
+    id: 'classify',
+    title: 'Clasificar',
+    text: () => tutorialCutOk()
+      ? { vr: 'Corte correcto: la rosa va a COSECHA. Pulsa B.', screen: 'Corte correcto: la rosa va a COSECHA. Pulsa la tecla B.' }
+      : { vr: 'El corte tuvo errores: la rosa va a DESECHO. Pulsa Y.', screen: 'El corte tuvo errores: la rosa va a DESECHO. Pulsa la tecla Y.' },
+    action: () => tutorialCutOk()
+      ? { vr: 'B: cosecha', screen: 'Tecla B: cosecha' }
+      : { vr: 'Y: desecho', screen: 'Tecla Y: desecho' },
+    keys: () => tutorialCutOk() ? { vr: ['B'], screen: ['B'] } : { vr: ['Y'], screen: ['Y'] },
+    labels: () => tutorialCutOk()
+      ? { right: [['B', 'Cosecha', 'harvest']] }
+      : { left: [['Y', 'Desecho', 'waste']] },
+    check: () => !game.active || game.active.classified
+  },
+  {
+    id: 'guide', guide: true,
+    title: 'Guía',
+    text: { vr: 'Pulsa A cuando quieras ver la guía. Pruébalo y ciérrala con X.', screen: 'Pulsa el botón «Guía» cuando quieras. Pruébalo y ciérrala con Enter.' },
+    action: { vr: 'A: ver la guía', screen: 'Botón «Guía»' },
+    keys: { vr: ['A'], screen: ['Guía'] },
+    labels: { right: [['A', 'Guía', 'ok']] }
+  },
+  {
+    id: 'done', ok: true,
+    title: '¡A cosechar!',
+    text: 'Ya conoces los controles. Tu puntaje empieza en cero.',
+    action: { vr: 'Pulsa X para jugar', screen: 'Pulsa Enter para jugar' },
+    keys: { vr: ['X'], screen: ['Enter'] },
+    labels: { left: [['X', 'Jugar', 'ok']] }
+  }
+];
+
+function tutorialStep() { return tutorial.active ? TUTORIAL_STEPS[tutorial.index] : null; }
+function stepIs(id) { const s = tutorialStep(); return !!s && s.id === id; }
+function pick(value) {
+  const v = typeof value === 'function' ? value() : value;
+  if (v && typeof v === 'object' && !Array.isArray(v) && ('vr' in v || 'screen' in v)) return vr() ? v.vr : v.screen;
+  return v;
+}
+function tutorialCutOk() {
+  return !!(game.active && game.active.evaluation && game.active.evaluation.ok);
+}
+function headPosition() {
+  const p = new THREE.Vector3();
+  scene.camera.getWorldPosition(p);
+  return p;
+}
+function currentYaw() {
+  if (vr()) return $('#rig').object3D.rotation.y;
+  return $('#camera').components['look-controls'].yawObject.rotation.y;
+}
+function angleDelta(a, b) {
+  const d = a - b;
+  return Math.atan2(Math.sin(d), Math.cos(d));
+}
+
+function addHelper(kind, object, update) {
+  scene.object3D.add(object);
+  tutorial.helpers.push({ kind, object, update });
+}
+function removeHelpers(kind) {
+  tutorial.helpers = tutorial.helpers.filter(h => {
+    if (kind && h.kind !== kind) return true;
+    h.object.parent && h.object.parent.remove(h.object);
+    return false;
+  });
+}
+
+function addFloorTarget(position) {
+  const group = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color: 0x4cd07a, transparent: true, opacity: .85 });
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.32, .025, 8, 40), mat);
+  ring.rotation.x = Math.PI / 2;
+  const arrow = new THREE.Mesh(new THREE.ConeGeometry(.1, .22, 16), mat);
+  arrow.rotation.x = Math.PI;
+  arrow.position.y = .5;
+  group.add(ring, arrow);
+  group.position.copy(position);
+  addHelper('floor', group, t => {
+    const k = 1 + .08 * Math.sin(t / 200);
+    ring.scale.set(k, k, k);
+    arrow.position.y = .45 + .08 * Math.sin(t / 250);
+  });
+}
+
+function addBeacon() {
+  const rose = scene.components['rose-farm'].roses[tutorial.rose];
+  const group = new THREE.Group();
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(.03, .03, 1.2, 12, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0x4cd07a, transparent: true, opacity: .35, depthWrite: false })
+  );
+  beam.position.y = .75;
+  const arrow = new THREE.Mesh(new THREE.ConeGeometry(.06, .14, 16), new THREE.MeshBasicMaterial({ color: 0x4cd07a }));
+  arrow.rotation.x = Math.PI;
+  group.add(beam, arrow);
+  group.position.copy(rose.top);
+  addHelper('beacon', group, t => { arrow.position.y = .2 + .05 * Math.sin(t / 220); });
+}
+
+function addStageSamples() {
+  const farm = scene.components['rose-farm'];
+  const head = headPosition();
+  const dir = new THREE.Vector3();
+  scene.camera.getWorldDirection(dir);
+  dir.y = 0;
+  dir.normalize();
+  const group = new THREE.Group();
+  const names = ['CERRADA', 'EN PUNTO', 'MUY ABIERTA'];
+  const colors = ['#8f2a2a', '#1f6a3f', '#8f2a2a'];
+  const notes = ['no cortar', 'cortar', 'desecho'];
+  [0, 1, 2].forEach(stage => {
+    const x = (stage - 1) * .27;
+    const flower = new THREE.Mesh(farm.headGeos[stage], farm.headMaterial);
+    flower.position.set(x, .02, 0);
+    flower.rotation.set(.45, .5, 0);
+    flower.scale.setScalar(1.5);
+    const label = new THREE.Mesh(
+      new THREE.PlaneGeometry(.17, .064),
+      new THREE.MeshBasicMaterial({ map: signTexture([names[stage], notes[stage]], colors[stage], '#ffffff'), toneMapped: false })
+    );
+    label.position.set(x, .22, 0);
+    group.add(flower, label);
+  });
+  const base = new THREE.Mesh(new THREE.BoxGeometry(.82, .02, .16), new THREE.MeshLambertMaterial({ map: farm.tex.wood }));
+  base.position.y = -.03;
+  group.add(base);
+  group.position.copy(head).addScaledVector(dir, .75);
+  group.position.y = head.y - .28;
+  group.lookAt(head.x, group.position.y, head.z);
+  addHelper('samples', group, t => {
+    group.children.forEach((c, i) => { if (c.geometry && c.geometry.attributes.color) c.rotation.y = .5 + t / 2500; });
+  });
+}
+
+// --- Dibujo de los mandos (o del teclado) con el botón a usar resaltado ---
+function drawController(ctx, cx, cy, side, keys) {
+  const lit = k => keys.includes(k);
+  const glow = (on) => {
+    ctx.shadowColor = on ? 'rgba(245,217,122,.95)' : 'transparent';
+    ctx.shadowBlur = on ? 26 : 0;
+  };
+  const trigKey = side === 'left' ? 'LTRIGGER' : 'RTRIGGER';
+  // Gatillo (por detrás, arriba).
+  glow(lit(trigKey));
+  ctx.fillStyle = lit(trigKey) ? '#f5d97a' : '#9aa19d';
+  roundRect(ctx, cx - 28, cy - 108, 56, 34, 12);
+  ctx.fill();
+  glow(false);
+  ctx.fillStyle = lit(trigKey) ? '#7a5a12' : '#55605a';
+  ctx.font = '800 15px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(keys.includes('DIR') ? (side === 'left' ? '← GATILLO' : 'GATILLO →') : 'GATILLO', cx, cy - 116);
+  // Cuerpo.
+  ctx.fillStyle = '#2f3532';
+  roundRect(ctx, cx - 34, cy + 20, 68, 120, 30);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(cx, cy, 74, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = '#3c433f';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 62, 0, Math.PI * 2);
+  ctx.fill();
+  // Joystick y botones (izquierdo: X/Y a la derecha; derecho: A/B a la izquierda).
+  const m = side === 'left' ? 1 : -1;
+  const stickKey = side === 'left' ? 'LSTICK' : 'RSTICK';
+  const [lower, upper] = side === 'left' ? ['X', 'Y'] : ['A', 'B'];
+  const parts = [
+    [stickKey, cx - m * 22, cy - 12, 21, ''],
+    [lower, cx + m * 26, cy + 26, 15, lower],
+    [upper, cx + m * 32, cy - 12, 15, upper]
+  ];
+  for (const [key, x, y, r, text] of parts) {
+    glow(lit(key));
+    ctx.fillStyle = lit(key) ? '#f5d97a' : (key === stickKey ? '#1d211f' : '#c7ccc9');
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+    glow(false);
+    if (key === stickKey) {
+      ctx.fillStyle = lit(key) ? '#7a5a12' : '#4a524e';
+      ctx.beginPath();
+      ctx.arc(x, y, r * .45, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle = '#153d2d';
+      ctx.font = '900 17px Inter, system-ui, sans-serif';
+      ctx.fillText(text, x, y + 6);
+    }
+  }
+  ctx.fillStyle = '#41584a';
+  ctx.font = '800 17px Inter, system-ui, sans-serif';
+  ctx.fillText(side === 'left' ? 'IZQUIERDO' : 'DERECHO', cx, cy + 168);
+  ctx.textAlign = 'left';
+}
+
+function drawKeys(ctx, x0, y0, w, keys) {
+  const widths = keys.map(k => Math.max(80, 26 + k.length * 20));
+  const gap = 14;
+  let total = widths.reduce((a, b) => a + b, 0) + gap * (keys.length - 1);
+  // Si no caben, se reducen para que queden dentro del recuadro.
+  const k = Math.min(1, (w - 30) / total);
+  ctx.save();
+  ctx.translate(x0 + w / 2, y0 + 40);
+  ctx.scale(k, k);
+  ctx.translate(-(x0 + w / 2), -(y0 + 40));
+  let x = x0 + (w - total) / 2;
+  keys.forEach((k, i) => {
+    ctx.shadowColor = 'rgba(245,217,122,.95)';
+    ctx.shadowBlur = 22;
+    ctx.fillStyle = '#f5d97a';
+    roundRect(ctx, x, y0, widths[i], 80, 14);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#7a5a12';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    ctx.fillStyle = '#153d2d';
+    ctx.font = '900 30px Inter, system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(k, x + widths[i] / 2, y0 + 51);
+    ctx.textAlign = 'left';
+    x += widths[i] + gap;
+  });
+  ctx.restore();
+}
+
+const coachCanvas = document.createElement('canvas');
+coachCanvas.width = 1024;
+coachCanvas.height = 600;
+const coachTexture = new THREE.CanvasTexture(coachCanvas);
+coachTexture.colorSpace = THREE.SRGBColorSpace;
+const coachMesh = new THREE.Mesh(
+  new THREE.PlaneGeometry(.95, .95 * 600 / 1024),
+  new THREE.MeshBasicMaterial({ map: coachTexture, transparent: true, depthTest: false, toneMapped: false })
+);
+coachMesh.renderOrder = 17;
+coachMesh.visible = false;
+
+function drawCoach() {
+  const step = tutorialStep();
+  if (!step) return;
+  const ctx = coachCanvas.getContext('2d');
+  const n = TUTORIAL_STEPS.length;
+  ctx.clearRect(0, 0, 1024, 600);
+  ctx.fillStyle = '#f7f5ef';
+  roundRect(ctx, 0, 0, 1024, 600, 34);
+  ctx.fill();
+  ctx.fillStyle = '#153d2d';
+  roundRect(ctx, 0, 0, 1024, 64, 34);
+  ctx.fill();
+  ctx.fillRect(0, 34, 1024, 30);
+  ctx.fillStyle = '#bce7c9';
+  ctx.font = '800 24px Inter, system-ui, sans-serif';
+  ctx.fillText('TUTORIAL · PASO ' + (tutorial.index + 1) + ' DE ' + n, 36, 42);
+  for (let i = 0; i < n; i++) {
+    ctx.fillStyle = i < tutorial.index ? '#64b57a' : i === tutorial.index ? '#f5d97a' : '#3d5a4a';
+    ctx.beginPath();
+    ctx.arc(1024 - 36 - (n - 1 - i) * 26, 32, 8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.fillStyle = '#153d2d';
+  let titleSize = 44;
+  do {
+    ctx.font = '850 ' + titleSize + 'px Inter, system-ui, sans-serif';
+    titleSize -= 2;
+  } while (ctx.measureText(step.title).width > 590 && titleSize > 26);
+  ctx.fillText(step.title, 36, 122);
+  ctx.fillStyle = '#41584a';
+  ctx.font = '500 25px Inter, system-ui, sans-serif';
+  let y = 168;
+  for (const line of wrapText(ctx, pick(step.text), 590)) {
+    if (y > 470) break;
+    ctx.fillText(line, 36, y);
+    y += 33;
+  }
+
+  // Ilustración: mandos del Quest o teclas de computador.
+  const keys = pick(step.keys) || [];
+  ctx.fillStyle = '#eaf0e8';
+  roundRect(ctx, 650, 86, 340, 400, 22);
+  ctx.fill();
+  if (vr()) {
+    drawController(ctx, 735, 250, 'left', keys);
+    drawController(ctx, 905, 250, 'right', keys);
+  } else {
+    drawKeys(ctx, 650, 240, 340, keys);
+  }
+
+  ctx.fillStyle = '#f5d97a';
+  roundRect(ctx, 30, 500, 964, 76, 20);
+  ctx.fill();
+  ctx.fillStyle = '#153d2d';
+  ctx.font = '900 32px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('▶  ' + pick(step.action), 512, 549);
+  ctx.textAlign = 'left';
+  coachTexture.needsUpdate = true;
+
+  // Versión de pantalla: la misma imagen en una tarjeta.
+  $('#coachNext').style.display = step.ok ? 'block' : 'none';
+  $('#coachNext').textContent = step.id === 'done' ? 'Empezar a jugar' : 'Continuar';
+  updateHUD();
+}
+
+function updateCoach(time, dt) {
+  const step = tutorialStep();
+  const inVR = vr();
+  coachMesh.visible = !!step && inVR && !game.modal;
+  $('#coach').style.display = step && !inVR && !game.modal ? 'block' : 'none';
+  if (!step) return;
+  tutorial.helpers.forEach(h => h.update && h.update(time));
+  if (coachMesh.visible && tutorial.needsPlacement) placeCoach();
+  if (!game.modal && step.check && step.check()) nextTutorialStep();
+}
+
+function enterTutorialStep() {
+  const step = tutorialStep();
+  const cg = scene.components['cut-game'];
+  if (cg) cg.flashMsg = null;
+  if (step.enter) step.enter();
+  drawCoach();
+  tutorial.needsPlacement = true;
+}
+
+// El panel queda FIJO donde aparece: en el sendero, adelante (no sigue la cabeza).
+// Así el operario trabaja libremente y solo lo mira cuando necesita el siguiente paso.
+function placeCoach() {
+  const head = headPosition();
+  const cg = scene.components['cut-game'];
+  let dir;
+  if (inBedZone(head.z) && aisleAt(head.x) !== undefined) {
+    dir = new THREE.Vector3(0, 0, (cg && cg.cartSide) || -1);
+  } else {
+    dir = new THREE.Vector3();
+    scene.camera.getWorldDirection(dir);
+    dir.y = 0;
+    if (dir.lengthSq() < 1e-6) dir.set(0, 0, -1);
+    dir.normalize();
+  }
+  coachMesh.position.copy(head).addScaledVector(dir, 1.5);
+  coachMesh.position.y = head.y + .3;
+  coachMesh.lookAt(head.x, head.y + .3, head.z);
+  tutorial.needsPlacement = false;
+}
+
+function nextTutorialStep() {
+  const step = tutorialStep();
+  if (!step) return;
+  if (step.exit) step.exit();
+  tutorial.index++;
+  pulse('right', .25, 40);
+  pulse('left', .25, 40);
+  if (tutorial.index >= TUTORIAL_STEPS.length) endTutorial();
+  else enterTutorialStep();
+}
+
+function startTutorial() {
+  resetGame();
+  const farm = scene.components['rose-farm'];
+  // Rosa de práctica: en punto, en la primera cama a la derecha del sendero central.
+  let best = 0, bestD = Infinity;
+  farm.roses.forEach((r, i) => {
+    if (r.bed !== .75 || r.out !== -1) return;
+    const d = Math.abs(r.z + 1.65);
+    if (d < bestD) { bestD = d; best = i; }
+  });
+  farm.setStage(best, STAGE.CUT);
+  tutorial.rose = best;
+  tutorial.index = 0;
+  tutorial.active = true;
+  removeHelpers();
+  // Volver al inicio, mirando hacia los senderos.
+  const rig = $('#rig');
+  rig.object3D.position.set(0, 0, 1.3);
+  rig.object3D.rotation.set(0, 0, 0);
+  const cam = $('#camera');
+  if (!vr()) cam.object3D.position.set(0, 1.62, 0);
+  const lc = cam.components['look-controls'];
+  if (lc) { lc.yawObject.rotation.y = 0; lc.pitchObject.rotation.x = 0; }
+  const loco = rig.components['joystick-locomotion'];
+  if (loco) loco.prevHead = null;
+  enterTutorialStep();
+}
+
+function endTutorial(silent) {
+  removeHelpers();
+  tutorial.active = false;
+  coachMesh.visible = false;
+  $('#coach').style.display = 'none';
+  resetGame();
+  if (!silent) scene.components['cut-game'].flash('Tutorial completado: ¡a cosechar!');
+}
+
+// Botones durante el tutorial. Devuelve true si el tutorial consumió la pulsación.
+function tutorialButton(hand, idx) {
+  const step = tutorialStep();
+  if (!step || game.modal) return false;
+  if (step.ok && hand === 'left' && idx === BTN.LOWER) { nextTutorialStep(); return true; }
+  if (step.guide && hand === 'right' && idx === BTN.LOWER) {
+    showMessage(guideMessage(), nextTutorialStep);
+    return true;
+  }
+  return false;
+}
+
+// ¿La acción está permitida en este paso? Si no, recuerda qué hacer.
+function tutorialAllows(actionStep) {
+  const step = tutorialStep();
+  if (!step || step.id === actionStep) return true;
+  scene.components['cut-game'].flash('Sigue el tutorial: ' + pick(step.action));
+  return false;
+}
+
+// ---------- Entradas de pantalla ----------
+let downAt = null;
+window.addEventListener('pointermove', event => {
+  const cg = scene.components['cut-game'];
+  if (!cg) return;
+  if (event.target !== scene.canvas) { cg.mouseInside = false; return; }
+  const rect = scene.canvas.getBoundingClientRect();
+  cg.mouse.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+  cg.mouseInside = true;
+});
+window.addEventListener('pointerdown', event => {
+  downAt = event.target === scene.canvas ? { x: event.clientX, y: event.clientY } : null;
+});
+window.addEventListener('contextmenu', event => {
+  if (event.target === scene.canvas) event.preventDefault();
+});
+window.addEventListener('pointerup', event => {
+  if (!downAt || event.target !== scene.canvas || scene.is('vr-mode')) return;
+  const moved = Math.hypot(event.clientX - downAt.x, event.clientY - downAt.y);
+  downAt = null;
+  if (moved < 6) scene.components['cut-game'].act('mouse', event.button === 2 ? 'right' : 'left');
+});
+
+function startScreen() {
+  $('#intro').style.display = 'none';
+  game.playing = true;
+  updateHUD();
+}
+
+async function startVR() {
+  $('#intro').style.display = 'none';
+  game.playing = true;
+  try {
+    await scene.enterVR();
+  } catch (error) {
+    $('#xrStatus').textContent = 'No se pudo entrar en VR: ' + (error && error.message || error);
+  }
+}
+
+$('#begin').addEventListener('click', startScreen);
+$('#beginVR').addEventListener('click', startVR);
+$('#enterVR').addEventListener('click', startVR);
+$('#reset').addEventListener('click', () => {
+  $('#intro').style.display = 'none';
+  if (tutorial.active) endTutorial(true);
+  else resetGame();
+});
+$('#guide').addEventListener('click', () => {
+  if (game.modal) return;
+  if (stepIs('guide')) showMessage(guideMessage(), nextTutorialStep);
+  else showMessage(guideMessage());
+});
+$('#tutorialScreen').addEventListener('click', () => { $('#intro').style.display = 'none'; startTutorial(); });
+$('#tutorialVR').addEventListener('click', () => { $('#intro').style.display = 'none'; startTutorial(); startVR(); });
+$('#tutorialBtn').addEventListener('click', () => { if (!game.modal) startTutorial(); });
+$('#coachNext').addEventListener('click', nextTutorialStep);
+$('#coachExit').addEventListener('click', () => endTutorial(true));
+$('#coachImg').appendChild(coachCanvas);
+$('#turnMode').addEventListener('click', () => {
+  game.snapTurn = !game.snapTurn;
+  $('#turnMode').textContent = 'Giro: ' + (game.snapTurn ? 'por pasos' : 'suave');
+});
+
+$('#fullscreen').addEventListener('click', () => {
+  const root = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else {
+    const request = root.requestFullscreen || root.webkitRequestFullscreen;
+    if (request) Promise.resolve(request.call(root, { navigationUI: 'hide' })).catch(() => {});
+  }
+});
+
+// Mover la flor en mano entre el mando (VR) y la cámara (pantalla).
+function moveHeldPiece() {
+  const cg = scene.components['cut-game'];
+  if (!game.active || !game.active.piece || !cg) return;
+  const holder = scene.is('vr-mode') ? cg.handHold : cg.screenHold;
+  holder.add(game.active.piece);
+}
+
+scene.addEventListener('enter-vr', () => {
+  if (!scene.is('vr-mode')) return;
+  const cg = scene.components['cut-game'];
+  cg.hud.mesh.visible = true;
+  $('#msg').style.display = 'none';
+  moveHeldPiece();
+  if (game.modal) setTimeout(() => cg.showPanel(game.modal), 300);
+  else if (!tutorial.active && game.harvested + game.discarded === 0 && !game.active) setTimeout(() => showMessage(guideMessage()), 400);
+  if (tutorial.active) { drawCoach(); setTimeout(() => { tutorial.needsPlacement = true; }, 400); }
+  updateHUD();
+});
+scene.addEventListener('exit-vr', () => {
+  const cg = scene.components['cut-game'];
+  if (tutorial.active) setTimeout(drawCoach, 0);
+  cg.hud.mesh.visible = false;
+  cg.hidePanel();
+  moveHeldPiece();
+  if (game.modal) $('#msg').style.display = 'grid';
+});
+
+(async () => {
+  let supported = false;
+  try {
+    supported = !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-vr'));
+  } catch (e) {}
+  if (!supported) {
+    $('#xrStatus').textContent = window.isSecureContext
+      ? 'Este navegador no ofrece WebXR. Abre la página en el navegador del visor (Meta Quest, Pico, Wolvic…).'
+      : 'WebXR necesita HTTPS: abre la versión publicada en GitHub Pages.';
+    $('#enterVR').disabled = true;
+    $('#beginVR').disabled = true;
+  }
+})();
+
+if (scene.hasLoaded) updateHUD();
+else scene.addEventListener('loaded', updateHUD);
+</script>
+</body>
+</html>
