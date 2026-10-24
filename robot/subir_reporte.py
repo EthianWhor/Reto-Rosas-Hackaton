@@ -5,7 +5,7 @@ La app de la tablet lee de ahí el último reporte para el turnero y el reparto 
 Uso (desde robot/):
     python subir_reporte.py datos/salida/reporte_INV1_2026-10-24.json
 
-Necesita en robot/.env (no se sube al repo) o en variables de entorno:
+Necesita en robot/.env (ya está en git: el repo es privado) o en variables de entorno:
     SUPABASE_URL=https://fxlljandvphujxxddvxy.supabase.co
     SUPABASE_SERVICE_ROLE_KEY=...   (Supabase → Project Settings → API; solo en el robot, nunca en la app)
 

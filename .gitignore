@@ -1,6 +1,4 @@
 .venv/
-# Claves locales (la service_role de Supabase vive solo en robot/.env)
-robot/.env
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -15,8 +13,14 @@ runs/
 # Excepción: los modelos entrenados que usa el equipo
 !robot/modelos/*.pt
 
-# Robot: fotos, reportes y logs de cada ronda; claves del envío
+# Robot: fotos, reportes y logs de cada ronda
 robot/datos/
+
+# Claves locales
 .env
-# Excepción: la clave de Supabase del robot (repo privado; decisión del equipo, 2026-10-24)
+# Excepción: robot/.env (clave service_role de Supabase) va en git a propósito porque el repo es
+# privado (decisión del equipo, 2026-10-24). Por eso el repo no se puede hacer público.
 !robot/.env
+
+# Video de /brag: entorno local, frames y archivos de trabajo (el video final sí va en brag-output/)
+brag-output/work/

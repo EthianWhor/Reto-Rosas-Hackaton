@@ -1,9 +1,9 @@
-# Robot — detección por sectores y dashboard
+# Robot — detección por cuadrantes y reporte a la app
 
-El robot recorre el campo por sectores, detecta con la red neuronal los botones listos para cortar
-y envía un reporte a un dashboard que ven:
+El robot recorre el invernadero de noche, cuadrante por cuadrante, detecta con la red neuronal los
+botones listos para cortar y sube un reporte a Supabase, de donde lo lee la app de la tablet (RoseApp):
 - **los coordinadores**, para entender el estado del campo y organizar al personal;
-- **una pantalla a la entrada del campo**, para que los operarios sepan en qué sectores enfocarse.
+- **la tablet a la entrada del invernadero**, para que los operarios sepan a qué cuadrantes ir primero.
 
 El objetivo es detectar los botones a tiempo, antes de que se abran demasiado y se pierdan, y
 optimizar el tiempo de los operarios.
@@ -107,9 +107,14 @@ El repo incluye los modelos entrenados, así que para usarlos no hace falta entr
 
 | Archivo | Qué es |
 |---|---|
-| `modelos/rosanet.pt` | RosaNet preentrenada + calibrada con la finca (inmaduro / óptimo / pasado) |
-| `modelos/detector_rosas.pt` | YOLO11n ajustado para encontrar rosas (una clase) |
+| `modelos/rosanet.pt` | RosaNet preentrenada + calibrada con la finca (inmaduro / óptimo / pasado), versión "noche" (en uso) |
+| `modelos/forma.joblib` | Clasificador de forma y color; `RosePredictor` lo promedia con RosaNet (en uso) |
+| `modelos/detector_rosas.pt` | YOLO11n ajustado para encontrar rosas (una clase), versión "noche" (en uso, umbral 0,55) |
+| `modelos/detector_rosas_dia.pt` | El mismo detector sin el entrenamiento nocturno: mejor de día (umbral 0,25) |
 | `modelos/rosanet_calibracion.json` | Métricas de la validación cruzada con la finca |
+| `modelos/rosanet_v1_dia.pt`, `modelos/detector_rosas_v1_publico.pt` | Versiones anteriores, solo para comparar |
+
+El detalle de cada modelo y su API están en [CLAUDE.md](CLAUDE.md).
 
 ```bash
 # Una rosa recortada (+ mapa de calor de dónde miró la red)
@@ -121,9 +126,10 @@ python -m ml.evaluate --ckpt modelos/rosanet.pt --data data/propias
 ```
 
 Si se reentrena, copiar el resultado a `modelos/` (`runs/rosanet/best.pt` → `modelos/rosanet.pt`,
-`runs/detector_finca/weights/best.pt` → `modelos/detector_rosas.pt`).
+`runs/detector_noche/weights/best.pt` → `modelos/detector_rosas.pt` y
+`runs/detector_finca/weights/best.pt` → `modelos/detector_rosas_dia.pt`).
 
-### Resultados (2026-10-23)
+### Resultados
 
 Ver `CONTEXTO.md`, sección 2.0.3.
 
@@ -192,8 +198,8 @@ reporte de esa noche, guarda `_v2`, `_v3`…
 **Envío al dashboard.** Durante la ronda no hay WiFi: los reportes esperan en `datos/salida/`. En la
 simulación el WiFi "aparece" al volver a la base y se copian a la carpeta del dashboard
 (`datos/dashboard_simulado/`); los enviados pasan a `datos/enviados/`. Si un envío falla, se reintenta
-en 1, 2, 4, 8… min. Para el robot real, copiar `.env.ejemplo` como `.env`, poner la carpeta compartida o
-la dirección del dashboard, y dejar corriendo:
+en 1, 2, 4, 8… min. Para el robot real, agregar a `robot/.env` (ya existe y está en git, no reemplazarlo)
+la carpeta compartida o la dirección del dashboard, con los nombres de `.env.ejemplo`, y dejar corriendo:
 
 ```bash
 python -m reporte.envio

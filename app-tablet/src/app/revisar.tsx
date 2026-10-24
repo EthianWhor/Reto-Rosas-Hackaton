@@ -132,7 +132,7 @@ export default function Revisar() {
             </View>
             <Text style={styles.cuerpo}>
               {donde(actual)}
-              {actual.confianza != null ? ` · seguro al ${Math.round(actual.confianza * 100)} %` : ''}
+              {actual.confianza != null ? ` · confianza ${Math.round(actual.confianza * 100)} %` : ''}
             </Text>
           </View>
         </Aparecer>

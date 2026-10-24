@@ -21,7 +21,7 @@ Formas de enviar (`envio.metodo`, acordar con la persona del dashboard):
   (del equipo de la app). Es de donde lo lee la app de la tablet. El Excel se queda en el robot.
 - correo: todavía no está hecho.
 
-La dirección, la carpeta y la clave van en robot/.env (no se sube a git; ver .env.ejemplo).
+La dirección, la carpeta y la clave van en robot/.env (está en git porque el repo es privado; ver .env.ejemplo).
 En simulación, el WiFi "aparece" cuando el robot vuelve a la base.
 
 Para dejarlo vigilando en el robot real:

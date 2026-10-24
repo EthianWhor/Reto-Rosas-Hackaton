@@ -16,7 +16,7 @@
 - **10 minutos**, formato *elevator pitch*, ante jurados que envían las empresas.
 - **Ficha técnica** (título, descripción y beneficios) antes del **sábado 24 de octubre a las 3:00 p. m.**, junto con el demo del prototipo funcional.
 - La presentación debe incluir el **objetivo inicial, el nivel de consecución, las ventajas y desventajas y las tecnologías usadas**.
-- Quedan **unas 10 horas** de trabajo: el alcance del demo tiene que caber ahí (los drones quedan fuera).
+- El alcance del demo tenía que caber en **unas 10 horas** de trabajo (por eso los drones quedan fuera).
 - Hay **dos rúbricas** y hay que cubrir ambas:
 
 | Rúbrica general (términos del evento) | % | Rúbrica del reto (CONTEXTO.md) | Pts |
@@ -169,7 +169,7 @@ inducción y error en el corte medido por la finca. Así el beneficio deja de se
 | 0:45 | **Problema** | El criterio es tácito y se aprende en el cultivo: la inducción dura **15 a 18 días** y la teoría es solo **2 o 3**; el resto es práctica al lado de un experto. **Lo medimos:** una integrante del equipo escuchó la explicación de la finca y después coincidió con la finca en solo **24 de 69 rosas (35 %)**. **Hoy la finca no tiene datos del campo:** sus drones solo se usan para pruebas y no guardan nada. | Necesidad, validación |
 | 1:45 | **Persona** | "Marta, 3 semanas en la finca" y "Don Luis, 15 años cortando, que pierde tiempo enseñando". | Necesidad, ética |
 | 2:15 | **Solución** | El diagrama de arriba: aprender → practicar → decidir, con un solo cerebro. | Integración |
-| 3:00 | **DEMO EN VIVO** (3–4 min, guion en `robot/DEMO.md`) | 1) **Ronda del X2 en la simulación** (`--ventana`): camina en serpiente, frena ante la caja, apunta e ilumina las óptimas, vuelve a la base y sube el reporte. 2) **RoseApp:** el reporte real llega, coordinación ve el reparto del turno, cada trabajador ve sus cuadrantes y el experto clasifica **la foto real** de una rosa dudosa. 3) **Modo foto:** el jurado pone una rosa o foto frente a la webcam; si duda, dice "dudosa" y no adivina. 4) Juego de práctica y Sanación en la app; VR, aunque sea en video. | Funcionamiento (25 + 30 %) |
+| 3:00 | **DEMO EN VIVO** (3–4 min, guion en `robot/DEMO.md`) | 1) **Ronda del X2 en la simulación** (`--ventana`): camina en serpiente, frena ante la caja, apunta e ilumina las óptimas, vuelve a la base y sube el reporte. 2) **RoseApp:** el reporte real llega, coordinación ve el reparto del turno, cada trabajador ve sus cuadrantes y el experto clasifica **la foto real** de una rosa dudosa. 3) **Modo foto:** el jurado pone una rosa o foto frente a la webcam; si duda, dice "dudosa" y no adivina. 4) Juego de práctica y Sanación en la app; VR en el visor o en pantalla (`metaquest/index.html`). | Funcionamiento (25 + 30 %) |
 | 6:30 | **Por qué un robot** | Ve el botón de lado y desde abajo; trabaja de noche sin estorbar; recorre el invernadero entero (95 % de las rosas, 0 repetidas) y ubica cada rosa al centímetro; deja la foto como evidencia; **actúa**: apunta e ilumina las óptimas de los cuadrantes que se cosechan primero. | Pertinencia |
 | 7:15 | **Negocio** | Dos paquetes: la **formación** (app + VR) se paga sola en meses en toda la finca; el **robot** entra como piloto en un bloque y escala cuando capture en movimiento. Números en `inversion-y-retorno.md`. | Negocio, viabilidad |
 | 8:15 | **Visión 360** | Personas primero (no reemplaza: forma y orienta), mantenimiento, datos y ética. | Impacto y ética |
@@ -196,12 +196,13 @@ inducción y error en el corte medido por la finca. Así el beneficio deja de se
 ## Qué necesitamos decidir como equipo
 
 - [ ] ¿Nos gusta el nombre "Punto 3"? ¿Otro?
-- [ ] ¿Qué mostramos del robot en vivo: el X2 físico, el simulador (MuJoCo) o una mini finca con cámara? (define el bloque de 3–4 min y tiene que caber en ~10 h)
-- [ ] ¿Cómo se identifica el trabajador en la pantalla turnero: nombre, código o carné?
+- [x] ¿Qué mostramos del robot en vivo? → La simulación en MuJoCo y el modo foto con webcam (guion en `robot/DEMO.md`).
+- [ ] **Tiempo de la demo:** `robot/DEMO.md` necesita 5–6 min y el guion le da 3,5 a toda la demo. Usar la versión corta o mover tiempo de otro bloque.
+- [x] ¿Cómo se identifica el trabajador en la pantalla turnero? → Toca su nombre y escribe su PIN.
 - [x] **Acción física:** apuntar la cabeza e iluminar las óptimas de los 10 primeros cuadrantes (medido: 2 h 18 min, 211 rosas).
 - [x] **Velocidad real de la ronda:** medida en la simulación, ~0,09 m/s (2 h por invernadero). Cambia el negocio: ver `inversion-y-retorno.md` sección 2.
 - [x] **Negocio en dos paquetes** (formación en toda la finca + robot piloto): aceptado por el equipo (2026-10-24).
-- [ ] Las gafas (Meta Quest) todavía no están en el repo: cuando lleguen, tienen que verse y hablar igual que la app (mismas categorías, fotos y estilo).
+- [x] Las gafas (Meta Quest) ya están en `metaquest/`, con las mismas categorías y el mismo proceso de corte que la app.
 - [x] La rama `A` (simulación y envío del reporte) ya está en `main`.
 - [ ] ¿Quién presenta cada bloque?
 

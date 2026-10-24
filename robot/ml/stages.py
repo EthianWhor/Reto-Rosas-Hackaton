@@ -32,15 +32,15 @@ DATASET_CLASS_MAP = {
     # Datasets públicos (rosas de jardín, otras variedades): solo apoyo.
     # Roboflow "Rose" (Sanjay M) — universe.roboflow.com/sanjay-m-7nbqj/rose-tk4yv
     "bud": "1_inmaduro",
-    "mid-bud": "2_optimo",  # dudoso: verificar contra las fotos de la finca
+    "mid-bud": "2_optimo",  # más abierta que el punto 3: para entrenar se usa PRETRAIN_CLASS_MAP
     "flower": "3_pasado",
     # Roboflow "食用玫瑰花期检测" — universe.roboflow.com/yolo-lmnpo/-zkger
     "1_bud": "1_inmaduro",
-    "2_early_bloom": "2_optimo",  # dudoso: verificar contra las fotos de la finca
+    "2_early_bloom": "2_optimo",  # ídem: más abierta que el punto 3 de la finca
     "3_full_bloom": "3_pasado",
     "4_senescence": "3_pasado",
-    # Mendeley "Rose Growth Stage" (53vyvz5yyk). OJO: el dataset no define sus
-    # etapas; este mapeo es provisional hasta revisar las imágenes a mano.
+    # Mendeley "Rose Growth Stage" (53vyvz5yyk). Descartado (escenas con varias
+    # etapas bajo una sola etiqueta); el mapeo queda solo por compatibilidad.
     "early stage": "1_inmaduro",
     "middle stage": "2_optimo",
     "final stage": "3_pasado",
@@ -71,6 +71,8 @@ STAGE_TIPS = {
     "3_pasado": {
         "mirar": [
             "La flor ya está sobreabierta: pasó del punto de corte.",
+            "La flor se ve ancha y plana, con los pétalos hacia afuera.",
+            "Perdió la forma de copa.",
         ],
         "diferencia": "Ya no está en punto óptimo; se debió cortar antes.",
     },

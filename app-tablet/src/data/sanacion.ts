@@ -1,4 +1,5 @@
-// Proceso de corte y sanación, tomado de contenido/corte-y-sanacion.md (manuales de rosa de corte).
+// Proceso de corte y sanación, tomado de contenido/corte-y-sanacion.md (manuales de rosa de corte) y
+// alineado con la VR (metaquest/): hoja 2.ª o 3.ª y sellar el corte.
 // Es la versión de trabajo mientras la finca confirma su propio protocolo: cuando lo envíe, se
 // cambian los textos aquí y la pantalla no cambia.
 
@@ -7,12 +8,12 @@ export type Paso = { titulo: string; detalle: string };
 export const PASOS: Paso[] = [
   { titulo: 'Alistarse', detalle: 'Guantes y tijera afilada y desinfectada.' },
   { titulo: 'Elegir la rosa', detalle: 'Solo la que está en punto 3.' },
-  { titulo: 'Elegir dónde cortar', detalle: 'Sobre la segunda hoja de cinco foliolos.' },
+  { titulo: 'Elegir dónde cortar', detalle: 'Sobre la segunda o la tercera hoja de cinco foliolos.' },
   { titulo: 'Elegir la yema', detalle: 'La más hinchada, mirando hacia afuera de la planta.' },
   { titulo: 'Cortar', detalle: 'En bisel, pegado a la yema, sin dejar tocón.' },
   { titulo: 'Sacar el tallo', detalle: 'Por arriba, sin rozar otras flores. Nunca al suelo.' },
   { titulo: 'Hidratar', detalle: 'Al balde antes de 20 minutos.' },
-  { titulo: 'Sanar la planta', detalle: 'Revisar el corte, quitar hojas secas, residuos y tallos débiles.' },
+  { titulo: 'Sanar la planta', detalle: 'Sellar el corte, quitar hojas secas, residuos y tallos débiles.' },
   { titulo: 'Desinfectar otra vez', detalle: 'Al cambiar de cama y después de una planta enferma.' },
 ];
 
@@ -21,7 +22,7 @@ export type Pregunta = { texto: string; opciones: string[]; correcta: number; po
 export const PREGUNTAS: Pregunta[] = [
   {
     texto: '¿Sobre qué hoja se corta?',
-    opciones: ['Sobre una hoja de tres foliolos', 'Sobre la segunda hoja de cinco foliolos', 'Lo más abajo posible'],
+    opciones: ['Sobre una hoja de tres foliolos', 'Sobre la segunda o la tercera hoja de cinco foliolos', 'Lo más abajo posible'],
     correcta: 1,
     porque: 'La yema de una hoja de cinco foliolos da un tallo largo y fuerte.',
   },
@@ -45,7 +46,7 @@ export const PREGUNTAS: Pregunta[] = [
   },
   {
     texto: '¿Qué está mal? Quedó un pedazo largo de tallo sobre la yema.',
-    opciones: ['Nada, así protege la yema', 'Es un tocón: se seca y entran hongos', 'Hay que pintarlo'],
+    opciones: ['Nada, así protege la yema', 'Es un tocón: se seca y entran hongos', 'Hay que dejarlo para que la yema crezca'],
     correcta: 1,
     porque: 'Se corta unos 5 mm arriba de la yema, sin tocón.',
   },
@@ -76,12 +77,12 @@ export const PREGUNTAS: Pregunta[] = [
   {
     texto: '¿Qué es sanar la planta después del corte?',
     opciones: [
-      'Revisar el corte y quitar hojas secas, residuos y tallos débiles',
+      'Sellar el corte y quitar hojas secas, residuos y tallos débiles',
       'Regarla más',
       'Cortarle todas las hojas',
     ],
     correcta: 0,
-    porque: 'Los residuos y las heridas mal hechas son donde crecen los hongos.',
+    porque: 'El sellante protege la herida, y en los residuos crecen los hongos.',
   },
   {
     texto: 'Verdadero o falso: hay que dejar 2 o 3 yemas con hojas completas en el tallo.',

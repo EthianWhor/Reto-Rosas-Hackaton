@@ -54,10 +54,10 @@
 - Solo hay **2 fotos de "pasado"** y el dataset es de **día**; el robot verá **de noche** con la luz LED blanca del campo. Hay que tomar fotos de prueba con esa luz.
 - Una sola variedad (Freedom).
 - RosaNet con forma y color acierta el 77 % en rosas de la finca, de día y de noche; marca como óptimas ~7 de 45 inmaduras (la falla más costosa). Por eso existe la categoría "incierta" y la revisión del experto.
-- El detector encuentra ~78 % de las rosas del invernadero y tiene falsos positivos (postes, hojas).
+- El detector encuentra ~55 % de las rosas del invernadero con la noche simulada (~63 % de día) y tiene algunas falsas alarmas (postes, hojas).
 - En la simulación, la ronda con paradas cada 1,25 m avanza ~0,1 m/s; hay que llevarla a fotos en movimiento para cubrir la finca (ver inversion-y-retorno.md).
 - Asumimos que el robot cabe por las líneas y gira en las cabeceras, y que la energía alcanza para la ronda; falta medirlo en el campo.
 - Con un solo robot, cada línea se revisa cada pocas noches, no todas las noches.
-- No tenemos el proceso de **sanación**; esa parte del juego está pendiente.
+- No tenemos el proceso de **sanación** de la finca: la app y la VR usan una versión de trabajo sacada de manuales, que falta confirmar.
 - Las cifras de retorno son supuestos hasta que la finca nos dé sus datos.
 - Los drones de la finca quedan fuera del prototipo.

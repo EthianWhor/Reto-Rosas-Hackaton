@@ -16,12 +16,12 @@
 |---|---|---|---|
 | 1 | Alistarse | Guantes, tijera afilada y **desinfectada** | Una tijera sucia lleva hongos (*Botrytis*) y bacterias (*Agrobacterium*) de planta en planta |
 | 2 | Elegir la rosa | Solo la que está en **punto 3** (caracol con centro visible, rojo vivo, forma de copa) | Cortar en punto 2 es la falla más común de la finca |
-| 3 | Elegir dónde cortar | Sobre una **hoja de cinco foliolos**, normalmente la **segunda** contando desde abajo del tallo floral | Ahí está la yema que dará el próximo tallo |
+| 3 | Elegir dónde cortar | Sobre una **hoja de cinco foliolos**, la **segunda o la tercera** contando desde abajo del tallo floral | Ahí está la yema que dará el próximo tallo |
 | 4 | Elegir la yema | La más **hinchada**, con la hoja más perpendicular al tallo, **mirando hacia afuera** | Da un tallo largo y fuerte; hacia afuera deja el centro de la planta aireado |
 | 5 | Cortar | En **bisel** (~45°), **pegado a la yema** (unos 5 mm arriba), con la parte alta del bisel del lado de la yema | El agua escurre y no se pudre la yema; sin tocón largo que se seque |
 | 6 | Sacar el tallo | Retirarlo **por arriba**, sin rozar otras flores; **nunca ponerlo en el suelo** | Las espinas dañan otros botones; el suelo contamina |
 | 7 | Hidratar | Al balde de inmediato, o a la sala de poscosecha **antes de 20 minutos** | Pasado ese tiempo los vasos del tallo se taponan; si pasa, hay que recortar la base |
-| 8 | Sanar la planta | Revisar el corte, quitar residuos, hojas secas y tallos débiles; seguir el protocolo de la finca para la herida 🏠 | La herida es la puerta de entrada de *Botrytis* |
+| 8 | Sanar la planta | Sellar el corte (en la VR, con sellante azul), quitar residuos, hojas secas y tallos débiles; seguir el protocolo de la finca para la herida 🏠 | La herida es la puerta de entrada de *Botrytis* |
 | 9 | Desinfectar otra vez | Al cambiar de cama o bloque, y **siempre** después de tocar una planta enferma | Cortar la cadena de contagio |
 
 ## 2. Detalle de cada parte
@@ -90,6 +90,8 @@ que encontramos, lo que se hace sobre la planta después del corte para que rebr
   venden para frutales y ornamentales), pero **no encontramos evidencia de su uso estándar en rosa de
   corte**. 🏠 *Si la finca aplica un producto en el corte ("gel" o pasta), hay que conocer cuál, cómo y
   cuándo; debe estar registrado ante el ICA.*
+- **En el equipo:** la VR (`metaquest/`) pide sellar cada corte con **sellante azul** y la app lo incluye
+  en el paso 8. Falta confirmar con la finca qué producto usa.
 - **Plantas con agallas** (*Agrobacterium*, que entra por las heridas): no se cortan con la misma tijera
   sin desinfectarla, y se reportan.
 
@@ -119,15 +121,16 @@ que encontramos, lo que se hace sobre la planta después del corte para que rebr
 **Módulo Sanación de la app (para aprendices):**
 - **Ordena los pasos:** arrastrar las 9 tarjetas del proceso en orden (sección 1).
 - **¿Dónde cortarías?:** foto o dibujo de un tallo con sus hojas; el operario toca el punto de corte
-  correcto (encima de la segunda hoja de cinco foliolos). Se puede dibujar en 2D, sin fotos.
+  correcto (encima de la segunda o la tercera hoja de cinco foliolos). Se puede dibujar en 2D, sin fotos.
 - **¿Qué está mal?:** una imagen con un error (tocón largo, yema hacia adentro, flor en el suelo…) y
   cuatro opciones.
 - **Verdadero o falso** rápido con los datos clave (20 minutos, pH 5, dos tijeras…).
 - Con el mismo estilo del juego actual: pétalos al acertar, racha y puntos.
 
-**VR (Meta Quest, para inducción):**
-- Simular el corte en una planta 2D o 3D sencilla: elegir hoja, yema y lado, y cortar con el gesto.
-- El instructor ve si el operario desinfectó la tijera, si dejó tocón y si llevó la flor al balde a tiempo.
+**VR (Meta Quest, para inducción), ya hecha en `metaquest/`:**
+- Por cada rosa: elegir la que está en punto, cortar sobre la 2.ª o 3.ª hoja de cinco foliolos hacia el
+  lado contrario al corte anterior, sellar con sellante azul y clasificar en cosecha o desecho.
+- Pendiente: desinfección de la tijera, tocón e hidratación a tiempo.
 
 ## 5. Preguntas para la finca (cuando estén disponibles)
 - [ ] ¿Qué es exactamente "sanación" para ustedes? ¿Qué pasos tiene y en qué orden?

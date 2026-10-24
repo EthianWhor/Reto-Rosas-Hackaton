@@ -8,9 +8,10 @@ Los operarios **no pueden usar celulares** en el cultivo, así que la solución 
 
 | Carpeta | Qué es | Para quién |
 |---|---|---|
-| [`metaquest/`](metaquest/) | App de entrenamiento con realidad aumentada en Meta Quest (modelos 2D): cómo reconocer el punto de corte y cómo cortar | Operarios nuevos |
-| [`app-tablet/`](app-tablet/) | App tipo juego en tablet para mecanizar el proceso estándar (muy pronto / punto óptimo / muy tarde) y la sanación de la planta después del corte | Operarios |
-| [`robot/`](robot/) | Robot que recorre el campo por sectores, detecta con la red neuronal (RosaNet) los botones listos y reporta a un dashboard (coordinadores y pantalla a la entrada del campo) | Coordinadores y operarios |
+| [`metaquest/`](metaquest/) | Entrenamiento en realidad virtual para Meta Quest (WebXR, también se juega en el computador): reconocer el punto de corte, cortar, sellar y clasificar | Operarios nuevos |
+| [`app-tablet/`](app-tablet/) | RoseApp: tablet a la entrada del invernadero con el informe del robot, el reparto del turno y un juego para mecanizar el proceso estándar (muy pronto / punto óptimo / muy tarde) y la sanación de la planta | Operarios y coordinación |
+| [`robot/`](robot/) | AgiBot X2 Ultra (en simulación) que recorre el invernadero de noche por cuadrantes, detecta con la red neuronal (RosaNet) los botones listos y sube el reporte a la app | Coordinadores y operarios |
 
-Cada carpeta tiene su propio README con el detalle. El pitch, la inversión y la investigación
-están en [`pitch/`](pitch/).
+Cada carpeta tiene su propio README con el detalle. La base de datos que comparten la app y el robot
+está en [`supabase/`](supabase/), la investigación del corte y la sanación en [`contenido/`](contenido/),
+y el pitch, la inversión y la investigación del sector en [`pitch/`](pitch/).

@@ -82,7 +82,7 @@ pero **la finca del reto hoy no tiene datos del campo**. Punto 3 llena ese vací
 1. **Cultivo:** invernadero de plástico, camas en suelo o hidroponía. Desde el pinche (poda que inicia el tallo) hasta la cosecha.
 2. **Lectura del punto de corte (variedad Freedom):** punto 3 = caracol definido mostrando el centro, rojo vivo e intenso, patrón de copa. Falla común: punto 2 (cabeza más pequeña, rojo más oscuro, sépalos pegados).
 3. **Corte:** a mano con tijera o cuchillo afilado. La flor **nunca se pone en el suelo**.
-4. **Sanación de la planta después del corte:** ❓ **falta el material de la finca.** Es justo donde más se equivocan los operarios. Hay que pedirlo.
+4. **Sanación de la planta después del corte:** ❓ la finca no envió material. Hay una versión de trabajo sacada de manuales (sellar el corte, quitar residuos y tallos débiles, desinfectar la tijera) en [`contenido/corte-y-sanacion.md`](../contenido/corte-y-sanacion.md), ya en la app y en la VR. Es justo donde más se equivocan los operarios: hay que confirmarla con la finca.
 5. **Transporte a poscosecha:** con carro o caja de corte por los pasillos.
 6. **Hidratación:** baldes limpios con agua y biocida; si el agua es dura, ácido cítrico para bajar el pH por debajo de 5.
 7. **Recepción en cuarto frío** (~3 °C), en agua.

@@ -1,27 +1,28 @@
 # RoseApp — app de la tablet
 
+App de la tablet compartida a la entrada del invernadero: muestra el informe de la ronda nocturna del
+robot, reparte el turno y, con un juego, ayuda a los operarios a interiorizar el proceso estándar de la
+finca hasta hacerlo de forma mecánica. Hecha con **Expo (SDK 58) + Expo Router + TypeScript**.
+
 Estilo: rosa, rojo y blanco, tipografía Nunito e íconos de Ionicons (`src/tema.ts`). Botones 3D
 (`src/componentes/BotonGrande.tsx`) y animaciones con `Animated` de React Native
 (`src/componentes/animaciones.tsx`): pétalos al acertar, sacudida al fallar, racha, puntos y
 barras que se llenan. Todo funciona en Expo Go.
-
-App tipo juego en tablet que ayuda a los operarios a interiorizar el proceso estándar de la finca
-hasta hacerlo de forma mecánica. Hecha con **Expo (SDK 58) + Expo Router + TypeScript**.
 
 ## Qué hay (base)
 
 | Pantalla | Archivo | Estado |
 |---|---|---|
 | Ingreso: cada persona toca su nombre y escribe su PIN; menú según el rol | `src/app/index.tsx`, `src/componentes/Ingreso.tsx` | Listo |
-| Lo que encontró el robot: orden de corte por cuadrante y lo que estará listo mañana, según el reporte JSON de la ronda | `src/app/hoy.tsx` | Listo (con reporte de ejemplo) |
-| **Trabajador** · Mi turno de hoy: los cuadrantes que le tocan, en orden, con casilla para marcar cada uno como hecho | `src/app/mi-turno.tsx` | Listo |
+| Informe del robot: orden de corte por cuadrante y lo que estará listo mañana, según el reporte JSON de la ronda | `src/app/hoy.tsx` | Listo (con reporte de ejemplo) |
+| **Experto y aprendiz** · Mi turno de hoy: los cuadrantes que le tocan, en orden, con casilla para marcar cada uno como hecho | `src/app/mi-turno.tsx` | Listo |
 | **Admin** · Turno de hoy: quién vino, duración del turno, reparto y avance de cada persona | `src/app/turno.tsx` | Listo |
 | **Admin** · Usuarios: registrar (nombre, correo, teléfono, rol), promover, reiniciar acceso y quitar | `src/app/trabajadores.tsx`, `src/app/nuevo-usuario.tsx` | Listo |
 | **Experto** · Rosas dudosas: responde las rosas en que el robot dudó (o "no es una rosa"), con la foto real, en vivo | `src/app/revisar.tsx` | Listo |
 | Aprender las 3 categorías: fotos reales de la finca + qué mirar | `src/app/aprender.tsx` | Listo |
 | Juego: clasifica el botón (muy pronto / punto óptimo / muy tarde) con explicación inmediata | `src/app/clasificar.tsx` | Listo (básico) |
 | Mi progreso: aciertos por categoría y con qué la confunde | `src/app/progreso.tsx` | Listo (básico, solo en la tablet) |
-| Corte y sanación: los 9 pasos, "ordena los pasos" y preguntas (¿qué está mal?, verdadero o falso) | `src/app/sanacion.tsx`, `src/data/sanacion.ts` | Listo (versión de trabajo, sale de la investigación en `contenido/corte-y-sanacion.md`; falta confirmarla con la finca) |
+| Corte y sanación: los 9 pasos, "ordena los pasos" y preguntas (¿qué está mal?, verdadero o falso) | `src/app/sanacion.tsx`, `src/data/sanacion.ts` | Listo (versión de trabajo, sale de la investigación en `contenido/corte-y-sanacion.md` y va alineada con la VR; falta confirmarla con la finca) |
 
 - Las categorías y los tips (`src/data/categorias.ts`) usan las mismas claves que RosaNet
   (`robot/ml/stages.py`). Si cambian allá, cambiarlas aquí.
@@ -78,7 +79,8 @@ el mismo tiempo, para que cada persona trabaje en camas vecinas. Con los mismos 
 mismo reparto.
 
 **Usuarios de prueba** (creados por `supabase/schema.sql`): Coordinadora (admin, PIN 1234) y 10
-trabajadores (Marta 1001, Luis 1002 … Wilson 1010).
+aprendices (Marta 1001, Luis 1002 … Wilson 1010). No hay expertos: para revisar las dudosas, promover a
+alguien desde "Usuarios".
 
 ## Base de datos: Supabase
 
@@ -104,7 +106,8 @@ cd ../robot
 python subir_reporte.py datos/salida/reporte_INV1_2026-10-24.json
 ```
 
-(necesita `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en `robot/.env`, que no se sube al repo).
+(necesita `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en `robot/.env`, que ya está en git porque el
+repo es privado).
 Si todavía no hay reportes, la app muestra uno de ejemplo y lo dice abajo de la pantalla.
 
 ## Fotos de las rosas
@@ -128,5 +131,4 @@ entran en el APK.
 
 ## Pendiente
 - Confirmar con la finca el proceso de corte y sanación (preguntas al final de `contenido/corte-y-sanacion.md`) y ajustar `src/data/sanacion.ts`.
-- Definir cuándo y dónde se usa la tablet (los celulares no están permitidos en el cultivo).
 - Más fotos de "pasado / sobreabierto".

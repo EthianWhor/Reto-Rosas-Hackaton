@@ -46,4 +46,6 @@ Para ver solo las personas activas en el Table Editor, filtrar `activo` = `true`
 ## Claves
 
 - **anon** (pública): va en `app-tablet/.env`.
-- **service_role** (secreta): solo en `robot/.env`, para subir reportes. Nunca en la app ni en el repo.
+- **service_role** (secreta, de administrador): solo en `robot/.env`, para subir reportes. Nunca en la app.
+  `robot/.env` está en git a propósito porque el repo es privado (decisión del equipo, 2026-10-24): **el
+  repo no se puede hacer público** sin antes cambiar esta clave en Supabase.

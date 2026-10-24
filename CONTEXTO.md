@@ -1,7 +1,7 @@
 # Contexto del proyecto — Reto "Corte de rosas" (Sabana Hack)
 
 > Documento vivo. Sirve como punto de partida para el equipo y para cualquier asistente de IA que trabaje en el repo.
-> Última actualización: 2026-10-23.
+> Última actualización: 2026-10-24.
 
 ---
 
@@ -70,9 +70,9 @@
 la app móvil para la foto del momento del corte deja de existir. La solución se reorganiza en tres áreas,
 cada una con su carpeta en el repo:
 
-1. **`metaquest/` — Entrenamiento con realidad aumentada (Meta Quest).** Enseña cómo reconocer el punto de corte y cómo cortar. Usa **modelos 2D**, sin modelar rosas en 3D.
+1. **`metaquest/` — Entrenamiento con realidad aumentada (Meta Quest).** Enseña cómo reconocer el punto de corte y cómo cortar. Usa **modelos 2D**, sin modelar rosas en 3D. *(Al final se hizo en VR con A-Frame / WebXR y rosas 3D dibujadas con código: ver `metaquest/README.md`.)*
 2. **`app-tablet/` — Juego en tablet para mecanizar el proceso.** La finca tiene un **proceso estándar sencillo de tres categorías**: *muy pronto*, *punto óptimo* y *muy tarde*. El juego entrena esa clasificación y también la **sanación de la planta después del corte** (el tratamiento que necesita para volver a crecer y seguir produciendo), que es donde los operarios más se demoran o se equivocan.
-3. **`robot/` — Robot de detección por sectores + dashboard.** Recorre el campo, detecta con la red neuronal (RosaNet) los botones listos para cortar en cada sector y envía un reporte a un dashboard con dos vistas:
+3. **`robot/` — Robot de detección por sectores + dashboard.** Recorre el campo, detecta con la red neuronal (RosaNet) los botones listos para cortar en cada sector y envía un reporte a un dashboard con dos vistas *(el dashboard terminó siendo la app de la tablet, que lee el reporte de Supabase)*:
    - **Coordinadores:** entender el estado del campo y organizar al personal.
    - **Pantalla a la entrada del campo:** a qué sectores deben ir los operarios.
 
@@ -102,7 +102,7 @@ cada una con su carpeta en el repo:
 - La finca usa una escala de **"puntos" de corte**. El **punto 3** es el punto de corte: *"el caracol está definido mostrando centro, el color de los pétalos es vivo e intenso y la flor presenta un patrón de copa"*.
 - **La falla más común es cortar en punto 2 (cerrado):** la cabeza se ve más pequeña, el rojo es más oscuro y los sépalos están más pegados a los pétalos.
 - Las 3 categorías del proceso estándar: **Inmaduro – no cortar** (punto ≤ 2), **Punto óptimo de corte** (punto 3) y **Pasado / sobreabierto**.
-- Estos rasgos (forma de copa, caracol con centro visible, intensidad del rojo, sépalos separados y tamaño de la cabeza) son la base de los tips de la AR, del juego y de la explicación del robot.
+- Estos rasgos (forma de copa, caracol con centro visible, intensidad del rojo, sépalos separados y tamaño de la cabeza) son la base de los tips de la VR, del juego y de la explicación del robot.
 
 ### Cómo vienen las fotos (importante para entrenar)
 - Son **fotos de escena dentro del invernadero**, no recortes: cada una tiene muchas rosas, y en el PDF un **círculo naranja marca cuál es la rosa de esa categoría**. Los JPEG sueltos no tienen el círculo.
@@ -197,7 +197,7 @@ Las clases intermedias públicas (`mid-bud`, `2_Early_Bloom`) son rosas **más a
 - Conclusión: el límite ya son los datos, no los ajustes.
 
 ### Fondo oscuro de noche (2026-10-24)
-El Claude del robot detectó que con el **margen del recorte pintado de negro** (como de noche) RosaNet llamaba "óptimo" a muchas inmaduras: el problema es el fondo, no la luz sobre la rosa. Casi todas las fotos de entrenamiento tienen cielo claro detrás.
+El equipo del robot detectó que con el **margen del recorte pintado de negro** (como de noche) RosaNet llamaba "óptimo" a muchas inmaduras: el problema es el fondo, no la luz sobre la rosa. Casi todas las fotos de entrenamiento tienen cielo claro detrás.
 
 **Solución: aumento de fondo oscuro** (`robot/ml/data.py`, `RandomDarkBackground`, `--oscuro 0.5`). En la mitad de los recortes de entrenamiento oscurece al azar el margen del propio recorte, **sin cambiar la escala** (de negro a gris oscuro, rectángulo o viñeta tipo linterna) y oscurece el cielo y el plástico (píxeles claros y sin color).
 
@@ -235,7 +235,7 @@ Medido con validación cruzada (64 rosas, promedio de 3 semillas), "inmaduras �
 | 1280 px | 0,05 | 84 % | 483 |
 
 - **Lectura:** el detector aprendió con rosas de jardín fotografiadas de cerca; en el invernadero las rosas son pequeñas y lejanas. A mayor resolución y con un umbral más bajo encuentra casi 4 de cada 5, pero aparecen **falsos positivos** (postes, hojas, una mano). Se filtran las cajas gigantes (> 8 % de la foto). Los demás falsos positivos casi siempre salen como "inmaduro" o "incierta", así que inflan el conteo de inmaduras pero rara vez generan una falsa alarma de "listas para cortar".
-- **Mi medición anterior (83 %) estaba inflada:** contaba como encontrada una rosa cubierta por una caja gigante. Se corrigió con IoU.
+- **La medición anterior (83 %) estaba inflada:** contaba como encontrada una rosa cubierta por una caja gigante. Se corrigió con IoU.
 
 ### Detector ajustado con escenas del invernadero (2026-10-24)
 - **Escenas con TODAS las rosas marcadas:** 56 fotos de la finca + 39 fotogramas de los videos "vista a un lado" y "vista al camino". Se preanotaron con el detector (`robot/ml/preanotar.py`), se corrigieron en Roboflow (Auto Label con Gemini para los fotogramas + revisión manual) y quedaron 184 rosas. Split de Roboflow: 65 train / 20 valid / 10 test.
@@ -429,22 +429,22 @@ Los cálculos están en `pitch/inversion-y-retorno.md`.
 ---
 
 ## 4. Preguntas abiertas
-- [ ] **(v2)** ¿Cuándo y dónde se usa la tablet si no se permiten celulares? (¿sala de capacitación, solo para entrenamiento?)
+- [x] **(v2)** ¿Cuándo y dónde se usa la tablet si no se permiten celulares? → Fija a la entrada del invernadero (turnero) y en la sala de formación; cada persona entra con su nombre y su PIN.
 - [x] **(v2)** ¿Cómo define la finca *muy pronto*, *punto óptimo* y *muy tarde*? → Punto 3 = óptimo (ver sección 2.0.1). Variedad Freedom.
-- [ ] **(v2)** ¿En qué consiste la sanación de la planta después del corte? **No viene en el material de la finca; hay que pedirlo.**
+- [ ] **(v2)** ¿En qué consiste la sanación de la planta después del corte? **No viene en el material de la finca; hay que pedirlo.** Mientras tanto, la app y la VR usan una versión de trabajo (`contenido/corte-y-sanacion.md`).
 - [x] **(v2)** ¿RosaNet pasa a 3 clases (las de la finca)? → Sí, ya está hecho.
 - [ ] **Robot:** ¿qué configuración exacta tiene nuestro X2 Ultra (LiDAR, RGB-D)? ¿Tendremos el robot físicamente en el hackatón?
 - [ ] **Robot:** ¿qué iluminación lleva para la ronda nocturna? ¿Podemos tomar fotos de prueba de noche con esa luz?
 - [ ] **Datos:** la finca dio 69 rosas marcadas (47 inmaduras, 20 óptimas y 2 pasadas). Es muy poco para entrenar desde cero; hacen falta los datasets públicos y, ojalá, más fotos de la finca.
-- [ ] **(v2)** Dashboard: ¿qué tecnología usamos y cómo le llegan los datos del robot?
+- [x] **(v2)** Dashboard: ¿qué tecnología usamos y cómo le llegan los datos del robot? → La app de la tablet (RoseApp, Expo) lee el reporte de la tabla `reportes` de Supabase; el robot lo sube cuando vuelve a la base y encuentra WiFi.
 - [ ] ¿Qué hardware tenemos o podemos conseguir? (cámara, Raspberry Pi, ESP32 o Arduino, chasis con ruedas, servos, LEDs o láser, Meta Quest)
 - [ ] ¿Tendremos rosas reales para fotografiar y probar? ¿De qué variedades?
-- [ ] **Revisar los 3 datasets del equipo:** etiquetas (¿etapas de apertura?), cantidad de imágenes por clase, variedades, ángulos e iluminación, licencia. ¿Se pueden unificar en una sola escala de etapas?
-- [ ] ¿Cuántas etapas usamos y cómo se definen? (hace falta una definición visual por etapa, que es además la base de los tips)
-- [ ] La regla *etapa + días hasta la venta → decisión*: ¿de dónde salen los valores? (literatura, consulta a una finca o supuesto explícito)
+- [x] **Revisar los 3 datasets del equipo** (hecho: ver 2.2 y 2.0.3; Mendeley se descartó): etiquetas (¿etapas de apertura?), cantidad de imágenes por clase, variedades, ángulos e iluminación, licencia. ¿Se pueden unificar en una sola escala de etapas?
+- [x] ¿Cuántas etapas usamos y cómo se definen? → Las 3 categorías de la finca, con los rasgos de su "Información técnica" (2.0.1).
+- [x] ~~La regla *etapa + días hasta la venta → decisión*~~ → Ya no aplica: era de la app móvil (v1), que se descartó.
 - [ ] "Plantas malas": ¿se detectan con la misma CNN (una clase extra, "defectuosa") o con otro modelo? ¿Hay datos para eso?
-- [ ] Robot: ¿cómo se mueve en la demo (ruedas, riel, empujado a mano)? ¿Qué acción física ejecuta además de fotografiar? (por ejemplo, LED o láser que marque la rosa lista o una alerta sobre una planta mala)
-- [ ] Para la demo: ¿cómo recorre el robot unas "camas" simuladas en el espacio de la presentación?
+- [x] Robot: ¿cómo se mueve en la demo? ¿Qué acción física ejecuta además de fotografiar? → En la simulación (MuJoCo) del X2 Ultra; apunta la cabeza a cada rosa óptima y la ilumina (`robot/DEMO.md`).
+- [x] Para la demo: ¿cómo recorre el robot unas "camas" simuladas? → Invernadero simulado con fotos reales de la finca como carteles, más el modo foto con webcam para las rosas del jurado.
 - [ ] ¿Quién del equipo programa y en qué lenguajes? Reparto: CNN y datos, app, robot y hardware, dashboard, VR, pitch y validación.
 
 ## 5. Registro de decisiones
@@ -469,6 +469,13 @@ Los cálculos están en `pitch/inversion-y-retorno.md`.
 | 2026-10-23 | La app vive en **tablets o pantallas comunes tipo turnero** (entrada del invernadero, sala de formación); el reporte del robot llega a todos los trabajadores registrados | Los operarios no usan celular en el cultivo |
 | 2026-10-23 | Los **drones de la finca quedan fuera**: solo hacen pruebas y no guardan datos | No sirven para el muestreo y no hay tiempo de integrarlos |
 | 2026-10-23 | El pitch vive en `pitch/` (guion, investigación, inversión y visión 360) | Una carpeta para el trabajo del pitch |
+| 2026-10-24 | RosaNet y el detector "noche" quedan por defecto; los de día se conservan | El robot hace la ronda de noche (ver 2.0.3) |
+| 2026-10-24 | Las etiquetas de la compañera no se usan como verdad de terreno | Solo 35 % de acuerdo con la finca y, de noche, aumentan el error más costoso |
+| 2026-10-24 | RosaNet se promedia con un clasificador de forma y color (`forma.joblib`) | Igual o mejor en todo, y la decisión se puede explicar |
+| 2026-10-24 | La app lee el reporte del robot desde Supabase; `robot/.env`, con la clave service_role, va en git | El repo es privado. Por eso no se puede hacer público sin cambiar la clave |
+| 2026-10-24 | El robot señala las óptimas solo en los 10 primeros cuadrantes | Señalarlas todas lleva la ronda de 2 h 18 min a 4 h 46 min |
+| 2026-10-24 | Sanación: la app y la VR usan una versión de trabajo sacada de manuales | La finca todavía no envía su protocolo |
+| 2026-10-24 | La VR se hace en WebXR (A-Frame), con rosas 3D dibujadas con código | Corre en el navegador del Meta Quest y del computador sin instalar nada |
 
 ## 6. Bitácora de supuestos y aprendizajes (para el pitch de validación)
 | Supuesto inicial | ¿Se mantuvo? | Qué observamos |
@@ -476,5 +483,8 @@ Los cálculos están en `pitch/inversion-y-retorno.md`.
 | Hay bases de datos públicas suficientes de punto de corte | **No** | Los datasets encontrados tienen solo 3 etapas gruesas, son de rosas de jardín y no traen defectos. Sirven para la detección y una base de etapas, pero hacen falta fotos propias de rosas comerciales |
 | Una foto basta para decidir el punto de corte | Por verificar | |
 | La finca enviaría recortes de rosas listos para entrenar | **No** | Envió fotos de escena con la rosa marcada en un PDF; hay que convertir esas marcas en cajas |
-| Las 3 categorías tendrían ejemplos parecidos en cantidad | **No** | Inmaduro 37, Óptimo 18, Pasado 2 |
+| Las 3 categorías tendrían ejemplos parecidos en cantidad | **No** | Fotos: inmaduro 37, óptimo 18, pasado 2 (rosas marcadas: 47 / 20 / 2) |
+| Los datasets públicos sirven tal cual para el criterio de la finca | **No** | Con mapeo directo, 25 % en la finca; con preentrenamiento + calibración, 75 % |
+| Una red entrenada con fotos de día sirve de noche | **No** | Con fondo oscuro bajaba a 52 %; con aumento de fondo oscuro, 75,5 % (noche simulada) |
+| Una explicación de la finca basta para transmitir el criterio | **No** | Una integrante que asistió a la explicación coincidió con la finca solo en 35 % de las rosas |
 | El trabajador nuevo confía más si la app le da un veredicto | Por verificar | |

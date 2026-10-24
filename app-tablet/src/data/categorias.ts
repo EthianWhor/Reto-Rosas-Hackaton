@@ -43,7 +43,7 @@ export const CATEGORIAS: Categoria[] = [
     nombreFinca: 'Pasada · sobreabierta',
     color: '#A0693A',
     icono: 'alert-circle-outline',
-    mirar: ['Flor muy abierta'],
+    mirar: ['Flor ancha y plana', 'Pétalos hacia afuera', 'Perdió la forma de copa'],
     pista: 'Se pasó del punto. Había que cortarla antes.',
   },
 ];

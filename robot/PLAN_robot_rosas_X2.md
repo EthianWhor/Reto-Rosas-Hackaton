@@ -2,7 +2,7 @@
 
 Robot que camina de noche por un invernadero de rosas rojas (variedad Freedom), analiza las rosas, dice cuáles están listas para cortar, dónde están y a qué altura. Al final arma un reporte por cuadrante (Excel + JSON) y lo envía al **dashboard** del proyecto cuando encuentra WiFi.
 
-> Estado: **plan, todavía no implementado.**
+> Estado: **implementado en simulación** (pasos 1–10). Lo medido está en cada sección y el guion de la demo en `DEMO.md`.
 > Primero se hace en **simulación (MuJoCo)**. El código queda separado para cambiar a **robot real** con un solo ajuste en la configuración.
 > **Alcance de este plan:** solo la parte del robot. La red neuronal (RosaNet, `robot/ml/`) la hace otra persona del equipo; aquí solo se **conecta** y no se modifica.
 
@@ -710,6 +710,42 @@ RosaNet está entrenada con **fotos reales**. Las rosas de MuJoCo son figuras si
 
 Se cambia en config: `percepcion.candidatas: auto | oraculo | color | detector_equipo` y `percepcion.clasificador: auto | oraculo | rosanet | detector_equipo`.
 
+### 7.5 Modo foto: para la demo en vivo
+
+En la presentación el jurado **pone a prueba el prototipo con casos evaluados en ese momento** (CONTEXTO.md sección 1, "Funcionamiento y evidencia", 25 pts). Una ronda con oráculo no responde a una rosa que traiga el jurado. Por eso hay un modo aparte:
+
+```powershell
+py modo_foto.py foto_del_jurado.jpg      # o --webcam
+```
+
+- Pasa la foto por **el mismo pipeline del robot**: candidatas por color → recorte → RosaNet → "lista mañana" (sin historia) → reporte.
+- Muestra la foto con las cajas pintadas por estado, la confianza y los **tips** que ya trae RosaNet.
+- Genera un mini reporte (Excel + JSON) como si fuera un cuadrante, para que se vea en el dashboard.
+- Si hay tiempo, el mismo modo puede poner la foto como cartel en la simulación y hacer que el robot "la encuentre".
+
+**Hecho (`modo_foto.py`, 2026-10-24):**
+
+```bash
+python modo_foto.py foto.jpg            # una o varias fotos (acepta comodines)
+python modo_foto.py --webcam            # cámara en vivo: ESPACIO analiza, Q sale
+python modo_foto.py foto.jpg --reporte  # además un mini reporte (Excel + JSON) como una ronda
+python modo_foto.py foto.jpg --enviar   # y lo manda a la app con envio.metodo
+```
+
+- Usa las mismas piezas que la ronda real: **detector del equipo + RosaNet** (o la máscara roja si falta el detector) y las reglas de madurez del robot. Nunca usa el oráculo.
+- **Una sola rosa de cerca:** el detector del equipo descarta cajas de más del 8 % de la foto (está hecho para escenas del invernadero). Si se le quita ese límite (`max_box_fraction`), marca caras, manos, un termo rojo y hasta el ícono de "cámara tapada": **no sirve para una rosa en la mano** (para el equipo del modelo). Por eso:
+  - **Con la cámara:** la vista muestra un **cuadro guía** en el centro ("pon la rosa dentro del cuadro"). Si el detector no encuentra rosas en la escena, se analiza **solo lo que está dentro del cuadro**, nunca la imagen completa con la persona y el salón. Si el cuadro no tiene nada rojizo, dice que no ve una rosa. Límite: un objeto rojo dentro del cuadro se analiza como rosa.
+  - **Con una foto que se le pasa a propósito:** si el detector no encuentra rosas, se analiza la foto completa como una rosa (sin filtro de color: los botones inmaduros oscuros casi no tienen píxeles rojizos).
+  - **Siempre:** si la imagen está en blanco (cámara tapada o bloqueada), dice que la cámara no muestra imagen.
+- **Prueba real con webcam (2026-10-24):** las primeras 8 capturas fueron la pantalla gris de "cámara tapada" de Windows y el robot, sin estas protecciones, decía "inmaduro 78 %". Con el cuadro guía, la rosa mostrada en un celular sale "óptimo" (62–65 %) y la cámara tapada se reconoce. Las fotos de la prueba quedaron en `datos/modo_foto/2026-10-24_022736/`.
+- **Salida:** foto anotada (cajas del color de su estado, número, estado y confianza, conteo abajo; las fotos pequeñas se agrandan para que se lean) y en consola, por rosa, el estado, las probabilidades y los consejos de la finca (`tips` de RosaNet). Todo queda en `datos/modo_foto/<hora>/`.
+- **Mini reporte:** mismo formato que la ronda (lo lee la app de la tablet), con un solo cuadrante `INV1-DEMO` e `id_ronda` `INV1_DEMO_<fecha_hora>`. Ojo: si se envía, la app lo va a mostrar como el último reporte.
+- **Webcam:** OpenCV entrega BGR y se pasa a RGB antes del detector, como pide el equipo del modelo.
+- **Límite:** sin profundidad no se sabe el tamaño de la cabeza, así que el modo foto no predice "lista mañana" (en la ronda sí).
+- Con el modelo actual ("noche", sin terminar): de las 4 rosas de una escena de prueba con carteles, 3 salen como "dudosa" (óptimo con 51–53 %). Con una rosa de cerca, la reconoce mejor. Cuando el equipo suba el modelo completo a `modelos/`, este modo lo usa solo.
+
+---
+
 ### 7.6 Cuando el equipo termine el detector (git pull)
 
 Todo lo que toca `ml/` está en **un solo archivo**: `percepcion/modelo_equipo.py`. Con `auto` (lo que viene por defecto):
@@ -817,7 +853,7 @@ El equipo del modelo reentrenó RosaNet con **aumento de fondo oscuro** (`modelo
 
 En el mismo pull el equipo de la app agregó `robot/subir_reporte.py`: sube el JSON del reporte a la tabla `reportes` de Supabase, y la app de la tablet lee de ahí el último reporte para el turnero. La app usa **exactamente el formato de nuestro JSON** (sección 10.4; `app-tablet/src/data/reporte.ts`), así que no hubo que cambiar el reporte.
 
-Del lado del robot se agregó `envio.metodo: supabase` (`reporte/envio.py`): usa la función `subir()` de ellos sin modificarla, dentro de la bandeja de salida con sus reintentos. Solo sube el `.json`; el Excel se queda en el robot. Necesita `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en `robot/.env` (no se sube a git). En la simulación sigue por defecto `carpeta`, porque no hay claves; **no se probó contra el Supabase real.**
+Del lado del robot se agregó `envio.metodo: supabase` (`reporte/envio.py`): usa la función `subir()` de ellos sin modificarla, dentro de la bandeja de salida con sus reintentos. Solo sube el `.json`; el Excel se queda en el robot. Necesita `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en `robot/.env`. En `config.yaml` sigue por defecto `carpeta` y la demo usa `config/demo.yaml` con `supabase`. **Actualización (2026-10-24):** ya se probó contra el Supabase real; la clave está en `robot/.env`, que va en git porque el repo es privado.
 
 ### 7.11 Detector ajustado con escenas de la finca (pull del 2026-10-24)
 
@@ -898,45 +934,9 @@ carga solo y promedia su opinión con la de RosaNet, sin cambiar el contrato: el
   bucket público `fotos-rosas` de Supabase Storage y pone esa dirección en `foto`. El archivo de `salida/` no
   cambia. Si una foto falla, esa dudosa queda con la ruta local (la app muestra una de muestra) y el reporte se
   sube igual. Para la demo: `python main.py --config config/demo.yaml` (cartel + Supabase + fotos).
-  Comprobado con un Storage falso y una ronda real: 25 de 25 dudosas con su recorte. **No se probó contra el
-  Supabase real** (falta `SUPABASE_SERVICE_ROLE_KEY` en `robot/.env`). Límite: el modo foto (`--enviar`) no sube
+  Comprobado con un Storage falso y una ronda real: 25 de 25 dudosas con su recorte. **Actualización (2026-10-24):**
+  ya se probó contra el Supabase real: llegó el reporte y las 29 fotos de dudosas se abren por su URL pública. Límite: el modo foto (`--enviar`) no sube
   fotos, porque sus fotos no están en `datos/rondas/`.
-
-### 7.5 Modo foto: para la demo en vivo
-
-En la presentación el jurado **pone a prueba el prototipo con casos evaluados en ese momento** (CONTEXTO.md sección 1, "Funcionamiento y evidencia", 25 pts). Una ronda con oráculo no responde a una rosa que traiga el jurado. Por eso hay un modo aparte:
-
-```powershell
-py modo_foto.py foto_del_jurado.jpg      # o --webcam
-```
-
-- Pasa la foto por **el mismo pipeline del robot**: candidatas por color → recorte → RosaNet → "lista mañana" (sin historia) → reporte.
-- Muestra la foto con las cajas pintadas por estado, la confianza y los **tips** que ya trae RosaNet.
-- Genera un mini reporte (Excel + JSON) como si fuera un cuadrante, para que se vea en el dashboard.
-- Si hay tiempo, el mismo modo puede poner la foto como cartel en la simulación y hacer que el robot "la encuentre".
-
-**Hecho (`modo_foto.py`, 2026-10-24):**
-
-```bash
-python modo_foto.py foto.jpg            # una o varias fotos (acepta comodines)
-python modo_foto.py --webcam            # cámara en vivo: ESPACIO analiza, Q sale
-python modo_foto.py foto.jpg --reporte  # además un mini reporte (Excel + JSON) como una ronda
-python modo_foto.py foto.jpg --enviar   # y lo manda a la app con envio.metodo
-```
-
-- Usa las mismas piezas que la ronda real: **detector del equipo + RosaNet** (o la máscara roja si falta el detector) y las reglas de madurez del robot. Nunca usa el oráculo.
-- **Una sola rosa de cerca:** el detector del equipo descarta cajas de más del 8 % de la foto (está hecho para escenas del invernadero). Si se le quita ese límite (`max_box_fraction`), marca caras, manos, un termo rojo y hasta el ícono de "cámara tapada": **no sirve para una rosa en la mano** (para el equipo del modelo). Por eso:
-  - **Con la cámara:** la vista muestra un **cuadro guía** en el centro ("pon la rosa dentro del cuadro"). Si el detector no encuentra rosas en la escena, se analiza **solo lo que está dentro del cuadro**, nunca la imagen completa con la persona y el salón. Si el cuadro no tiene nada rojizo, dice que no ve una rosa. Límite: un objeto rojo dentro del cuadro se analiza como rosa.
-  - **Con una foto que se le pasa a propósito:** si el detector no encuentra rosas, se analiza la foto completa como una rosa (sin filtro de color: los botones inmaduros oscuros casi no tienen píxeles rojizos).
-  - **Siempre:** si la imagen está en blanco (cámara tapada o bloqueada), dice que la cámara no muestra imagen.
-- **Prueba real con webcam (2026-10-24):** las primeras 8 capturas fueron la pantalla gris de "cámara tapada" de Windows y el robot, sin estas protecciones, decía "inmaduro 78 %". Con el cuadro guía, la rosa mostrada en un celular sale "óptimo" (62–65 %) y la cámara tapada se reconoce. Las fotos de la prueba quedaron en `datos/modo_foto/2026-10-24_022736/`.
-- **Salida:** foto anotada (cajas del color de su estado, número, estado y confianza, conteo abajo; las fotos pequeñas se agrandan para que se lean) y en consola, por rosa, el estado, las probabilidades y los consejos de la finca (`tips` de RosaNet). Todo queda en `datos/modo_foto/<hora>/`.
-- **Mini reporte:** mismo formato que la ronda (lo lee la app de la tablet), con un solo cuadrante `INV1-DEMO` e `id_ronda` `INV1_DEMO_<fecha_hora>`. Ojo: si se envía, la app lo va a mostrar como el último reporte.
-- **Webcam:** OpenCV entrega BGR y se pasa a RGB antes del detector, como pide el equipo del modelo.
-- **Límite:** sin profundidad no se sabe el tamaño de la cabeza, así que el modo foto no predice "lista mañana" (en la ronda sí).
-- Con el modelo actual ("noche", sin terminar): de las 4 rosas de una escena de prueba con carteles, 3 salen como "dudosa" (óptimo con 51–53 %). Con una rosa de cerca, la reconoce mejor. Cuando el equipo suba el modelo completo a `modelos/`, este modo lo usa solo.
-
----
 
 ## 8. Eficiencia: varias rosas por foto
 
@@ -1181,7 +1181,7 @@ Reto-Rosas-Hackaton/
     ├── meshes/                  (ya existe)
     ├── referencias/             (ya existe) ← script de 10 plantas, solo de consulta
     ├── ml/                      (ya existe) ← RosaNet. Lo hace otra persona. NO SE TOCA
-    ├── .env.ejemplo             ← plantilla de claves (el .env real no se sube)
+    ├── .env.ejemplo             ← plantilla de claves (el .env real está en git: repo privado)
     ├── escena_base.xml          ← piso, luces, guía, exclusión cabeza-torso (incluye X2-Ultra.xml)
     ├── config/
     │   └── config.yaml          ← modo sim/real, medidas, umbrales, cámara

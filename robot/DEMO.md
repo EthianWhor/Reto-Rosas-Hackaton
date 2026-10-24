@@ -1,6 +1,8 @@
 # Demo del robot y números para el pitch
 
-Guion para mostrar el robot en la presentación (unos 6 minutos) y los números medidos, con sus límites.
+Guion para mostrar el robot en la presentación (unos 5–6 minutos) y los números medidos, con sus límites.
+**Ojo:** el guion del pitch le da 3,5 minutos a toda la demo, incluidos el juego y la VR. Versión corta:
+1 minuto de la parte 1 (o la ronda de respaldo), la parte 2 completa y una sola rosa en la parte 3.
 Todo se corre desde `robot/`, con el entorno de la raíz activado: `..\.venv\Scripts\activate`.
 El detalle de cada número está en [PLAN_robot_rosas_X2.md](PLAN_robot_rosas_X2.md).
 
@@ -8,14 +10,16 @@ El detalle de cada número está en [PLAN_robot_rosas_X2.md](PLAN_robot_rosas_X2
 
 ## 1. Antes de la presentación (una vez)
 
-1. **Clave de Supabase:** ya viene en `robot/.env` (está en git; el repo es privado). Probar que llega: `python -m reporte.envio --una-vez --config config/demo.yaml`. En la tablet, en "Lo que
-   encontró el robot", abajo ya no debe decir que es un reporte de ejemplo.
+1. **Clave de Supabase:** ya viene en `robot/.env` (está en git; el repo es privado). Probar que llega: `python -m reporte.envio --una-vez --config config/demo.yaml`. En la tablet, en "Informe
+   del robot", abajo ya no debe decir que es un reporte de ejemplo.
 2. **Revisar el modelo y la cámara:** `python main.py --revisar` (sin caminar) y
    `python modo_foto.py ../app-tablet/assets/rosas/2_optimo/finca_yolo_26_1.jpg` (debe salir "Óptimo").
 3. **Webcam:** conectada y probada con `python modo_foto.py --webcam` (ESPACIO analiza, Q sale).
 4. **Dejar lista una ronda de respaldo** por si algo falla en vivo:
    `python main.py --config config/demo.yaml --camino 1` y guardar la carpeta de `datos/rondas/`.
-5. Tener la **tablet** abierta en la app, con un usuario experto (para revisar las dudosas).
+5. Tener la **tablet** abierta en la app, con un usuario experto (para revisar las dudosas). En la base de
+   prueba todos son aprendices: entrar como Coordinadora y, en "Usuarios", tocar "Promover a experto" en
+   alguien (por ejemplo, Luis). La Coordinadora también ve las dudosas.
 
 ## 2. Guion
 
@@ -40,7 +44,7 @@ Qué decir mientras camina:
 
 ### Parte 2: el reporte en la tablet (1 min)
 
-- Abrir "Lo que encontró el robot": los cuadrantes ordenados por prioridad ("¿a dónde voy hoy?").
+- Abrir "Informe del robot": los cuadrantes ordenados por prioridad ("¿a dónde voy hoy?").
 - Abrir una rosa dudosa con el usuario experto: se ve **la foto real que tomó el robot**, el experto la clasifica
   y esa etiqueta queda para reentrenar a RosaNet.
 

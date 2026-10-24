@@ -85,7 +85,8 @@ create table version_personas (
 insert into config_turno (id) values (1);
 insert into version_personas (id) values (1);
 
--- Usuarios de prueba (los mismos de app-tablet/src/data/usuarios.ts). Cambiar los PIN en la finca.
+-- Usuarios de prueba: la Coordinadora y 10 aprendices (para la demo, promover a alguien a experto desde
+-- la app). Cambiar los PIN en la finca.
 insert into personas (id, nombre, rol, pin_hash) values
   ('admin-1', 'Coordinadora', 'admin',      extensions.crypt('1234', extensions.gen_salt('bf'))),
   ('t-01',    'Marta',        'aprendiz',   extensions.crypt('1001', extensions.gen_salt('bf'))),
