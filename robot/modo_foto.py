@@ -12,6 +12,10 @@ Se corre desde la carpeta robot/:
     python modo_foto.py foto.jpg --reporte    -> además arma un mini reporte (Excel + JSON) como una ronda
     python modo_foto.py foto.jpg --enviar     -> y lo manda a la app con el envío del config (envio.metodo)
     python modo_foto.py --webcam --enviar --config config/demo.yaml   -> a la app (Supabase), con las fotos de las dudosas
+    python modo_foto.py --webcam --auto --enviar --config config/demo.yaml   -> sin teclas: cuando reconoce una rosa
+        en el cuadro, la manda sola a la app (otra vez cuando se saca la rosa y se pone otra)
+    python modo_foto.py --robot http://<ip>:8765 --enviar --config config/demo.yaml   -> con la cámara del X2 real
+        (en el robot corre puente_x2.py; si hay una rosa óptima, parpadea la tira LED del pecho)
 
 Límites (decirlos en la demo):
 - Sin cámara de profundidad no se sabe el tamaño de la cabeza, así que aquí no
@@ -30,8 +34,10 @@ Límites (decirlos en la demo):
 
 import argparse
 import glob
+import io
 import json
 import sys
+import urllib.request
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -66,6 +72,8 @@ class RosaFoto:
 DESVIO_MIN_IMAGEN = 15    # menos variación que esto = imagen en blanco (cámara tapada o bloqueada)
 ROJO_MIN = 0.03           # con la cámara: fracción mínima de píxeles rojizos en el cuadro para analizarlo
 GUIA_FRAC = 0.6           # lado del cuadro guía de la cámara, como fracción del lado corto de la imagen
+AUTO_CADA_S = 1.0         # --auto: cada cuánto mira si hay una rosa (el análisis tarda ~0,5 s sin GPU)
+AUTO_IGUALES = 2          # --auto: lecturas seguidas con el mismo resultado antes de mandar (la rosa quieta)
 
 
 def fraccion_roja(rgb: np.ndarray) -> float:
@@ -278,20 +286,99 @@ def procesar(rgb: np.ndarray, nombre: str, analizador: Analizador, carpeta: Path
     return rosas
 
 
-def webcam(analizador: Analizador, carpeta: Path, cfg: dict, reporte: bool, enviar: bool, indice: int = 0) -> int:
+class CamaraRobot:
+    """La cámara de la cabeza del X2 a través de puente_x2.py (que corre en el robot), con la misma
+    forma que cv2.VideoCapture: read() → (ok, cuadro BGR). `prender_led()` hace parpadear la tira
+    LED del pecho: es la acción física cuando hay una rosa para cortar."""
+
+    def __init__(self, url: str, espera_s: float = 3.0):
+        self.url, self.espera_s = url.rstrip("/"), espera_s
+
+    def isOpened(self) -> bool:   # noqa: N802  (mismo nombre que cv2.VideoCapture)
+        try:
+            with urllib.request.urlopen(f"{self.url}/estado", timeout=self.espera_s) as r:
+                return r.status == 200
+        except OSError:
+            return False
+
+    def read(self):
+        try:
+            with urllib.request.urlopen(f"{self.url}/foto", timeout=self.espera_s) as r:
+                formato = r.headers.get("X-Encoding", "rgb8")
+                with Image.open(io.BytesIO(r.read())) as im:
+                    rgb = np.asarray(im.convert("RGB"))
+        except (OSError, ValueError):
+            return False, None
+        return True, (rgb if formato.startswith("bgr") else rgb[:, :, ::-1]).copy()   # BGR, como OpenCV
+
+    def prender_led(self, encender: bool = True) -> bool:
+        pedido = urllib.request.Request(f"{self.url}/led", data=json.dumps({"encender": encender}).encode("utf-8"),
+                                        method="POST", headers={"Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(pedido, timeout=self.espera_s) as r:
+                return r.status in (200, 202)
+        except OSError:
+            return False
+
+    def release(self) -> None:
+        pass
+
+
+class Disparo:
+    """--auto: decide cuándo analizar y mandar sin tocar el teclado. Manda cuando la misma lectura sale
+    `AUTO_IGUALES` veces seguidas, y no vuelve a mandar hasta que el cuadro quede vacío (sacar la rosa)."""
+
+    def __init__(self):
+        self.ultima, self.iguales, self.enviada = None, 0, False
+
+    def ver(self, rosas: list[RosaFoto]) -> bool:
+        """Una lectura del cuadro; True = es hora de mandarla."""
+        if not rosas:
+            self.ultima, self.iguales, self.enviada = None, 0, False   # cuadro vacío: listo para otra rosa
+            return False
+        lectura = tuple(r.estado for r in rosas)
+        self.iguales = self.iguales + 1 if lectura == self.ultima else 1
+        self.ultima = lectura
+        if self.enviada or self.iguales < AUTO_IGUALES:
+            return False
+        self.enviada = True
+        return True
+
+    def aviso(self) -> str:
+        if self.enviada:
+            return "Enviada a la app. Saca la rosa para mandar otra"
+        if self.ultima:
+            return f"Reconociendo: {NOMBRES[self.ultima[0]]}..."
+        return "AUTO: esperando una rosa"
+
+
+def webcam(analizador: Analizador, carpeta: Path, cfg: dict, reporte: bool, enviar: bool, indice: int = 0,
+           robot: str | None = None, auto: bool = False) -> int:
+    """Cámara en vivo: la webcam `indice` o, con `robot`, la cámara del X2 (puente_x2.py).
+    Con `auto`, analiza sola cada `AUTO_CADA_S` y procesa (y manda) cada rosa nueva que reconoce."""
+    import time
     import cv2
-    cam = cv2.VideoCapture(indice)
+    cam = CamaraRobot(robot) if robot else cv2.VideoCapture(indice)
     if not cam.isOpened():
-        print(f"No se pudo abrir la cámara {indice}.")
+        print(f"No se pudo abrir la cámara {robot or indice}."
+              + (" ¿Está corriendo puente_x2.py en el robot y en la misma red?" if robot else ""))
         return 1
-    print("Cámara en vivo: ESPACIO analiza la imagen, Q sale.")
+    print(("Cámara del robot" if robot else "Cámara en vivo") + ": ESPACIO analiza la imagen, Q sale."
+          + (" AUTO: cuando reconoce una rosa en el cuadro, la " + ("manda a la app." if enviar else "analiza.")
+             if auto else ""))
     resultado = None
+    fallas = 0
+    disparo, proxima = Disparo(), 0.0
     try:
         while True:
             ok, cuadro = cam.read()
             if not ok:
-                print("La cámara no entregó imagen.")
-                return 1
+                fallas += 1
+                if not robot or fallas >= 10:   # por WiFi se puede perder una imagen: se reintenta
+                    print("La cámara no entregó imagen.")
+                    return 1
+                continue
+            fallas = 0
             vista = cuadro.copy()
             alto, ancho = vista.shape[:2]
             gx1, gy1, gx2, gy2 = cuadro_guia(ancho, alto)
@@ -300,17 +387,32 @@ def webcam(analizador: Analizador, carpeta: Path, cfg: dict, reporte: bool, envi
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             cv2.putText(vista, "ESPACIO: analizar   Q: salir", (15, alto - 15), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
                         (255, 255, 255), 2)
+            if auto:
+                cv2.putText(vista, disparo.aviso(), (15, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 255), 2)
             cv2.imshow("Robot rosas - camara", vista)
             tecla = cv2.waitKey(1) & 0xFF
             if tecla in (ord("q"), 27):
                 return 0
-            if tecla == ord(" "):
+            disparar = tecla == ord(" ")
+            if auto and not disparar and time.monotonic() >= proxima:
+                proxima = time.monotonic() + AUTO_CADA_S
+                rgb = cv2.cvtColor(cuadro, cv2.COLOR_BGR2RGB)
+                gx1, gy1, gx2, gy2 = cuadro_guia(rgb.shape[1], rgb.shape[0])
+                # lectura rápida: si el cuadro no tiene nada rojo ni se analiza (no gasta la red)
+                hay_rojo = fraccion_roja(rgb[gy1:gy2, gx1:gx2]) >= ROJO_MIN
+                disparar = disparo.ver(analizador.analizar(rgb, (gx1, gy1, gx2, gy2)) if hay_rojo else [])
+                if disparar:
+                    print("\nAUTO: rosa reconocida, " + ("la mando a la app." if enviar else "la analizo."))
+            if disparar:
                 rgb = cv2.cvtColor(cuadro, cv2.COLOR_BGR2RGB)   # OpenCV entrega BGR; la red espera RGB
-                nombre = f"webcam_{datetime.now():%H%M%S}.jpg"
+                nombre = f"{'robot' if robot else 'webcam'}_{datetime.now():%H%M%S}.jpg"
                 carpeta.mkdir(parents=True, exist_ok=True)
                 Image.fromarray(rgb).save(carpeta / nombre)   # la foto original, para revisarla después
                 guia = cuadro_guia(rgb.shape[1], rgb.shape[0])
                 rosas = procesar(rgb, nombre, analizador, carpeta, cfg, reporte, enviar, guia)
+                if robot and any(r.estado == "optimo" for r in rosas):   # acción física: parpadea el pecho
+                    print("LED del pecho: " + ("parpadea (hay una rosa para cortar)" if cam.prender_led()
+                                               else "no respondió el puente"))
                 resultado = cv2.cvtColor(np.asarray(dibujar(rgb, rosas)), cv2.COLOR_RGB2BGR)
                 cv2.imshow("Robot rosas - resultado", resultado)
     finally:
@@ -322,12 +424,15 @@ def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("fotos", nargs="*", help="Fotos a analizar (acepta comodines)")
     p.add_argument("--webcam", nargs="?", const=0, type=int, metavar="N", help="Usar la cámara N (por defecto 0)")
+    p.add_argument("--robot", metavar="URL", help="Usar la cámara del X2 (puente_x2.py), p. ej. http://192.168.1.20:8765")
     p.add_argument("--reporte", action="store_true", help="Armar un mini reporte (Excel + JSON) como el de la ronda")
     p.add_argument("--enviar", action="store_true", help="Enviar el mini reporte con envio.metodo del config")
+    p.add_argument("--auto", action="store_true",
+                   help="Con la cámara: analizar y mandar solo, sin ESPACIO, cada vez que reconoce una rosa nueva")
     p.add_argument("--salida", type=Path, help="Carpeta para las fotos anotadas (por defecto datos/modo_foto/<hora>)")
     p.add_argument("--config", type=Path, help="Otro archivo de configuración (p. ej. config/demo.yaml, para enviar a la app)")
     args = p.parse_args(argv)
-    if not args.fotos and args.webcam is None:
+    if not args.fotos and args.webcam is None and not args.robot:
         p.print_help()
         return 2
 
@@ -340,8 +445,8 @@ def main(argv=None) -> int:
     print(f"Modelo: candidatas = {analizador.eleccion['candidatas']}, clasificador = {analizador.eleccion['clasificador']}")
     carpeta = args.salida or configuracion.ruta(cfg["datos_dir"]) / "modo_foto" / f"{datetime.now():%Y-%m-%d_%H%M%S}"
 
-    if args.webcam is not None:
-        return webcam(analizador, carpeta, cfg, args.reporte, args.enviar, args.webcam)
+    if args.webcam is not None or args.robot:
+        return webcam(analizador, carpeta, cfg, args.reporte, args.enviar, args.webcam or 0, args.robot, args.auto)
     rutas = [Path(f) for patron in args.fotos for f in (glob.glob(patron) or [patron])]
     for ruta in rutas:
         if not ruta.exists():

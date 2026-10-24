@@ -119,9 +119,10 @@ bajan de 6–7 a 0–3, sin perder óptimas. Umbrales "A CALIBRAR" con rosas rea
 reporte llegó a la tabla `reportes` y las 29 fotos de dudosas se abren por su URL pública. Falta verlo en la tablet.
 `main` tiene todo hasta `cdbe4f8` (merge fast-forward de A).
 
-1. **Siguiente paso, si hay tiempo:**
+1. **X2 real (opcional, preparado):** `puente_x2.py` + `modo_foto.py --robot` (DEMO.md 2b). Probado sin robot (puente local con una foto de la finca); falta probarlo con el X2 delante.
+2. **Siguiente paso, si hay tiempo:**
    - **Paso 7, "lista mañana" con historia:** reconocer la misma rosa de una noche a otra por su posición, medir cuánto creció y calcular los días que faltan. `percepcion/madurez.py` ya acepta `diametro_ayer_cm`.
-2. **Pendiente de otras personas:**
+3. **Pendiente de otras personas:**
    - **Equipo del modelo:**
      - con RosaNet + forma, las pasadas salen como óptimas (en la sim, 6–7 por ronda; la regla del tamaño del robot las baja a 0–3, plan 2.6);
      - medir el detector a 1280–1920 px con sus escenas (el robot rinde más así).
@@ -144,6 +145,7 @@ reporte llegó a la tabla `reportes` y las 29 fotos de dudosas se abren por su U
 | `reporte/fotos.py` | Fotos de las dudosas a Supabase Storage |
 | `config/demo.yaml` | Config de la demo con la app (cartel + Supabase) |
 | `DEMO.md` | Guion de la demo y números para el pitch |
+| `puente_x2.py` | Va en el X2 real: cámara de la cabeza y LED del pecho para el modo foto (`--robot`) |
 | `cuerpo/interfaz.py` | Lo que la ronda le pide al robot (igual en sim y real) |
 | `cuerpo/sim_backend.py` | Robot en MuJoCo |
 | `cuerpo/real_backend.py` | Esqueleto del X2 real (SDK AimDK_X2) |
