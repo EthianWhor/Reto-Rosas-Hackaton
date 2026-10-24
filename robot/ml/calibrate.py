@@ -79,6 +79,8 @@ def main() -> None:
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--batch-size", type=int, default=16)
     p.add_argument("--extra-pasado", type=int, default=40, help="Recortes públicos de 'pasado' a sumar")
+    p.add_argument("--extra", type=Path, action="append", default=[],
+                   help="Carpeta con más rosas etiquetadas (subcarpetas por clase); solo se suman al entrenamiento")
     p.add_argument("--workers", type=int, default=2)
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--tta", action="store_true", help="Reportar con TTA (imagen + espejo)")
@@ -95,6 +97,8 @@ def main() -> None:
     pool = list_samples(args.finca / "train", classes) + list_samples(args.finca / "val", classes)
     hard = list_samples(args.finca / "test", classes)
     extra = public_pasado(args.publico, args.extra_pasado, args.seed) if args.extra_pasado else []
+    for folder in args.extra:  # nunca se usan para medir: la medición es solo con la finca
+        extra += list_samples(folder, classes)
     print(f"Finca: {len(pool)} rosas para validación cruzada, {len(hard)} difíciles para test"
           f" | {len(extra)} 'pasado' públicas de apoyo")
 

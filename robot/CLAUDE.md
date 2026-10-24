@@ -132,6 +132,12 @@ python -m pytest
 - Pruebas de fondo disponibles en `ml/data.py` (`BACKGROUND_TESTS`: original, margen_negro, margen_gris,
   noche) y en `python -m ml.calibrate --oscuro 0.5` (imprime `FONDO …` por prueba).
 
+## Por qué no se cambió RosaNet con las rosas clasificadas por el equipo (2026-10-24)
+- Se probó sumar 52 rosas clasificadas por una integrante del equipo. Reconoce más óptimas **de día**
+  (43 % → 65 %), pero **de noche casi no ayuda** (61 % → 65 %) y sube el error más costoso
+  (inmaduras → óptimo de noche: 7 → 9 de 45). Como el robot opera de noche, `modelos/rosanet.pt` **no cambió**.
+- Si el robot alguna vez opera de día, existe un candidato local (no en git) en `runs/rosanet_v3/best.pt`.
+
 ## Límites que el robot debe tener en cuenta
 - **Las pruebas de noche son simuladas** (oscureciendo fotos de día). Falta medir con fotos reales de
   noche con la luz del robot: tomar 30-50 fotos de rosas Freedom de noche y medir con `ml.evaluate`.
