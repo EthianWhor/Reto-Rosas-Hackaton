@@ -65,6 +65,20 @@ pasa a segundo plano (`src/logica/operario.tsx`).
 
 Las pantallas están protegidas por rol en `src/app/_layout.tsx` (`Stack.Protected`).
 
+**Modo turnero** (`src/app/turnero.tsx`, `src/app/activar-turnero.tsx`, `src/logica/turnero.tsx`): para la
+tablet fija de la entrada. Coordinación lo activa desde su inicio y elige un **código de salida de 6 números**
+(dos veces; no acepta 111111 ni 123456). Desde ahí la tablet solo muestra el tablero del turno:
+- El avance de todos en vivo y "¿Quién eres?" con cada persona presente y su avance.
+- Al tocar su nombre, la persona ve su zona (camas) y sus cuadrantes en orden. Para marcar uno o "Terminé mi
+  turno" escribe su PIN, así nadie marca por otro. Sin tocar la pantalla 1 minuto, vuelve al tablero y cierra
+  esa sesión.
+- No hay forma de llegar a otra pantalla: las demás rutas quedan bloqueadas, el botón atrás de Android no
+  sale y al cerrar o recargar la app sigue en el turnero.
+- Se sale con el candado de arriba y el código (5 intentos y espera de 1 minuto). Si nadie lo recuerda,
+  alguien de coordinación sale con su PIN.
+- El código se guarda en la tablet solo como huella. Para bloquear también el sistema (que no se pueda salir
+  de la app), usar la fijación de pantalla de Android o el Acceso guiado de iPad.
+
 **Alta y activación (nadie conoce el PIN de otro):** coordinación registra nombre, correo, teléfono y
 rol, y recibe un **código de 6 números** que se muestra una sola vez. La persona toca "¿Eres nuevo?
 Activa tu usuario", elige su nombre, escribe el código y **crea su PIN dos veces** (no se aceptan PIN

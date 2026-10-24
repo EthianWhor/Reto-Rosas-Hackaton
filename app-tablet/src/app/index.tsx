@@ -32,6 +32,7 @@ const MENU: Record<Rol, Opcion[]> = {
     { titulo: 'Usuarios', icono: 'person-add', color: colores.rosa, ruta: '/trabajadores' },
     INFORME,
     { ...DUDOSAS, destacado: false },
+    { titulo: 'Modo turnero', detalle: 'Dejar esta tablet fija en el tablero del turno', icono: 'tv', color: '#455A64', destacado: true, ruta: '/activar-turnero' },
   ],
   experto: [
     { titulo: 'Mi turno', detalle: 'Mis cuadrantes de hoy', icono: 'checkbox', color: colores.primario, destacado: true, ruta: '/mi-turno' },
