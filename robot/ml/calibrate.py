@@ -27,7 +27,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from ml.data import StageFolder, eval_transform, list_samples, train_transform
+from ml.data import BACKGROUND_TESTS, StageFolder, eval_transform, list_samples, make_train_transform
 from ml.evaluate import evaluate, format_report, metrics_from_confusion
 from ml.stages import PUBLIC_PASADO, STAGES
 from ml.train import build_model, fit
@@ -74,13 +74,17 @@ def main() -> None:
     p.add_argument("--init", type=Path, default=Path("runs/rosanet_pre/best.pt"))
     p.add_argument("--out", type=Path, default=Path("runs/rosanet"))
     p.add_argument("--k", type=int, default=5)
-    p.add_argument("--freeze", type=int, default=2, help="Bloques congelados del preentrenado")
+    p.add_argument("--freeze", type=int, default=0, help="Bloques congelados del preentrenado (0 fue lo mejor)")
     p.add_argument("--epochs", type=int, default=30)
     p.add_argument("--lr", type=float, default=1e-3)
     p.add_argument("--batch-size", type=int, default=16)
     p.add_argument("--extra-pasado", type=int, default=40, help="Recortes públicos de 'pasado' a sumar")
     p.add_argument("--workers", type=int, default=2)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--tta", action="store_true", help="Reportar con TTA (imagen + espejo)")
+    p.add_argument("--oscuro", type=float, default=0.0,
+                   help="Probabilidad del aumento de fondo oscuro (de noche) al entrenar, p. ej. 0.5")
+    p.add_argument("--solo-cv", action="store_true", help="Solo validación cruzada, sin modelo final (para comparar ajustes)")
     args = p.parse_args()
     if str(args.init).lower() == "none":  # para comparar: sin preentrenamiento
         args.init, args.freeze = None, 0
@@ -96,7 +100,9 @@ def main() -> None:
 
     fit_kw = dict(epochs=args.epochs, batch_size=args.batch_size, lr=args.lr, workers=args.workers,
                   device=device, verbose=False, select="last")
-    total_conf = None
+    train_transform = make_train_transform(args.oscuro)
+    total_conf, total_conf_tta = None, None
+    totals_bg = {name: None for name in BACKGROUND_TESTS}
     folds = make_folds(pool, args.k, args.seed)
     for i, fold in enumerate(folds):
         if not fold:
@@ -106,11 +112,33 @@ def main() -> None:
         val_ds = StageFolder(None, classes, eval_transform, samples=fold)
         model = build_model(len(classes), args.init, args.freeze)
         fit(model, train_ds, val_ds, classes, args.out / f"fold{i + 1}", **fit_kw)
-        m = evaluate(model.to(device), DataLoader(val_ds, batch_size=64), classes, device)
+        loader = DataLoader(val_ds, batch_size=64)
+        m = evaluate(model.to(device), loader, classes, device)
+        m_tta = evaluate(model, loader, classes, device, tta=True)
         total_conf = merge_confusion(total_conf, m["confusion"])
-        print(f"Fold {i + 1}/{args.k}: {len(fold)} rosas | exactitud {m['accuracy']:.3f} | macro-F1 {m['macro_f1']:.3f}")
+        total_conf_tta = merge_confusion(total_conf_tta, m_tta["confusion"])
+        for name, transform in BACKGROUND_TESTS.items():
+            bg = evaluate(model, DataLoader(StageFolder(None, classes, transform, samples=fold), batch_size=64),
+                          classes, device)
+            totals_bg[name] = merge_confusion(totals_bg[name], bg["confusion"])
+        print(f"Fold {i + 1}/{args.k}: {len(fold)} rosas | exactitud {m['accuracy']:.3f} (TTA {m_tta['accuracy']:.3f})"
+              f" | macro-F1 {m['macro_f1']:.3f} (TTA {m_tta['macro_f1']:.3f})")
 
-    cv = metrics_from_confusion(total_conf, classes)
+    cv_plain = metrics_from_confusion(total_conf, classes)
+    cv_tta = metrics_from_confusion(total_conf_tta, classes)
+    optimo = classes.index("2_optimo")
+    for name, m in (("sin TTA", cv_plain), ("con TTA", cv_tta)):
+        print(f"RESUMEN {name}: exactitud {m['accuracy']:.3f} | macro-F1 {m['macro_f1']:.3f}"
+              f" | recall óptimo {m['per_class']['2_optimo']['recall']:.3f}"
+              f" | inmaduras->óptimo {m['confusion'][0][optimo]}")
+    print("Robustez al fondo (mismas rosas, mismo recorte; solo cambia el margen):")
+    for name, conf in totals_bg.items():
+        m = metrics_from_confusion(conf, classes)
+        print(f"FONDO {name:13s}: exactitud {m['accuracy']:.3f} | recall óptimo {m['per_class']['2_optimo']['recall']:.3f}"
+              f" | inmaduras->óptimo {conf[0][optimo]}/{sum(conf[0])}")
+    cv = cv_tta if args.tta else cv_plain
+    if args.solo_cv:
+        return
     print("\n=== Validación cruzada (cada rosa de la finca medida por un modelo que no la vio) ===")
     print(format_report(cv))
 
@@ -121,7 +149,7 @@ def main() -> None:
     fit(model, train_ds, hard_ds, classes, args.out, **fit_kw)
     result = {"validacion_cruzada": cv, "config": {k: str(v) for k, v in vars(args).items()}}
     if hard:
-        test = evaluate(model.to(device), DataLoader(hard_ds, batch_size=64), classes, device)
+        test = evaluate(model.to(device), DataLoader(hard_ds, batch_size=64), classes, device, tta=args.tta)
         print("\n=== Casos difíciles de la finca (test) ===")
         print(format_report(test))
         result["test_dificiles"] = test

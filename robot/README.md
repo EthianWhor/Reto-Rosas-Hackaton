@@ -69,7 +69,8 @@ python -m ml.prepare_data --escala publica --yolo descargas/rose --yolo descarga
 python -m ml.train --data data/pre --out runs/rosanet_pre --epochs 40 --batch-size 64 --workers 4
 
 # Etapa 2: calibrar con la finca + validación cruzada por foto -> runs/rosanet/best.pt
-python -m ml.calibrate --init runs/rosanet_pre/best.pt --freeze 0 --out runs/rosanet
+# (--oscuro 0.5: aumento de fondo oscuro para que funcione de noche; ver robot/CLAUDE.md)
+python -m ml.calibrate --init runs/rosanet_pre/best.pt --freeze 0 --oscuro 0.5 --out runs/rosanet
 ```
 
 ### 5. Entrenar el detector (YOLO11n preentrenado, una clase "rosa")

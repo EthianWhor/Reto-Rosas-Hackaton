@@ -22,8 +22,9 @@ pip install -r requirements.txt
 | Archivo | Qué hace |
 |---|---|
 | `modelos/detector_rosas.pt` | YOLO11n ajustado: encuentra **dónde** hay rosas en una foto de escena (una clase, "rosa") |
-| `modelos/rosanet.pt` | RosaNet (CNN propia): dice si una rosa **recortada** está `1_inmaduro`, `2_optimo` o `3_pasado` |
-| `modelos/rosanet_calibracion.json` | Métricas de la validación cruzada con las fotos de la finca |
+| `modelos/rosanet.pt` | RosaNet (CNN propia): dice si una rosa **recortada** está `1_inmaduro`, `2_optimo` o `3_pasado`. **Versión "noche"**: entrenada con aumento de fondo oscuro (ver abajo) |
+| `modelos/rosanet_calibracion.json` | Métricas de la validación cruzada con las fotos de la finca (incluye las pruebas de fondo) |
+| `modelos/rosanet_v1_dia.pt` | Versión anterior, sin aumento de fondo oscuro: algo mejor de día, mucho peor de noche. Solo para comparar |
 
 No hace falta copiar pesos de `runs/` (eso era antes; `runs/` no está en git).
 
@@ -104,13 +105,26 @@ python -m pytest
 - **Detector en las fotos de la finca:** encuentra el **78 %** de las rosas marcadas por la finca.
   Tiene falsos positivos (postes, hojas, una mano); casi siempre salen como `1_inmaduro` o
   `incierta`, así que inflan el conteo de inmaduras pero rara vez dan un falso "listas para cortar".
-- **RosaNet (validación cruzada con 64 rosas de la finca):** 75 % de exactitud. Reconoce el 59 % de
-  las óptimas. Marca como óptimas 7 de 45 inmaduras (el error más costoso: cortar en punto 2).
-  `3_pasado` **no funciona** (la finca dio solo 2 ejemplos).
+- **RosaNet "noche" (validación cruzada con 64 rosas de la finca, promedio de 4 semillas):**
+  ~70 % de exactitud con fondo de día y ~74 % con fondo "noche" (cielo y margen oscuros).
+  Con fondo nocturno marca como óptimas ~7 de 45 inmaduras (el error más costoso: cortar en punto 2);
+  la versión anterior marcaba ~25 de 45. `3_pasado` **no funciona** (la finca dio solo 2 ejemplos).
+
+## Fondo oscuro de noche (resuelto en parte, 2026-10-24)
+- El equipo del robot midió que con el **margen del recorte en negro** RosaNet confundía inmaduras con
+  óptimas (el fondo, no la luz sobre la rosa). Confirmado con validación cruzada: 25 de 45 inmaduras.
+- `modelos/rosanet.pt` ahora se entrena con **aumento de fondo oscuro** (`ml/data.py`:
+  `RandomDarkBackground`: oscurece el margen del propio recorte sin cambiar la escala, con viñeta tipo
+  linterna, y oscurece el cielo/plástico). Con fondo "noche" baja a ~7 de 45, igual que de día.
+- Con un margen **negro liso** (prueba más artificial) todavía falla en ~15 de 45.
+- **El ajuste del robot que aclara el fondo con la profundidad:** con este modelo probablemente ya no hace
+  falta. Medir con y sin ese ajuste antes de decidir; no apagarlo a ciegas.
+- Pruebas de fondo disponibles en `ml/data.py` (`BACKGROUND_TESTS`: original, margen_negro, margen_gris,
+  noche) y en `python -m ml.calibrate --oscuro 0.5` (imprime `FONDO …` por prueba).
 
 ## Límites que el robot debe tener en cuenta
-- **Todo se entrenó con fotos de día.** De noche, con la luz del robot, no está medido: hay que
-  tomar fotos de prueba de noche y medir con `ml.evaluate`.
+- **Las pruebas de noche son simuladas** (oscureciendo fotos de día). Falta medir con fotos reales de
+  noche con la luz del robot: tomar 30-50 fotos de rosas Freedom de noche y medir con `ml.evaluate`.
 - **Simulación:** las rosas de MuJoCo (figuras) no se parecen a fotos reales; el modelo solo tiene
   sentido con fotos o carteles de rosas reales.
 - Si se reentrena la red, los nuevos pesos se copian a `modelos/` con el mismo nombre; el contrato
