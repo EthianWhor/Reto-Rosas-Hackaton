@@ -17,7 +17,7 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
-from ml.detect import DET_CONF, DET_IMGSZ, RoseDetector
+from ml.detect import DET_IMGSZ, RoseDetector
 from ml.predict import DEFAULT_THRESHOLD, RosePredictor
 from ml.prepare_data import pad_box
 from ml.stages import STAGE_LABELS
@@ -28,7 +28,7 @@ COLORS = {"1_inmaduro": "deepskyblue", "2_optimo": "lime", "3_pasado": "red", "i
 class RoseInspector:
     """Detector + RosaNet: una entrada por rosa encontrada en la foto."""
 
-    def __init__(self, detector_weights: Path, classifier_ckpt: Path, det_conf: float = DET_CONF,
+    def __init__(self, detector_weights: Path, classifier_ckpt: Path, det_conf: float | None = None,
                  threshold: float = DEFAULT_THRESHOLD, pad: float = 0.15, device: str | None = None,
                  imgsz: int = DET_IMGSZ):
         self.detector = RoseDetector(detector_weights, conf=det_conf, imgsz=imgsz, device=device)
@@ -94,7 +94,7 @@ def main() -> None:
     p.add_argument("--sector", required=True)
     p.add_argument("--detector", type=Path, default=Path("modelos/detector_rosas.pt"))
     p.add_argument("--ckpt", type=Path, default=Path("modelos/rosanet.pt"))
-    p.add_argument("--det-conf", type=float, default=DET_CONF, help="Confianza mínima del detector")
+    p.add_argument("--det-conf", type=float, help="Confianza mínima del detector (por defecto, la medida para ese modelo)")
     p.add_argument("--imgsz", type=int, default=DET_IMGSZ, help="Resolución a la que se procesa la foto en el detector")
     p.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD, help="Confianza mínima de RosaNet")
     p.add_argument("--out", type=Path, help="Guardar el reporte JSON")

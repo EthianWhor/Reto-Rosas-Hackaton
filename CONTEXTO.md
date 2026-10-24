@@ -251,6 +251,19 @@ Medido con validación cruzada (64 rosas, promedio de 3 semillas), "inmaduras �
 - Parámetros de operación: **960 px, conf 0,25** (`robot/ml/detect.py`). Bajar a 0,05 solo sube a 67 % y da 22 falsas alarmas.
 - **Hallazgo para el robot:** en los fotogramas desde el pasillo (video de 464×832) las rosas ocupan pocos píxeles y son las que más se pierden. **La cámara tiene que acercarse a la cama** o tener más resolución.
 
+### Detector de noche (2026-10-24)
+- **Problema:** con las 30 escenas de evaluación oscurecidas como de noche (cielo negro, viñeta de linterna; `night_scene` en `robot/ml/data.py`), el detector de día caía de mAP50 0,76 a **0,35** y encontraba solo el 22 % de las rosas.
+- **Dataset "night-roses"** (Roboflow, del equipo): 1.808 imágenes con una sola clase "rose" y noche **simulada** (brillo de 0 a −60 %, ruido, desenfoque). ~600 fotos de internet (jardín, muchos colores, ilustraciones, **varias con rosas sin marcar**) y ~80 fotogramas de **otro invernadero**. **No sirve para RosaNet** (no trae etapas). Para el detector solo se usaron los fotogramas del invernadero; las fotos de internet se descartaron porque, con rosas sin marcar, enseñan a ignorar rosas.
+- **Entrenamiento:** escenas de la finca de día ×6 + **6 copias nocturnas variadas de cada una** + fotogramas de night-roses + 400 públicas por dataset; validación con las escenas de día y de noche.
+
+| Modelo | Noche: encontradas / falsas alarmas | Día: encontradas / falsas alarmas | mAP50 noche / día / públicas |
+|---|---|---|---|
+| Día (`detector_rosas_dia.pt`, conf 0,25) | 22 % / 2 | **63 % / 5** | 0,35 / **0,76** / 0,963 |
+| **Noche (`detector_rosas.pt`, conf 0,55, en uso)** | **55 % / 7** | 47 % / 3 | **0,65** / 0,67 / 0,944 |
+
+- **Decisión:** el robot hace la ronda de noche, así que el de noche queda por defecto. El de día se conserva para la demo con luz natural y para la simulación con fotos de día. El umbral se elige solo según el archivo de pesos (`CONF_BY_MODEL`).
+- **Límite:** la noche es simulada; falta medir con fotos reales de noche y la luz del robot.
+
 ### Siguiente paso con más impacto
 1. **RosaNet: más rosas óptimas.** Es ahora el punto más débil: en las escenas de evaluación, de 3 óptimas marcadas por la finca, RosaNet "noche" clasificó 2 como inmaduras. Fuente rápida: las ~50 rosas que se marcaron en Roboflow y no tienen categoría (clasificarlas con el criterio de la finca, idealmente con alguien de la finca).
 2. **Fotos de noche reales** (30-50 Freedom con linterna) para validar el modelo "noche" y el detector de noche.
