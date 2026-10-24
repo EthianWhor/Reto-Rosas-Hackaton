@@ -77,6 +77,27 @@ STAGE_TIPS = {
 }
 
 
-def map_class_name(name: str) -> str | None:
-    """Traduce un nombre de clase de un dataset a la categoría de la finca (o None)."""
-    return DATASET_CLASS_MAP.get(name.strip().lower())
+# Escala para el PREENTRENAMIENTO con datasets públicos. Sus fronteras no
+# coinciden con las de la finca (su "mid-bud"/"early bloom" ya está más abierto
+# que el punto óptimo de la finca), así que se usan con su propia escala para
+# que la red aprenda a ver rosas, y luego se calibra con la finca.
+PRETRAIN_CLASS_MAP = {
+    "bud": "a_boton",
+    "1_bud": "a_boton",
+    "mid-bud": "b_abriendo",
+    "2_early_bloom": "b_abriendo",
+    "flower": "c_abierta",
+    "3_full_bloom": "c_abierta",
+    "4_senescence": "d_senescente",
+}
+
+# Clases públicas que, con el estándar de la finca, son sin duda "pasado".
+# Se usan para completar esa categoría en la calibración (la finca solo dio 2).
+PUBLIC_PASADO = ("c_abierta", "d_senescente")
+
+SCALES = {"finca": DATASET_CLASS_MAP, "publica": PRETRAIN_CLASS_MAP}
+
+
+def map_class_name(name: str, scale: str = "finca") -> str | None:
+    """Traduce un nombre de clase de un dataset a la escala pedida (o None)."""
+    return SCALES[scale].get(name.strip().lower())

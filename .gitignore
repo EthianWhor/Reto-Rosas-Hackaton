@@ -10,3 +10,5 @@ descargas/
 # Resultados de entrenamiento
 runs/
 *.pt
+# Excepción: los modelos entrenados que usa el equipo
+!robot/modelos/*.pt

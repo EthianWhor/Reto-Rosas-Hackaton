@@ -21,10 +21,11 @@ import argparse
 import random
 from pathlib import Path
 
+import numpy as np
 import yaml
 from PIL import Image
 
-from ml.stages import STAGES, map_class_name
+from ml.stages import SCALES, map_class_name
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 SPLIT_DIRS = {"train": "train", "valid": "val", "val": "val", "test": "test"}
@@ -60,7 +61,13 @@ def pad_box(box, width, height, pad: float):
     )
 
 
-def crop_yolo_dataset(root: Path, out: Path, pad: float, min_size: int, counts: dict) -> None:
+def is_grayscale(im: Image.Image, tol: int = 4) -> bool:
+    """True si la imagen no tiene color (algunos exports de Roboflow traen copias en gris)."""
+    small = np.asarray(im.convert("RGB").resize((64, 64)), dtype=np.int16)
+    return int((small.max(axis=2) - small.min(axis=2)).max()) <= tol
+
+
+def crop_yolo_dataset(root: Path, out: Path, pad: float, min_size: int, counts: dict, scale: str = "finca") -> None:
     names = read_class_names(root / "data.yaml")
     prefix = root.name
     for split_dir in root.iterdir():
@@ -78,8 +85,12 @@ def crop_yolo_dataset(root: Path, out: Path, pad: float, min_size: int, counts: 
                 continue
             with Image.open(img_path) as im:
                 im = im.convert("RGB")
+                # El color es un criterio de la finca: una copia en gris enseñaría lo contrario.
+                if is_grayscale(im):
+                    counts["grayscale"] += 1
+                    continue
                 for i, parts in enumerate(lines):
-                    stage = map_class_name(names[int(parts[0])])
+                    stage = map_class_name(names[int(parts[0])], scale)
                     if stage is None:
                         counts["ignored"] += 1
                         continue
@@ -94,11 +105,12 @@ def crop_yolo_dataset(root: Path, out: Path, pad: float, min_size: int, counts: 
                     counts[split] += 1
 
 
-def split_folder_dataset(root: Path, out: Path, seed: int, val: float, test: float, counts: dict) -> None:
+def split_folder_dataset(root: Path, out: Path, seed: int, val: float, test: float, counts: dict,
+                         scale: str = "finca") -> None:
     rng = random.Random(seed)
     prefix = root.name
     for class_dir in sorted(p for p in root.iterdir() if p.is_dir()):
-        stage = map_class_name(class_dir.name)
+        stage = map_class_name(class_dir.name, scale)
         if stage is None:
             print(f"  [aviso] carpeta '{class_dir.name}' sin mapeo en stages.py, se ignora")
             continue
@@ -117,7 +129,8 @@ def split_folder_dataset(root: Path, out: Path, seed: int, val: float, test: flo
 def print_summary(out: Path) -> None:
     print("\nImágenes por split y etapa:")
     for split in ("train", "val", "test"):
-        row = {s: len(list((out / split / s).glob("*.jpg"))) for s in STAGES}
+        classes = sorted({d.name for d in out.glob("*/*") if d.is_dir()})
+        row = {s: len(list((out / split / s).glob("*.jpg"))) for s in classes}
         print(f"  {split:5s} " + "  ".join(f"{s}={n}" for s, n in row.items()))
 
 
@@ -131,18 +144,21 @@ def main() -> None:
     p.add_argument("--val", type=float, default=0.15)
     p.add_argument("--test", type=float, default=0.15)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--escala", choices=sorted(SCALES), default="finca",
+                   help="finca = 3 categorías de la finca; publica = escala propia de los datasets públicos (preentrenamiento)")
     args = p.parse_args()
 
-    counts = {"train": 0, "val": 0, "test": 0, "ignored": 0, "too_small": 0}
+    counts = {"train": 0, "val": 0, "test": 0, "ignored": 0, "too_small": 0, "grayscale": 0}
     for root in args.yolo:
         print(f"Recortando {root} ...")
-        crop_yolo_dataset(root, args.out, args.pad, args.min_size, counts)
+        crop_yolo_dataset(root, args.out, args.pad, args.min_size, counts, args.escala)
     for root in args.folder:
         print(f"Repartiendo {root} ...")
-        split_folder_dataset(root, args.out, args.seed, args.val, args.test, counts)
+        split_folder_dataset(root, args.out, args.seed, args.val, args.test, counts, args.escala)
 
     print(f"\nGuardadas: train={counts['train']} val={counts['val']} test={counts['test']}"
-          f" | ignoradas (sin mapeo)={counts['ignored']} | muy pequeñas={counts['too_small']}")
+          f" | ignoradas (sin mapeo)={counts['ignored']} | muy pequeñas={counts['too_small']}"
+          f" | fotos en gris descartadas={counts['grayscale']}")
     print_summary(args.out)
 
 

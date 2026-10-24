@@ -7,7 +7,6 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from ml.model import IMAGE_SIZE
-from ml.stages import STAGES
 
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 MEAN, STD = (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
@@ -30,8 +29,21 @@ eval_transform = transforms.Compose([
 
 
 def present_classes(root: Path) -> list[str]:
-    """Etapas (en el orden de STAGES) que tienen al menos una imagen en root."""
-    return [s for s in STAGES if (root / s).is_dir() and any((root / s).iterdir())]
+    """Clases (subcarpetas con al menos una imagen) en orden alfabético.
+
+    Las categorías de la finca empiezan por 1_, 2_, 3_, así que quedan en el orden de STAGES.
+    """
+    return sorted(d.name for d in Path(root).iterdir() if d.is_dir() and any(d.iterdir()))
+
+
+def list_samples(root: Path, classes: list[str]) -> list[tuple[Path, int]]:
+    return [
+        (p, idx)
+        for idx, cls in enumerate(classes)
+        if (Path(root) / cls).is_dir()
+        for p in sorted((Path(root) / cls).iterdir())
+        if p.suffix.lower() in IMAGE_EXTS
+    ]
 
 
 class StageFolder(Dataset):
@@ -40,15 +52,9 @@ class StageFolder(Dataset):
     Así val/test/fotos propias usan los mismos índices aunque les falte alguna etapa.
     """
 
-    def __init__(self, root: Path, classes: list[str], transform=eval_transform):
+    def __init__(self, root: Path | None, classes: list[str], transform=eval_transform, samples=None):
         self.classes, self.transform = classes, transform
-        self.samples = [
-            (p, idx)
-            for idx, cls in enumerate(classes)
-            if (Path(root) / cls).is_dir()
-            for p in sorted((Path(root) / cls).iterdir())
-            if p.suffix.lower() in IMAGE_EXTS
-        ]
+        self.samples = samples if samples is not None else list_samples(root, classes)
 
     def __len__(self) -> int:
         return len(self.samples)
