@@ -17,30 +17,57 @@ from PIL import Image
 
 from ml.data import eval_transform
 from ml.model import RosaNet, load_checkpoint
+from ml.shape import DEFAULT_SHAPE_MODEL, shape_probs
 from ml.stages import STAGE_LABELS, STAGE_TIPS
 
 DEFAULT_THRESHOLD = 0.6
+SHAPE_WEIGHT = 0.5  # peso de la forma al combinar con RosaNet (ml.shape_cv)
 
 
 class RosePredictor:
-    def __init__(self, ckpt: Path, device: str | None = None, threshold: float = DEFAULT_THRESHOLD):
+    """RosaNet + clasificador de forma (si existe forma.joblib junto al checkpoint).
+
+    Las dos opiniones se promedian (peso SHAPE_WEIGHT para la forma). Medido con validación
+    cruzada en rosas de la finca: de día 72 % -> 77 % de exactitud y 43 % -> 61 % de óptimas
+    reconocidas sin más inmaduras llamadas óptimas; de noche 76 % -> 77 %. Si en el recorte no
+    se encuentra una rosa roja, decide solo RosaNet.
+    """
+
+    def __init__(self, ckpt: Path, device: str | None = None, threshold: float = DEFAULT_THRESHOLD,
+                 shape_model: Path | str | None = "auto"):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.model, self.classes = load_checkpoint(ckpt, self.device)
         self.threshold = threshold
+        if shape_model == "auto":
+            shape_model = Path(ckpt).parent / DEFAULT_SHAPE_MODEL
+        self.shape = None
+        if shape_model is not None and Path(shape_model).exists():
+            import joblib
+
+            self.shape = joblib.load(shape_model)
+            if list(self.shape["classes"]) != list(self.classes):
+                raise ValueError(f"{shape_model} tiene clases {self.shape['classes']}, RosaNet tiene {self.classes}")
 
     def predict(self, image: Image.Image) -> dict:
-        x = eval_transform(image.convert("RGB")).unsqueeze(0).to(self.device)
+        image = image.convert("RGB")
+        x = eval_transform(image).unsqueeze(0).to(self.device)
         with torch.no_grad():
-            probs = torch.softmax(self.model(x), dim=1)[0].cpu().tolist()
-        best = max(range(len(probs)), key=probs.__getitem__)
+            net = torch.softmax(self.model(x), dim=1)[0].cpu().numpy()
+        shape, rasgos = shape_probs(self.shape, image) if self.shape else (None, None)
+        probs = net if shape is None else (1 - SHAPE_WEIGHT) * net + SHAPE_WEIGHT * shape
+        best = int(probs.argmax())
         stage = self.classes[best]
+        rounded = lambda v: {c: round(float(q), 3) for c, q in zip(self.classes, v)}
         return {
             "etapa": stage,
             "nombre": STAGE_LABELS.get(stage, stage),
-            "confianza": round(probs[best], 3),
-            "seguro": probs[best] >= self.threshold,
-            "probabilidades": {c: round(p, 3) for c, p in zip(self.classes, probs)},
+            "confianza": round(float(probs[best]), 3),
+            "seguro": bool(probs[best] >= self.threshold),
+            "probabilidades": rounded(probs),
             "tips": STAGE_TIPS.get(stage, {}),
+            # Detalle de cada opinión y los rasgos medidos (para explicar la decisión).
+            "fuentes": {"rosanet": rounded(net), "forma": None if shape is None else rounded(shape)},
+            "rasgos": rasgos,
         }
 
     def gradcam(self, image: Image.Image, class_index: int | None = None) -> Image.Image:
