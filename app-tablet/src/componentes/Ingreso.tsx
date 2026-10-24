@@ -9,7 +9,7 @@ import { colores, espacio, texto } from '@/tema';
 // Sin teclado del sistema: botones grandes, pensados para usar con guantes o manos mojadas.
 
 export function Ingreso() {
-  const { usuarios, entrar, recargarUsuarios } = useOperario();
+  const { usuarios, entrar, recargarUsuarios, cerradaPorInactividad } = useOperario();
   const [elegido, setElegido] = useState<Usuario | null>(null);
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -72,6 +72,9 @@ export function Ingreso() {
     <ScrollView contentContainerStyle={styles.contenido}>
       <Text style={styles.titulo}>¿Quién eres?</Text>
       <Text style={styles.cuerpo}>Toca tu nombre para entrar.</Text>
+      {cerradaPorInactividad && (
+        <Text style={styles.cuerpo}>La sesión anterior se cerró sola porque nadie tocó la pantalla.</Text>
+      )}
       {usuarios.length === 0 && (
         <Text style={styles.error} onPress={() => recargarUsuarios().catch(() => {})}>
           No se pudo cargar la lista de personas. Revisa la conexión y toca aquí para reintentar.

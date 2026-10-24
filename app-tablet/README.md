@@ -40,7 +40,9 @@ que Expo Go no trae, por ejemplo correr RosaNet en la tablet (TFLite/ONNX) o el 
 ## Roles y reparto del turno
 
 La tablet es compartida (va a la entrada del invernadero): cada persona entra con su nombre y su
-PIN, y sale al terminar.
+PIN, y sale al terminar. Por seguridad, **la sesión no se guarda**: al abrir o recargar la app
+siempre pide el PIN, y la sesión se cierra sola tras **3 minutos sin tocar la pantalla** o si la app
+pasa a segundo plano (`src/logica/operario.tsx`).
 
 - **Admin** (coordinación): marca quién vino, ajusta las horas de corte, los segundos por rosa y
   los minutos para llegar a un cuadrante, y ve el avance de todos.

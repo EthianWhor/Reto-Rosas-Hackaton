@@ -12,7 +12,8 @@
 
 create extension if not exists pgcrypto with schema extensions;
 
-drop table if exists rondas_juego, cuadrantes_hechos, asistencia, config_turno, reportes, sesiones, personas cascade;
+drop table if exists rondas_juego, cuadrantes_hechos, asistencia, config_turno, reportes, sesiones, personas,
+  version_personas cascade;
 
 -- ---------------------------------------------------------------- tablas
 
@@ -73,7 +74,16 @@ create table rondas_juego (
   respuestas jsonb not null
 );
 
+-- personas no se puede leer con la clave anon (tiene el PIN cifrado), así que Realtime no avisa sus
+-- cambios. Cada cambio en personas sube este contador público, que la app escucha para recargar.
+create table version_personas (
+  id int primary key default 1 check (id = 1),
+  version bigint not null default 0,
+  actualizado timestamptz not null default now()
+);
+
 insert into config_turno (id) values (1);
+insert into version_personas (id) values (1);
 
 -- Usuarios de prueba (los mismos de app-tablet/src/data/usuarios.ts). Cambiar los PIN en la finca.
 insert into personas (id, nombre, rol, pin_hash) values
@@ -98,16 +108,18 @@ alter table config_turno enable row level security;
 alter table asistencia enable row level security;
 alter table cuadrantes_hechos enable row level security;
 alter table rondas_juego enable row level security;
+alter table version_personas enable row level security;
 
 -- Lectura pública de los datos del turno. Sin políticas de escritura: se escribe con las funciones.
 create policy lectura on reportes for select to anon, authenticated using (true);
 create policy lectura on config_turno for select to anon, authenticated using (true);
 create policy lectura on asistencia for select to anon, authenticated using (true);
 create policy lectura on cuadrantes_hechos for select to anon, authenticated using (true);
+create policy lectura on version_personas for select to anon, authenticated using (true);
 -- personas, sesiones y rondas_juego: sin políticas → la clave anon no las ve.
 
 -- Cambios en vivo (la pantalla de la coordinadora se actualiza sola).
-alter publication supabase_realtime add table cuadrantes_hechos, asistencia, config_turno, reportes;
+alter publication supabase_realtime add table cuadrantes_hechos, asistencia, config_turno, reportes, version_personas;
 
 -- ---------------------------------------------------------------- funciones
 
@@ -232,8 +244,19 @@ begin
   return query select r.fecha, r.respuestas from rondas_juego r where r.persona_id = p.id order by r.fecha;
 end $$;
 
+create or replace function _tocar_personas()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  update version_personas set version = version + 1, actualizado = now() where id = 1;
+  return null;
+end $$;
+
+create trigger personas_cambian after insert or update or delete on personas
+  for each statement execute function _tocar_personas();
+
 -- Las funciones internas no se exponen; las demás sí, para la clave anon.
 revoke execute on function _persona_de(uuid, boolean) from public, anon, authenticated;
+revoke execute on function _tocar_personas() from public, anon, authenticated;
 grant execute on function listar_personas(), entrar(text, text), salir(uuid), marcar_hecho(uuid, text, text, boolean),
   guardar_asistencia(uuid, date, text[]), guardar_config(uuid, numeric, int, int), crear_persona(uuid, text, text, text),
   quitar_persona(uuid, text), guardar_ronda_juego(uuid, jsonb), mis_rondas_juego(uuid)

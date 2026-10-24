@@ -10,11 +10,19 @@ tablet, el robot y, más adelante, las gafas (Meta Quest).
 
 Se puede volver a correr cuando cambie el esquema, pero **borra los datos** y deja los usuarios de prueba.
 
+Para cambiar una base que ya tiene datos, se corren los archivos de [`migraciones/`](migraciones/) que
+falten, en orden. `schema.sql` siempre incluye todas las migraciones.
+
+| Migración | Qué cambia | Aplicada en el proyecto |
+|---|---|---|
+| `001_personas_en_vivo.sql` | Tabla `version_personas` y disparador: la lista de personas se actualiza sola en todas las tablets | Sí (2026-10-24) |
+
 ## Qué hay
 
 | Tabla | Qué guarda | Quién escribe |
 |---|---|---|
-| `personas` | Nombre, rol (admin / trabajador) y PIN cifrado | Admin, con `crear_persona` y `quitar_persona` |
+| `personas` | Nombre, rol (admin / trabajador), PIN cifrado y `activo`. **Quitar no borra la fila**: la deja con `activo = false`, para no perder lo que la persona marcó o practicó | Admin, con `crear_persona` y `quitar_persona` |
+| `version_personas` | Un contador que sube con cada cambio en `personas`, para avisar en vivo a la app | Disparador `personas_cambian` |
 | `sesiones` | Token de cada sesión abierta (vence a las 14 h) | `entrar` y `salir` |
 | `reportes` | JSON completo de cada ronda del robot | El robot (`robot/subir_reporte.py`, clave service_role) |
 | `config_turno` | Horas de corte, segundos por rosa, minutos por cuadrante | Admin, con `guardar_config` |
@@ -26,7 +34,10 @@ Se puede volver a correr cuando cambie el esquema, pero **borra los datos** y de
 `cuadrantes_hechos`. `personas`, `sesiones` y `rondas_juego` no se pueden leer directo. Todo lo que
 escribe pasa por funciones que validan el token de sesión (y el rol, cuando hace falta).
 
-**En vivo:** `cuadrantes_hechos`, `asistencia`, `config_turno` y `reportes` están en Realtime.
+**En vivo:** `cuadrantes_hechos`, `asistencia`, `config_turno`, `reportes` y `version_personas` están en
+Realtime.
+
+Para ver solo las personas activas en el Table Editor, filtrar `activo` = `true`.
 
 ## Claves
 
