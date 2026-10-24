@@ -18,3 +18,5 @@ runs/
 # Robot: fotos, reportes y logs de cada ronda; claves del envío
 robot/datos/
 .env
+# Excepción: la clave de Supabase del robot (repo privado; decisión del equipo, 2026-10-24)
+!robot/.env

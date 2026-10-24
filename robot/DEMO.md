@@ -8,12 +8,7 @@ El detalle de cada número está en [PLAN_robot_rosas_X2.md](PLAN_robot_rosas_X2
 
 ## 1. Antes de la presentación (una vez)
 
-1. **Clave de Supabase** en `robot/.env` (la pasa el compañero de la app):
-   ```
-   SUPABASE_URL=https://fxlljandvphujxxddvxy.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=...
-   ```
-   Probar que llega: `python -m reporte.envio --una-vez --config config/demo.yaml`. En la tablet, en "Lo que
+1. **Clave de Supabase:** ya viene en `robot/.env` (está en git; el repo es privado). Probar que llega: `python -m reporte.envio --una-vez --config config/demo.yaml`. En la tablet, en "Lo que
    encontró el robot", abajo ya no debe decir que es un reporte de ejemplo.
 2. **Revisar el modelo y la cámara:** `python main.py --revisar` (sin caminar) y
    `python modo_foto.py ../app-tablet/assets/rosas/2_optimo/finca_yolo_26_1.jpg` (debe salir "Óptimo").
@@ -52,10 +47,14 @@ Qué decir mientras camina:
 ### Parte 3: el jurado pone a prueba el robot (2–3 min)
 
 ```bash
-python modo_foto.py --webcam --enviar --config config/demo.yaml
+python modo_foto.py --webcam --auto --enviar --config config/demo.yaml
 ```
 
-- "Traigan una rosa o una foto." Ponerla dentro del cuadro guía y apretar ESPACIO.
+- "Traigan una rosa o una foto." Ponerla dentro del cuadro guía. **Con `--auto` no hay que tocar nada:** cuando
+  reconoce la misma rosa dos lecturas seguidas (~2 s), la analiza y la manda sola a la app. No la vuelve a mandar
+  hasta que se saque la rosa del cuadro, y una mano que la tape un momento no cuenta. Arriba de la imagen dice qué
+  está haciendo ("esperando una rosa", "reconociendo…", "enviada a la app"). ESPACIO sigue funcionando para
+  mandarla a mano. Sin `--auto`, solo con ESPACIO.
 - Muestra la rosa con su estado y confianza, y en la consola **los consejos de la finca** (qué mirar).
 - Si la confianza es baja, dice "dudosa" y no adivina: "Prefiere decir que no sabe a mandar a cortar en punto 2."
 - El resultado llega a la tablet como un cuadrante `INV1-DEMO`, con la foto si fue dudosa.
@@ -68,50 +67,6 @@ python modo_foto.py --webcam --enviar --config config/demo.yaml
 - Sin internet: el reporte queda en `datos/salida/` y se sube después con `python -m reporte.envio --una-vez --config config/demo.yaml`.
 - Sin webcam: `python modo_foto.py foto.jpg --enviar --config config/demo.yaml` con una foto del celular.
 - La ventana de MuJoCo va lenta: correr sin `--ventana` y mostrar las fotos de `datos/rondas/<id>/fotos/`.
-
-## 2b. Con el X2 real (opcional, máximo 60 minutos)
-
-El robot **quieto y de pie** mira con la cámara de su cabeza la rosa que le pongan delante. El PC la analiza con
-el mismo modelo del modo foto y, si está óptima, **parpadea la tira LED del pecho**. No camina ni mueve la
-cintura. Si a los 60 minutos no funciona, se presenta con la simulación y la webcam.
-
-```
-Robot: puente_x2.py (ROS 2 + SDK, ya instalados)  ── foto ──▶  PC: modo_foto.py --robot (el modelo)
-                                                   ◀── LED ──
-```
-
-**Antes:** el robot y el PC en la **misma red WiFi**, la **IP del robot**, acceso por **SSH** (la contraseña la
-escribe una persona) y alguien junto al control remoto o la parada de emergencia. El robot de pie y estable,
-como cuando lo controlaron.
-
-1. **Copiar el puente al robot** (desde `robot/` en el PC):
-   ```bash
-   scp puente_x2.py <usuario>@<ip-del-robot>:~/
-   ```
-2. **Arrancarlo en el robot** (por SSH), con el entorno de ROS 2 y del SDK cargado, como para los ejemplos de AgiBot:
-   ```bash
-   source /opt/ros/humble/setup.bash
-   source <carpeta-del-SDK>/install/setup.bash     # el del SDK AimDK_X2 (donde está aimdk_msgs)
-   python3 puente_x2.py
-   ```
-   Imprime los campos que pide el LED en ese firmware y "Puente listo en el puerto 8765".
-3. **Comprobar desde el PC:** abrir `http://<ip-del-robot>:8765/estado` en el navegador. Debe mostrar la
-   imagen (1280 × 720) y su edad en segundos. `http://<ip-del-robot>:8765/foto` muestra lo que ve el robot.
-4. **Correr el modo foto con la cámara del robot** (en el PC, desde `robot/`):
-   ```bash
-   python modo_foto.py --robot http://<ip-del-robot>:8765 --enviar --config config/demo.yaml
-   ```
-   Igual que con la webcam: la rosa dentro del cuadro guía, ESPACIO analiza, Q sale. Si sale óptima, el pecho
-   del robot parpadea unos 8 s (el SDK tarda ~5 s en responder).
-
-**Si algo no anda:**
-- *`/estado` no abre:* revisar la IP, que estén en la misma red, y que el puente siga corriendo (puerto 8765).
-- *No llega la imagen (`"imagen": null`):* en el robot, `ros2 topic list | grep rgb` y arrancar con el nombre que
-  salga: `python3 puente_x2.py --topico <nombre>`.
-- *El LED no parpadea:* mirar `led` en `/estado` (respuesta o error) y los campos del pedido. En el robot,
-  `ros2 service list | grep -i led` y `ros2 interface show aimdk_msgs/srv/SetPmuLed`. Ajustar con
-  `--servicio-led <nombre>`, `--modo-led <número>` o `--campo-led nombre=valor`. Si sigue sin andar, la demo vale
-  igual con la imagen del robot: el LED se cuenta como "falta probar".
 
 ## 3. Números para el pitch (simulación, 2026-10-24)
 

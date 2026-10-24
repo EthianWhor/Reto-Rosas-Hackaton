@@ -204,7 +204,8 @@ python -m reporte.envio
 modelo del equipo, no el oráculo), `envio.metodo: supabase` y `envio.fotos_bucket`. Antes de subir el reporte,
 el robot recorta cada rosa dudosa y la sube al bucket público `fotos-rosas` de Supabase Storage, para que el
 experto la vea en la tablet (`reporte/fotos.py`). Necesita `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` en
-`robot/.env` (no se sube a git):
+`robot/.env` (está en git a propósito: el repo es privado y es la clave de administrador, así que
+el repo no se puede hacer público):
 
 ```bash
 python main.py --config config/demo.yaml                  # ronda que termina en la app
@@ -225,12 +226,8 @@ python modo_foto.py foto.jpg            # una o varias fotos
 python modo_foto.py --webcam            # cámara en vivo: ESPACIO analiza, Q sale
 python modo_foto.py foto.jpg --enviar   # además manda un mini reporte (envio.metodo)
 python modo_foto.py --webcam --enviar --config config/demo.yaml   # a la app, con la foto de cada dudosa
-python modo_foto.py --robot http://<ip-del-robot>:8765 --enviar --config config/demo.yaml   # con la cámara del X2
+python modo_foto.py --webcam --auto --enviar --config config/demo.yaml   # sin teclas: manda sola cada rosa nueva
 ```
-
-Con el X2 real, en el robot corre `puente_x2.py` (solo ROS 2 y Python estándar): entrega la imagen de la cámara de
-la cabeza y parpadea la tira LED del pecho cuando el PC encuentra una rosa óptima. Pasos en [DEMO.md](DEMO.md),
-sección 2b.
 
 Las fotos anotadas quedan en `datos/modo_foto/`. Si la foto es de una sola rosa de cerca y el detector no la
 encuentra, se analiza la foto completa como una rosa; con la cámara, solo lo que está dentro del cuadro guía del

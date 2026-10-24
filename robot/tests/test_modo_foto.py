@@ -100,3 +100,17 @@ def test_foto_real_de_la_finca_con_el_modelo_del_equipo(cfg, tmp_path):
     assert (tmp_path / "rosa_anotada.jpg").exists()
     guardado = json.loads((tmp_path / "rosa.json").read_text(encoding="utf-8"))
     assert guardado["conteo"] == modo_foto.resumen(rosas)
+
+
+def test_auto_manda_una_vez_por_rosa_y_espera_que_la_saquen():
+    d = modo_foto.Disparo()
+    assert not d.ver([rosa("optimo")])                   # primera lectura: todavía no
+    assert d.ver([rosa("optimo")])                       # misma lectura otra vez: manda
+    assert not d.ver([rosa("optimo")])                   # la rosa sigue ahí: no repite
+    assert not d.ver([rosa("inmaduro")])                 # ni aunque cambie la lectura de la misma rosa
+    assert not d.ver([])                                 # una lectura vacía suelta (una mano que tapa)...
+    assert not d.ver([rosa("optimo")]) and not d.ver([rosa("optimo")])   # ...no cuenta como sacarla
+    assert not d.ver([]) and not d.ver([])               # la sacan de verdad (dos lecturas vacías)
+    assert not d.ver([rosa("inmaduro")])
+    assert d.ver([rosa("inmaduro")])                     # rosa nueva: manda otra vez
+    assert [r.estado for r in d.rosas] == ["inmaduro"]   # la lectura que se manda (sin analizar otra vez)
