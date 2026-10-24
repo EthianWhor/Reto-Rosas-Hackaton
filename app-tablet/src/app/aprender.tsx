@@ -1,62 +1,70 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
+import { router } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Aparecer } from '@/componentes/animaciones';
+import { BotonGrande } from '@/componentes/BotonGrande';
 import { CATEGORIAS } from '@/data/categorias';
 import { ROSAS } from '@/data/rosas';
-import { colores, espacio, texto } from '@/tema';
+import { colores, espacio, fuente, sombra, texto } from '@/tema';
 
-// Ficha de estudio: una tarjeta por categoría con ejemplos reales de la finca y qué mirar.
+// Ficha de estudio: una tarjeta por categoría con fotos reales de la finca y qué mirar.
 export default function Aprender() {
   return (
     <ScrollView contentContainerStyle={styles.contenido}>
-      <Text style={styles.intro}>
-        El punto de corte de la finca es el <Text style={styles.negrita}>punto 3</Text>. La rosa se corta antes de abrir
-        del todo porque termina de abrir en el camino al cliente.
-      </Text>
+      <Aparecer>
+        <Text style={styles.titulo}>Las 3 categorías</Text>
+        <Text style={styles.subtitulo}>Se corta en el punto 3: termina de abrir camino al cliente.</Text>
+      </Aparecer>
 
-      {CATEGORIAS.map((cat) => {
-        const ejemplos = ROSAS.filter((r) => r.categoria === cat.id).slice(0, 4);
-        return (
-          <View key={cat.id} style={[styles.tarjeta, { borderLeftColor: cat.color }]}>
-            <Text style={[styles.nombre, { color: cat.color }]}>{cat.boton}</Text>
-            <Text style={styles.finca}>{cat.nombreFinca}</Text>
+      {CATEGORIAS.map((cat, i) => (
+        <Aparecer key={cat.id} retraso={100 + i * 100} estilo={styles.tarjeta}>
+          <View style={[styles.cabeza, { backgroundColor: cat.color }]}>
+            <Ionicons name={cat.icono} size={28} color="#fff" />
+            <View>
+              <Text style={styles.nombre}>{cat.boton}</Text>
+              <Text style={styles.finca}>{cat.nombreFinca}</Text>
+            </View>
+          </View>
 
-            <View style={styles.fotos}>
-              {ejemplos.map((r) => (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.fotos}>
+            {ROSAS.filter((r) => r.categoria === cat.id)
+              .slice(0, 6)
+              .map((r) => (
                 <Image key={r.id} source={r.imagen} style={styles.foto} contentFit="cover" />
               ))}
-            </View>
+          </ScrollView>
 
-            <Text style={styles.seccion}>Qué mirar</Text>
+          <View style={styles.cuerpo}>
             {cat.mirar.map((m) => (
-              <Text key={m} style={styles.punto}>
-                • {m}
-              </Text>
+              <View key={m} style={styles.rasgo}>
+                <Ionicons name="checkmark-circle" size={22} color={cat.color} />
+                <Text style={styles.rasgoTexto}>{m}</Text>
+              </View>
             ))}
-            <Text style={styles.seccion}>Cómo no confundirla</Text>
-            <Text style={styles.punto}>{cat.diferencia}</Text>
+            <Text style={styles.pista}>{cat.pista}</Text>
           </View>
-        );
-      })}
+        </Aparecer>
+      ))}
+
+      <BotonGrande titulo="Practicar ahora" icono="flash" color={colores.rosa} onPress={() => router.replace('/clasificar')} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  contenido: { padding: espacio.l, gap: espacio.l, maxWidth: 900, width: '100%', alignSelf: 'center' },
-  intro: { fontSize: texto.cuerpo, color: colores.texto, lineHeight: 26 },
-  negrita: { fontWeight: '800' },
-  tarjeta: {
-    backgroundColor: colores.tarjeta,
-    borderRadius: 16,
-    padding: espacio.l,
-    borderLeftWidth: 8,
-    gap: espacio.s,
-  },
-  nombre: { fontSize: texto.titulo, fontWeight: '800' },
-  finca: { fontSize: 16, color: colores.textoSuave },
-  fotos: { flexDirection: 'row', flexWrap: 'wrap', gap: espacio.s, marginVertical: espacio.s },
-  foto: { width: 140, height: 140, borderRadius: 12, backgroundColor: colores.borde },
-  seccion: { fontSize: texto.subtitulo, fontWeight: '700', color: colores.texto, marginTop: espacio.s },
-  punto: { fontSize: texto.cuerpo, color: colores.texto, lineHeight: 26 },
+  contenido: { padding: espacio.l, gap: espacio.l, maxWidth: 820, width: '100%', alignSelf: 'center' },
+  titulo: { fontSize: texto.titulo, fontFamily: fuente.titulo, color: colores.texto },
+  subtitulo: { fontSize: texto.cuerpo, fontFamily: fuente.normal, color: colores.textoSuave, marginTop: 4 },
+  tarjeta: { backgroundColor: colores.tarjeta, borderRadius: 24, overflow: 'hidden', ...sombra },
+  cabeza: { flexDirection: 'row', alignItems: 'center', gap: espacio.m, padding: espacio.m, paddingHorizontal: espacio.l },
+  nombre: { fontSize: 24, fontFamily: fuente.titulo, color: '#fff' },
+  finca: { fontSize: texto.pequeno, fontFamily: fuente.normal, color: 'rgba(255,255,255,0.9)' },
+  fotos: { gap: espacio.s, padding: espacio.m },
+  foto: { width: 130, height: 130, borderRadius: 16, backgroundColor: colores.borde },
+  cuerpo: { paddingHorizontal: espacio.l, paddingBottom: espacio.l, gap: espacio.s },
+  rasgo: { flexDirection: 'row', alignItems: 'center', gap: espacio.s },
+  rasgoTexto: { fontSize: texto.cuerpo + 1, fontFamily: fuente.negrita, color: colores.texto },
+  pista: { fontSize: texto.cuerpo, fontFamily: fuente.normal, color: colores.textoSuave, marginTop: espacio.xs },
 });

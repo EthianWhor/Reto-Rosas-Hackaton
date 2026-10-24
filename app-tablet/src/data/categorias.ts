@@ -1,3 +1,6 @@
+import type { Ionicons } from '@expo/vector-icons';
+import type { ComponentProps } from 'react';
+
 import type { CategoriaId } from './tipos';
 
 export type Categoria = {
@@ -7,49 +10,41 @@ export type Categoria = {
   /** Nombre de la categoría en el proceso estándar de la finca. */
   nombreFinca: string;
   color: string;
+  icono: ComponentProps<typeof Ionicons>['name'];
   /** Rasgos a observar (de la "Información técnica" de la finca, variedad Freedom). */
   mirar: string[];
-  /** Cómo distinguirla de la categoría vecina. */
-  diferencia: string;
+  /** Pista corta para no confundirla con la vecina. */
+  pista: string;
 };
 
-// Los tips son los mismos de robot/ml/stages.py (STAGE_TIPS). Si cambian allá, cambiarlos aquí.
+// Mismos criterios que robot/ml/stages.py (STAGE_TIPS), en versión corta para la tablet.
 export const CATEGORIAS: Categoria[] = [
   {
     id: '1_inmaduro',
     boton: 'Muy pronto',
-    nombreFinca: 'Inmaduro – no cortar',
-    color: '#5B7F3A',
-    mirar: [
-      'La cabeza (botón floral) se ve más pequeña.',
-      'El rojo es más oscuro.',
-      'Los sépalos están pegados a los pétalos.',
-    ],
-    diferencia:
-      'Cortarla aquí (punto 2, cerrado) es la falla más común. Espera a que el caracol se defina ' +
-      'mostrando el centro y el rojo se vuelva vivo e intenso.',
+    nombreFinca: 'Inmaduro · no cortar',
+    color: '#5E9C4B',
+    icono: 'hourglass-outline',
+    mirar: ['Cabeza pequeña', 'Rojo oscuro', 'Sépalos pegados'],
+    pista: 'Cortarla aquí es el error más común. Espera a ver el centro.',
   },
   {
     id: '2_optimo',
     boton: 'Punto óptimo',
-    nombreFinca: 'Punto óptimo de corte (punto 3)',
-    color: '#C0392B',
-    mirar: [
-      'El caracol está definido y se ve el centro.',
-      'El color de los pétalos es vivo e intenso.',
-      'La flor presenta un patrón de copa.',
-    ],
-    diferencia:
-      'Es el punto 3, el punto de corte. Si la cabeza se ve pequeña, el rojo oscuro y los sépalos ' +
-      'pegados, todavía está inmadura.',
+    nombreFinca: 'Punto 3 · cortar',
+    color: '#D7263D',
+    icono: 'cut',
+    mirar: ['Se ve el centro', 'Rojo vivo', 'Forma de copa'],
+    pista: 'Este es el punto 3: córtala.',
   },
   {
     id: '3_pasado',
     boton: 'Muy tarde',
-    nombreFinca: 'Pasado / sobreabierto',
-    color: '#8E5A2B',
-    mirar: ['La flor ya está sobreabierta: pasó del punto de corte.'],
-    diferencia: 'Ya no está en punto óptimo; se debió cortar antes.',
+    nombreFinca: 'Pasada · sobreabierta',
+    color: '#A0693A',
+    icono: 'alert-circle-outline',
+    mirar: ['Flor muy abierta'],
+    pista: 'Se pasó del punto. Había que cortarla antes.',
   },
 ];
 

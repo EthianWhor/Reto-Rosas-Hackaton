@@ -76,11 +76,19 @@ python -m ml.calibrate --init runs/rosanet_pre/best.pt --freeze 0 --oscuro 0.5 -
 ### 5. Entrenar el detector (YOLO11n preentrenado, una clase "rosa")
 
 ```bash
+# 1) Base con los datasets públicos
 python -m ml.prepare_detector --yolo descargas/rose --yolo descargas/floracion --out data/detector
 python -m ml.train_detector --data data/detector/data.yaml --epochs 35 --batch 16
+
+# 2) Ajuste con escenas del invernadero (todas las rosas marcadas en Roboflow, ver ml/preanotar.py)
+python -m ml.preanotar --finca data/finca_yolo --video "descargas/General/Videos de apoyo/Video 1 vista a un lado.mp4" --out data/preanotadas
+#    -> subir a Roboflow, corregir, exportar YOLOv8 en descargas/rosas_finca
+python -m ml.prepare_detector --finca descargas/rosas_finca --repetir 8 --yolo descargas/rose --yolo descargas/floracion --max-publico 500 --out data/detector_finca
+python -m ml.train_detector --data data/detector_finca/data.yaml --weights modelos/detector_rosas.pt --epochs 15 --imgsz 960 --batch 4 --patience 6 --name detector_finca
 ```
 
-Las fotos de la finca **no** se usan para el detector: solo tienen marcadas algunas rosas por escena.
+`data/finca_yolo` (solo algunas rosas marcadas por escena) **no** se usa para el detector; las escenas
+con **todas** las rosas marcadas (`descargas/rosas_finca`) sí.
 
 ### 6. Operar (modelos ya entrenados en `modelos/`)
 
@@ -102,7 +110,7 @@ python -m ml.evaluate --ckpt modelos/rosanet.pt --data data/propias
 ```
 
 Si se reentrena, copiar el resultado a `modelos/` (`runs/rosanet/best.pt` → `modelos/rosanet.pt`,
-`runs/detector/weights/best.pt` → `modelos/detector_rosas.pt`).
+`runs/detector_finca/weights/best.pt` → `modelos/detector_rosas.pt`).
 
 ### Resultados (2026-10-23)
 

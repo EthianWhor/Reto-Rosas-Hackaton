@@ -17,10 +17,10 @@ import numpy as np
 from PIL import Image
 
 DEFAULT_WEIGHTS = Path("modelos/detector_rosas.pt")
-# Medido en las fotos de la finca (IoU > 0.2 con las 69 rosas marcadas): a 640 px y conf 0.25
-# encuentra el 28 %; a 1280 px y conf 0.10, el 78 % (las rosas del invernadero se ven pequeñas
-# y lejanas, y el detector se entrenó con rosas de jardín de cerca).
-DET_CONF, DET_IMGSZ = 0.10, 1280
+# Medido con 30 escenas del invernadero con todas las rosas marcadas (49 rosas, IoU >= 0.5), con el
+# detector ajustado con escenas de la finca (entrenado a 960 px): a 960 px y conf 0.25 encuentra el
+# 63 % con 5 falsas alarmas; bajar a 0.05 solo sube a 67 % y da 22 falsas alarmas.
+DET_CONF, DET_IMGSZ = 0.25, 960
 # Con conf baja aparecen cajas enormes sobre el techo del invernadero; una rosa vista
 # desde el pasillo nunca ocupa más de unos pocos % de la foto.
 MAX_BOX_FRACTION = 0.08

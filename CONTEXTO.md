@@ -237,10 +237,24 @@ Medido con validación cruzada (64 rosas, promedio de 3 semillas), "inmaduras �
 - **Lectura:** el detector aprendió con rosas de jardín fotografiadas de cerca; en el invernadero las rosas son pequeñas y lejanas. A mayor resolución y con un umbral más bajo encuentra casi 4 de cada 5, pero aparecen **falsos positivos** (postes, hojas, una mano). Se filtran las cajas gigantes (> 8 % de la foto). Los demás falsos positivos casi siempre salen como "inmaduro" o "incierta", así que inflan el conteo de inmaduras pero rara vez generan una falsa alarma de "listas para cortar".
 - **Mi medición anterior (83 %) estaba inflada:** contaba como encontrada una rosa cubierta por una caja gigante. Se corrigió con IoU.
 
+### Detector ajustado con escenas del invernadero (2026-10-24)
+- **Escenas con TODAS las rosas marcadas:** 56 fotos de la finca + 39 fotogramas de los videos "vista a un lado" y "vista al camino". Se preanotaron con el detector (`robot/ml/preanotar.py`), se corrigieron en Roboflow (Auto Label con Gemini para los fotogramas + revisión manual) y quedaron 184 rosas. Split de Roboflow: 65 train / 20 valid / 10 test.
+- **Primera medición real** (valid + test: 30 escenas, 49 rosas, IoU >= 0,5): el detector anterior encontraba solo **25 %** (mAP50 0,08). El 78 % de antes medía únicamente las rosas marcadas por la finca, que son las más visibles.
+- **Ajuste fino** desde el detector anterior: escenas de la finca ×8 + 500 públicas por dataset, 960 px, 15 épocas (~50 min; la GPU llegó a 91 °C y un vigilante estaba listo para pausar a 92 °C, pero no hizo falta).
+
+| | Detector anterior | **Detector nuevo (en uso)** |
+|---|---|---|
+| mAP50 invernadero | 0,08 | **0,76** |
+| Rosas encontradas / falsas alarmas (960 px, conf 0,25) | 25 % / decenas | **63 % / 5** (precisión 86 %) |
+| mAP50 fotos públicas | 0,959 | 0,963 (no olvidó) |
+
+- Parámetros de operación: **960 px, conf 0,25** (`robot/ml/detect.py`). Bajar a 0,05 solo sube a 67 % y da 22 falsas alarmas.
+- **Hallazgo para el robot:** en los fotogramas desde el pasillo (video de 464×832) las rosas ocupan pocos píxeles y son las que más se pierden. **La cámara tiene que acercarse a la cama** o tener más resolución.
+
 ### Siguiente paso con más impacto
-1. **Anotar todas las rosas** de las 56 fotos de la finca (en Roboflow, ~1 h) y ajustar el detector con ellas. Es el cambio que más reduciría los falsos positivos y las rosas perdidas en el invernadero.
-2. **Más fotos de la finca** para RosaNet, sobre todo óptimas y pasadas, idealmente con la cámara y la luz del robot de noche.
-3. Terminar el entrenamiento del detector (se puede continuar desde `runs/detector/weights/last.pt`) en Colab o con el portátil más ventilado.
+1. **RosaNet: más rosas óptimas.** Es ahora el punto más débil: en las escenas de evaluación, de 3 óptimas marcadas por la finca, RosaNet "noche" clasificó 2 como inmaduras. Fuente rápida: las ~50 rosas que se marcaron en Roboflow y no tienen categoría (clasificarlas con el criterio de la finca, idealmente con alguien de la finca).
+2. **Fotos de noche reales** (30-50 Freedom con linterna) para validar el modelo "noche" y el detector de noche.
+3. Más escenas del invernadero (con la cámara del robot) para el detector.
 
 ## 2.0.4 Datos de la finca para el pitch (2026-10-23, noche)
 

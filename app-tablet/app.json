@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Punto de Corte",
-    "slug": "punto-de-corte",
+    "name": "RoseApp",
+    "slug": "roseapp",
     "version": "1.0.0",
     "orientation": "default",
     "icon": "./assets/icon.png",
@@ -11,7 +11,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#F7F3EE",
+        "backgroundColor": "#FFF6F8",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -23,8 +23,17 @@
     },
     "plugins": [
       "expo-router",
-      "expo-image"
+      "expo-image",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 160,
+          "backgroundColor": "#FFF6F8"
+        }
+      ]
     ],
-    "scheme": "puntodecorte"
+    "scheme": "roseapp"
   }
 }

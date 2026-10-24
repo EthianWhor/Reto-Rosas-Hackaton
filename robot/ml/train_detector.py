@@ -18,13 +18,15 @@ def main() -> None:
 
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--data", type=Path, default=Path("data/detector/data.yaml"))
-    p.add_argument("--weights", default="yolo11n.pt", help="Pesos preentrenados de partida")
+    p.add_argument("--weights", default="yolo11n.pt",
+                   help="Pesos de partida (yolo11n.pt, o modelos/detector_rosas.pt para un ajuste fino)")
     p.add_argument("--epochs", type=int, default=60)
     p.add_argument("--imgsz", type=int, default=640)
     p.add_argument("--batch", type=int, default=16, help="Bajar a 8 si se queda sin memoria (GPU de 4 GB)")
     p.add_argument("--workers", type=int, default=2)
     p.add_argument("--project", type=Path, default=Path("runs"))
     p.add_argument("--name", default="detector")
+    p.add_argument("--patience", type=int, default=15, help="Épocas sin mejorar antes de parar")
     args = p.parse_args()
 
     model = YOLO(args.weights)
@@ -38,7 +40,7 @@ def main() -> None:
         project=str(args.project.resolve()),
         name=args.name,
         exist_ok=True,
-        patience=15,
+        patience=args.patience,
         # Sin cambio de tono: el rojo de la rosa importa (aunque aquí solo se detecta).
         hsv_h=0.0,
         fliplr=0.5,
