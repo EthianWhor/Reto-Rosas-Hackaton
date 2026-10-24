@@ -169,7 +169,9 @@ Robot real: `cuerpo/real_backend.py` es el esqueleto para el AgiBot X2 Ultra con
 
 Acción física: después de las fotos de cada parada, el robot apunta la cabeza a cada rosa óptima nueva y la
 ilumina con un foco angosto (`accion` en el config; `tipo: ninguna` lo apaga). Así el operario ve en el momento
-qué rosas cortar. Cada rosa se señala una sola vez, aunque se vea desde dos paradas.
+qué rosas cortar. Cada rosa se señala una sola vez, aunque se vea desde dos paradas. Solo señala en los 10
+primeros cuadrantes del `orden` del último reporte (`accion.primeros_cuadrantes`; `null` = en todos): señalar
+todas las óptimas del invernadero completo llevaría la ronda de 2 h 18 min a 4 h 46 min.
 
 La configuración está en `config/config.yaml`. Con `percepcion.candidatas: auto` y
 `percepcion.clasificador: auto`, el robot usa el modelo del equipo de `ml/` (detector + RosaNet, pesos en

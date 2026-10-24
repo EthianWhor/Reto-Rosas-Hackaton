@@ -37,7 +37,8 @@ Qué decir mientras camina:
   de 1 a 2 m."
 - "Las rosas de la simulación son fotos reales de la finca. El detector y RosaNet del equipo deciden de verdad;
   no hay trampa."
-- "Cuando encuentra una rosa óptima, apunta la cabeza y la ilumina: esa es la acción física."
+- "Cuando encuentra una rosa óptima, apunta la cabeza y la ilumina: esa es la acción física. Lo hace en los
+  cuadrantes que se cosechan primero; señalarlas todas no cabría en una noche."
 - En el camino 1 hay una caja: "Frena, espera, y cuando la quitan sigue." En el camino 2 hay un balde: "Espera
   30 s, como sigue ahí abandona el camino y lo anota en el reporte."
 - Al final: "Volvió a la base, encontró WiFi y subió el reporte a la app."
@@ -76,7 +77,8 @@ python modo_foto.py --webcam --enviar --config config/demo.yaml
 | Rosas contadas dos veces | **0 %** | plan 4.5 |
 | Error de ubicación (altura / metro en la cama) | **0,5 cm / 0,9 cm** | plan 4.5 |
 | Duración de la ronda completa, sin señalar | **2 h** (1 vuelta a la base por batería) | plan 4.5 |
-| Duración señalando cada rosa óptima | **4 h 46 min** (~5,3 s por rosa, 2 vueltas) | plan 4.5 |
+| Duración señalando las óptimas de los 10 primeros cuadrantes (en uso) | **2 h 18 min** (1 vuelta, 211 rosas) | plan 4.5 |
+| Duración si señalara todas las óptimas | 4 h 46 min (~5,3 s por rosa, 2 vueltas) | plan 4.5 |
 | Con fotos reales y el modelo del equipo: rosas encontradas | **71–73 %** | plan 7.13 |
 | Con fotos reales: clase correcta | **74–80 %** | plan 7.13 |
 | Inmaduras mandadas a "cortar hoy" (el error más caro) | **0** | plan 7.13 |
@@ -96,8 +98,8 @@ reemplaza ese ojo: **cuenta y prioriza el campo** para que los operarios vayan p
 - **La noche es simulada.** No hay fotos reales de noche con la luz del robot; el modelo se midió oscureciendo
   fotos de día.
 - **Pasadas:** la finca dio 2 fotos. Con el modelo actual, en la simulación 6–7 pasadas salen como "cortar hoy".
-- **Señalar todas las óptimas no cabe en una noche** con una batería: hay que elegir (señalar solo los primeros
-  cuadrantes, usar la tira LED del pecho, o solo en la demo).
+- **No señala todas las óptimas:** señalarlas todas no cabe en una noche, así que señala solo en los 10 primeros
+  cuadrantes del reporte anterior (los que se cosechan primero). La primera noche, sin reporte, señala en todos.
 - **Las rosas de la simulación son las mismas fotos con las que se entrenó el modelo**: los números con carteles
   son optimistas.
 - **"Lista mañana"** se estima la primera noche; los umbrales no están calibrados con un experto.

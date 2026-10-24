@@ -126,6 +126,8 @@ madurez:
 accion:
   tipo: senalar
   segundos: 1.5     # cuánto tiempo deja el puntero prendido en cada rosa
+  primeros_cuadrantes: 10   # solo en los 10 primeros del `orden` del último reporte (señalar todas no cabe
+                            # en una noche, plan 4.5); null = en todos
 
 dedup:
   radio_m: 0.08

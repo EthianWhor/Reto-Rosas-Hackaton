@@ -211,6 +211,8 @@ def correr_sim(cfg: dict, eleccion: dict, args: argparse.Namespace, reanudar=Non
             ("descartadas por pequeñas (< 32 px)", analizador.descartadas["pequenas"]),
             ("óptimas señaladas con el puntero", f"{len(avance.senaladas)} ({avance.fuera_de_alcance} fuera de "
              "alcance: el puntero quedó cerca)" if cfg["accion"]["tipo"] == "senalar" else "acción apagada"),
+            ("señala en los cuadrantes", ", ".join(avance.datos["cuadrantes_senalar"])
+             if avance.datos.get("cuadrantes_senalar") is not None else "todos"),
             ("obstáculos encontrados", "; ".join(
                 f"camino {o['camino']} metro {o['x']:.1f}: {o['resultado']}" for o in avance.obstaculos) or "ninguno"),
             ("factor de color (tarjeta)", "sin calibrar"),

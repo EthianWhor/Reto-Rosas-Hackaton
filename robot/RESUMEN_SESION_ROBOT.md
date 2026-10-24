@@ -75,9 +75,10 @@ Salidas en `robot/datos/` (no se sube a git):
 
 **Resultado (plan, sección 4.5):** 6.031 rosas, cobertura 95 %, 0 duplicados, 0,4 % falsas.
 - Sin señalar: 2 h de robot, 1 vuelta a la base por batería.
-- Señalando cada óptima: 4 h 46 min, 2 vueltas (~5,3 s por rosa). **No cabe en una noche con una batería: el equipo
-  tiene que elegir** entre señalar solo los primeros cuadrantes del `orden`, usar la tira LED del pecho, o señalar
-  solo en la demo.
+- Señalando cada óptima: 4 h 46 min, 2 vueltas (~5,3 s por rosa): no cabe en una noche con una batería.
+- **Decidido: señalar solo en los 10 primeros cuadrantes** del `orden` del último reporte
+  (`accion.primeros_cuadrantes: 10`): **2 h 18 min, 1 vuelta, 211 rosas señaladas.** La primera noche, sin reporte
+  anterior, señala en todos.
 - Los 120 cuadrantes salen prioridad `alta` (umbral de 3 óptimas): hay que acordarlo con la finca.
 - El visor muestra todo (52.486 piezas; MuJoCo 3.17 admite 100.000).
 - Detector "noche" del equipo integrado (merge `3023aae`): en la simulación mide igual que el de día (plan 7.12).
@@ -119,18 +120,17 @@ inmaduras para "cortar hoy", pero 6–7 pasadas salen óptimas.
      foto y sus cajas en `datos/rondas/INV1_DEMO_<hora>/`, como una ronda.
    - Sin la clave, la ronda de la demo termina bien y avisa que el reporte espera en `datos/salida/`.
    - Si se cambia `config.yaml`, cambiar también `demo.yaml` (una prueba avisa).
-2. **Decisión del equipo:** qué hace el robot con las óptimas en la ronda completa (sección 4). Hoy `accion.tipo: senalar`.
-3. **Al final, cuando llegue el RosaNet completo** (hacer pull y medir con `--rosas cartel`):
+2. **Al final, cuando llegue el RosaNet completo** (hacer pull y medir con `--rosas cartel`):
    - **Paso 3, reglas de decisión:**
      - el tamaño de la cabeza como segunda opinión (si la red dice óptimo pero la cabeza es chica → dudosa);
      - contar en la prioridad las dudosas cuya mejor clase es óptimo.
      - Se dejó en pausa porque depende de cómo se equivoque la red.
    - **Paso 7, "lista mañana" con historia:** reconocer la misma rosa de una noche a otra por su posición, medir cuánto creció y calcular los días que faltan. `percepcion/madurez.py` ya acepta `diametro_ayer_cm`.
-4. **Pendiente de otras personas:**
+3. **Pendiente de otras personas:**
    - **Equipo del modelo:**
      - con RosaNet + forma, las pasadas salen como óptimas (en la sim, 6–7 por ronda de prueba; plan 7.13);
      - medir el detector a 1280–1920 px con sus escenas (el robot rinde más así).
-   - **Equipo:** confirmar la acción física (hoy apunta e ilumina).
+   - **Equipo:** la acción física quedó en apuntar e iluminar las óptimas de los 10 primeros cuadrantes; en el X2 real falta el foco.
    - **AgiBot / robot real:** ver `PLAN_robot_rosas_X2.md` sección 14.1.
      - La cámara es de 1280 × 720 (cobertura simulada 68 %).
      - En el X2 Ultra original la cabeza no se inclina.

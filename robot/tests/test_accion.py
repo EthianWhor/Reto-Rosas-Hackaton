@@ -1,5 +1,7 @@
 """Acción física: el robot apunta la cabeza a cada rosa óptima y la ilumina con el puntero."""
 
+import json
+
 import pytest
 
 import configuracion
@@ -61,3 +63,36 @@ def test_senala_solo_optimas_seguras_y_una_vez(tmp_path):
     assert ronda.Avance.leer(tmp_path).senaladas == [[1.0, 0.0, 1.5]]                # queda en el checkpoint
     cfg["accion"]["tipo"] = "ninguna"
     assert ronda._senalar_optimas(cuerpo, cfg, [det("optimo", 5.0)], avance) == 0
+
+
+def _reporte(base, carpeta, id_ronda, cuadrantes):
+    (base / carpeta).mkdir(parents=True, exist_ok=True)
+    rep = {"id_ronda": id_ronda, "cuadrantes": [{"cuadrante_id": c, "optimo": o, "orden": i}
+                                                for i, (c, o) in enumerate(cuadrantes, start=1)]}
+    (base / carpeta / f"reporte_{id_ronda}.json").write_text(json.dumps(rep), encoding="utf-8")
+
+
+def test_primeros_cuadrantes_del_ultimo_reporte(tmp_path):
+    cfg = configuracion.cargar()
+    cfg["accion"]["primeros_cuadrantes"] = 2
+    assert ronda.cuadrantes_a_senalar(cfg, tmp_path) is None          # sin reporte anterior: en todos
+    _reporte(tmp_path, "enviados", "INV1_2026-10-23_220000", [("INV1-C05-T1", 9), ("INV1-C06-T1", 8)])
+    _reporte(tmp_path, "salida", "INV1_2026-10-24_220000",
+             [("INV1-C01-T2", 7), ("INV1-C03-T4", 5), ("INV1-C02-T1", 4), ("INV1-C04-T1", 0)])
+    _reporte(tmp_path, "salida", "INV1_DEMO_2026-10-25_100000", [("INV1-DEMO", 3)])    # el modo foto no cuenta
+    assert ronda.cuadrantes_a_senalar(cfg, tmp_path) == ["INV1-C01-T2", "INV1-C03-T4"]   # el más nuevo, por orden
+    # la ronda de esta noche no se usa a sí misma
+    assert ronda.cuadrantes_a_senalar(cfg, tmp_path, "INV1_2026-10-24_220000") == ["INV1-C05-T1", "INV1-C06-T1"]
+    cfg["accion"]["primeros_cuadrantes"] = None
+    assert ronda.cuadrantes_a_senalar(cfg, tmp_path) is None
+
+
+def test_senala_solo_en_los_cuadrantes_elegidos(tmp_path):
+    cfg = configuracion.cargar()
+    avance = ronda.Avance.nuevo(tmp_path, cfg, [0])
+    avance.datos["cuadrantes_senalar"] = ["INV1-C01-T1"]
+    cuerpo = CuerpoFalso()
+    otro = det("optimo", 2.0)
+    otro.tramo = 2                                                     # INV1-C01-T2: no está en la lista
+    assert ronda._senalar_optimas(cuerpo, cfg, [det("optimo", 1.0), otro], avance) == 1
+    assert cuerpo.senaladas == [(1.0, 0.0, 1.5)]

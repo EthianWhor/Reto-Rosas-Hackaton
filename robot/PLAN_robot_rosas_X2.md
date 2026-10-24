@@ -498,10 +498,20 @@ Paradas cada **1,25 m** (decidido después de medir la cobertura en la simulaci�
 - **Señalar suma ~5,3 s por rosa óptima** (166 min para 1.865 rosas): más que toda la ronda sin señalar. Con una
   sola batería no cabe en una noche. Lo que pesa no es el foco (`accion.segundos: 1,5`) sino apuntar: girar,
   medir y corregir hasta 6 veces con 1 s de espera. Bajar `accion.segundos` ahorra poco.
-- **Opciones (decidir con el equipo):**
-  1. Señalar solo en los N primeros cuadrantes del `orden` (los que se cosechan primero).
-  2. Marcar el cuadrante con la tira LED del pecho, sin apuntar (casi sin costo; es lo que trae el X2 real, sección 14.1).
-  3. Señalar solo en la demo, y en la ronda nocturna completa dejar `ninguna`.
+- **Opciones:** señalar solo en los N primeros cuadrantes del `orden`; marcar el cuadrante con la tira LED del
+  pecho, sin apuntar; o señalar solo en la demo.
+- **Decisión (2026-10-24): señalar solo en los 10 primeros cuadrantes** (`accion.primeros_cuadrantes: 10`;
+  `null` = en todos). El `orden` de esta noche recién se conoce al terminar la ronda, así que el robot usa el del
+  **último reporte** de ese invernadero (`ronda.cuadrantes_a_senalar`; no cuenta los del modo foto). Sin un reporte
+  anterior (la primera noche) señala en todos. La lista se decide al empezar, queda en el checkpoint (igual con
+  `--continuar`) y sale en la hoja Ronda. Medido con el invernadero completo, usando el reporte de la noche anterior:
+
+| | Señalar en todos | **Solo los 10 primeros cuadrantes** | Sin señalar |
+|---|---|---|---|
+| Tiempo del robot | 286 min | **138 min (2 h 18 min)** | 120 min |
+| Vueltas a la base por batería | 2 | **1** | 1 |
+| Rosas señaladas | 1.865 | **211** (4 fuera de alcance) | — |
+| Cobertura | 95,2 % | 95,5 % | 95,3 % |
 - **"Solo prioridad alta" no ahorra nada en esta escena:** los 120 cuadrantes salen `alta` (6 a 15 óptimas cada
   uno, con `optimo_prioridad_alta: 3`). El umbral de 3 hay que acordarlo con la finca y medirlo con la proporción
   real de óptimas; el `orden` igual sirve para ordenar.
@@ -1536,7 +1546,8 @@ precisión = 45 / 50 = 0,90 = 90%
 ```
 
 **Invernadero completo (paso 9):** 6.031 rosas, cobertura 95 %, 0 duplicados, 0,4 % falsas, error de altura 0,5 cm.
-La ronda dura 2 h sin señalar y 4 h 46 min señalando cada óptima (sección 4.5).
+La ronda dura 2 h sin señalar, 4 h 46 min señalando cada óptima y **2 h 18 min señalando solo en los 10 primeros
+cuadrantes** (lo que queda en uso, sección 4.5).
 
 > Las métricas con oráculo miden **el robot** (recorrido, ubicación, duplicados, reporte). Las métricas de RosaNet las mide la persona del modelo con `ml/evaluate.py`. Con carteles se mide **todo junto**, que es lo más honesto para el pitch.
 

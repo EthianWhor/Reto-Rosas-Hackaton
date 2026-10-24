@@ -30,6 +30,7 @@ from cuerpo.interfaz import Captura, Cuerpo
 from cuerpo.posturas import NEUTRA, posturas
 from navegacion.plano import Plano
 from navegacion.ruta import Tramo, camino_a_la_base, numero_parada, paradas, serpiente
+from percepcion.dedup import cuadrante_id
 from percepcion.madurez import decidir
 
 PROFUNDIDAD_MAX_M = 20.0   # más allá no se guarda (en sim es el cielo; una RGB-D real mide unos pocos metros)
@@ -193,18 +194,46 @@ class SeAcaboLaBateria(Exception):
     """Simula batería baja (`--parar-despues`): la ronda se interrumpe y el robot vuelve a la base."""
 
 
+def cuadrantes_a_senalar(cfg: dict, base: Path, id_actual: str | None = None) -> list[str] | None:
+    """Los `accion.primeros_cuadrantes` primeros del `orden` del último reporte de este invernadero
+    (sección 4.5 del plan): el orden de esta noche recién se sabe al terminar la ronda, así que se
+    usa el de la anterior. None = se señala en todos (sin límite o sin un reporte anterior)."""
+    n = (cfg.get("accion") or {}).get("primeros_cuadrantes")
+    if not n:
+        return None
+    inv = cfg["invernadero"]["id"]
+    reportes = []
+    for carpeta in ("enviados", "salida"):
+        for archivo in (base / carpeta).glob(f"reporte_{inv}_*.json"):
+            try:
+                rep = json.loads(archivo.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if "_DEMO_" not in rep.get("id_ronda", "_DEMO_") and rep["id_ronda"] != id_actual and rep.get("cuadrantes"):
+                reportes.append(rep)
+    if not reportes:
+        return None
+    ultimo = max(reportes, key=lambda r: r["id_ronda"])
+    conoptimas = [c for c in ultimo["cuadrantes"] if c.get("optimo", 0) > 0]
+    return [c["cuadrante_id"] for c in sorted(conoptimas, key=lambda c: c["orden"])[:n]]
+
+
 def _senalar_optimas(cuerpo: Cuerpo, cfg: dict, detecciones: list, avance: Avance) -> int:
     """Acción física (sección 1.1 del plan): después de las fotos de una parada, el robot apunta la
     cabeza a cada rosa óptima nueva y la ilumina con el puntero, para que el operario la vea.
     Solo las que salen "óptimo" con las mismas reglas del reporte (seguras); una rosa vista desde
-    dos paradas se señala una vez. `accion.tipo: ninguna` lo apaga."""
+    dos paradas se señala una vez. Si el checkpoint trae `cuadrantes_senalar`, solo en esos
+    (señalar todas no cabe en una noche). `accion.tipo: ninguna` lo apaga."""
     acc = cfg.get("accion") or {}
     if acc.get("tipo", "ninguna") != "senalar":
         return 0
     radio = cfg["dedup"]["radio_m"]
+    solo = avance.datos.get("cuadrantes_senalar")
     n = 0
     for det in sorted(detecciones, key=lambda d: (d.lado, d.altura_m)):   # un lado y después el otro
         if decidir(det.clase, det.seguro, det.probs, det.diametro_cm, cfg).estado != "optimo":
+            continue
+        if solo is not None and cuadrante_id(cfg["invernadero"]["id"], det.cama, det.tramo) not in solo:
             continue
         punto = (det.x, det.y, det.altura_m)
         if any(math.dist(punto, p) < radio for p in avance.senaladas):
@@ -401,6 +430,14 @@ def recorrer(cuerpo: Cuerpo, cfg: dict, plano: Plano, guardar: GuardarCapturas, 
     vez que lo hace), anota el obstáculo y sigue con los demás caminos desde ese lado.
     Devuelve True si terminó (aunque haya caminos bloqueados); False si se interrumpió (batería).
     """
+    if (cfg.get("accion") or {}).get("tipo") == "senalar" and "cuadrantes_senalar" not in avance.datos:
+        # se decide una vez por ronda y queda en el checkpoint: con --continuar sigue igual
+        avance.datos["cuadrantes_senalar"] = cuadrantes_a_senalar(cfg, guardar.carpeta.parent.parent, avance.datos["id_ronda"])
+        avance.guardar()
+        solo = avance.datos["cuadrantes_senalar"]
+        avisar("Señala las óptimas " + (f"solo en {len(solo)} cuadrantes (los primeros del último reporte): "
+                                        f"{', '.join(solo)}" if solo is not None else "en todos los cuadrantes"
+                                        + (" (no hay un reporte anterior)" if cfg["accion"].get("primeros_cuadrantes") else "")))
     analisis = AnalisisEnParalelo(analizador, guardar.carpeta, cfg["percepcion"].get("analisis_en_paralelo", True))
     try:
         return _recorrer(cuerpo, cfg, plano, guardar, avance, analisis, parar_despues, avisar)
