@@ -1,0 +1,161 @@
+# Config de la DEMO con la app: igual a config.yaml, salvo lo marcado "DEMO":
+#   sim.rosas = cartel (las rosas salen de RosaNet, no del oráculo), envio.metodo = supabase
+#   y envio.fotos_bucket (fotos de las dudosas para la app).
+# config.yaml se deja como está porque las pruebas (pytest) cuentan con sus valores.
+#   python main.py --config config/demo.yaml
+#   python -m reporte.envio --una-vez --config config/demo.yaml
+# Si cambias algo en config.yaml, cámbialo aquí también.
+#
+# Configuración de la ronda del robot (ver PLAN_robot_rosas_X2.md).
+# Las rutas relativas son desde la carpeta robot/.
+# Lo marcado "A CALIBRAR" o "CONFIRMAR" son supuestos, no datos de la finca ni de AgiBot.
+
+modo: sim                    # sim | real
+
+percepcion:
+  # auto = usa lo que haya en ml/ (el modelo del equipo). Después de un git pull,
+  # si aparece el detector, el robot lo empieza a usar solo (ver modelo_equipo).
+  candidatas: auto           # auto | oraculo | color | detector_equipo
+  clasificador: auto         # auto | oraculo | rosanet | detector_equipo
+  margen_recorte: 0.15       # el margen con el que se calibró RosaNet (robot/CLAUDE.md)
+  tamano_min_px: 32          # igual que --min-size de ml/prepare_data.py
+  # El detector mira la foto sin achicarla (1920 px en la sim, 1280 en el X2) en vez de a 960 px.
+  # Con el detector de la finca (2026-10-24): cobertura en la sim 50 % → 71 %, 0 falsas (plan 7.11).
+  detector_tamano_nativo: true
+  # Analiza las fotos en otro hilo mientras el robot sigue posando y caminando (plan, sección 8).
+  analisis_en_paralelo: true
+  # Pinta de gris claro el fondo oscuro del recorte (con la profundidad) antes de
+  # RosaNet. Hacía falta con la red de día (plan, sección 7.8). Con la red "noche"
+  # (2026-10-24, entrenada con fondo oscuro) ya no ayuda y hace perder óptimas,
+  # así que queda APAGADO (medido en la sim, plan sección 7.9).
+  fondo_claro:
+    activo: false
+    color: [170, 175, 180]   # gris claro (en la sim 170 dio algo mejor que 205 y 235)
+    mas_lejos_m: 0.25        # fondo = más de esto detrás de la rosa (o sin dato)
+  # la confianza mínima ("seguro") la pone RosaNet (0,6); no se repite aquí
+
+# Lo que el robot sabe del modelo del equipo (contrato en robot/CLAUDE.md).
+# Los pesos ya están en git, en modelos/: no hay que copiarlos a mano.
+modelo_equipo:
+  clasificador:              # RosaNet: dice la categoría de UNA rosa recortada
+    modulo: ml.predict
+    clase: RosePredictor
+    pesos: modelos/rosanet.pt
+  detector:                  # YOLO11n: encuentra dónde hay rosas en la foto (una clase)
+    modulo: ml.detect
+    clase: RoseDetector
+    pesos: modelos/detector_rosas.pt
+    clasifica: false         # el detector solo ubica; la categoría la da RosaNet
+
+sim:
+  escena: escena_base.xml
+  rosas: cartel              # DEMO. figura (para oráculo) | cartel (para RosaNet)
+  carteles_dir: ../app-tablet/assets/rosas
+  semilla: 7
+  # Escena de prueba más pequeña que el invernadero (la completa pesa mucho).
+  # Sin estos dos valores se usa `invernadero` completo.
+  camas: 2
+  largo_cama_m: 10
+  camino_inicial: 1          # camino de --camino por defecto (1 = entre la cama 1 y la 2)
+  caminos: null              # caminos de la ronda; null = todos (así cada cama se ve por los dos lados)
+  base_xy: [-1.2, 0.4]       # base / cargador en el pasillo principal, junto al camino 0
+  bateria:                   # batería simulada (cuerpo/sim_backend.py)
+    inicial_pct: 100         # con cuánto sale (python main.py --bateria 35 para verla volver)
+    consumo_pct_min: 0.8     # X2: ~500 Wh, ~2 h de uso a 0,5 m/s → ~0,8 % por minuto
+  estructura:                # sim/estructura.py
+    postes: true             # postes cada 3 m y alambres guía en los bordes de las camas
+    poste_cada_m: 3.0
+    mangueras_por_camino: [1, 2]    # cruzan el camino (obstáculo bajo: pasa despacio)
+    desniveles_por_camino: [0, 2]   # parches de 1–3 cm (obstáculo bajo: pasa despacio)
+  obstaculos:                # obstáculos altos en un camino (> 5 cm: el robot frena)
+    - {camino: 1, x: 6.6, alto_m: 0.35, se_quita_s: 10}   # una caja que alguien quita mientras el robot espera
+    - {camino: 2, x: 4.4, alto_m: 0.45}                   # un balde que se queda toda la noche
+  altura_cama_m: 0.25
+  tallos_por_metro: [8, 12]
+  prob_estados:              # qué tan seguido sale cada estado en la escena
+    inmaduro: 0.50
+    lista_manana: 0.15
+    optimo: 0.25
+    pasado: 0.10
+
+# Errores a propósito del oráculo (sección 7.4): así se prueba el resto del
+# sistema como si el modelo se equivocara a veces.
+oraculo:
+  fallos: 0.07               # rosas visibles que "no ve"
+  errores_clase: 0.08        # rosas con la clase equivocada
+  confianza: [0.50, 0.98]    # rango de la confianza que inventa
+  ruido_caja: 0.10           # la caja se corre y cambia de tamaño hasta este % del tamaño
+
+invernadero:
+  id: INV1
+  camas: 20
+  largo_cama_m: 30
+  ancho_cama_m: 1.0
+  ancho_camino_m: 0.8
+  tramo_m: 5
+
+rosas:
+  altura_min_m: 1.0
+  altura_max_m: 2.0
+  diametro_punto3_cm: 5.0    # A CALIBRAR
+
+recorrido:
+  paso_entre_paradas_m: 1.25  # era 2,5: con 1,25 la cobertura sube de 47 % a ~75 % (sección 16.1)
+  velocidad_m_s: 0.3
+  velocidad_dificil_m_s: 0.2
+  giro_diagonal_rad: 1.13    # ~65° (antes 35°: con 65° la cobertura sube de ~88 % a ~96 %, sección 16.1)
+  inclinacion_alta_rad: -0.61
+  # Obstáculos (sección 5.2 y 15 del plan)
+  mira_adelante_m: 1.5       # hasta dónde revisa el sensor antes de cada tramo
+  alto_obstaculo_m: 0.05     # más alto que esto: frena; más bajo (mangueras, desniveles): pasa despacio
+  distancia_frenado_m: 0.5   # se detiene a esta distancia del obstáculo
+  espera_obstaculo_s: 30     # cuánto espera a que lo quiten antes de abandonar el camino
+  bateria_min_pct: 25        # por debajo, guarda el avance y vuelve a la base (sección 15 del plan)
+
+camara:
+  ancho: 1280                # cámara RGB-D de la cabeza del X2 según el SDK AimDK_X2 (confirmar en el robot)
+  alto: 720                  # ojo: en la simulación, a 1280 x 720 muchas rosas quedaban < 32 px (sección 14)
+  fov_h_grados: 70           # en MuJoCo se convierte a fovy (vertical)
+  distancia_max_m: 3.5
+  # En sim se usa la misma resolución que la real: el tamaño de la rosa en píxeles
+  # decide si RosaNet la puede leer (mínimo 32 px). Con 1280 x 720 se perdían casi todas.
+  sim_ancho: 1920
+  sim_alto: 1080
+
+madurez:
+  p3_min_candidata: 0.30     # A CALIBRAR
+  tamano_rel_min: 0.85       # A CALIBRAR
+  puntaje_lista_manana: 0.60 # A CALIBRAR
+  dias_max_lista_manana: 1.5 # A CALIBRAR
+  duda_entre_vecinas_min: 0.85 # duda solo entre inmaduro y óptimo → reglas de "lista mañana", no "dudosa"
+
+# Acción física del robot (sección 1.1 del plan): qué hace con cada rosa óptima.
+# senalar = apunta la cabeza y la ilumina con el puntero; ninguna = solo la anota. El equipo decide.
+accion:
+  tipo: senalar
+  segundos: 1.5     # cuánto tiempo deja el puntero prendido en cada rosa
+
+dedup:
+  radio_m: 0.08
+
+horario:
+  inicio: "22:00"
+  simular_noche: true
+
+reporte:
+  formatos: [excel, json]
+  optimo_prioridad_alta: 3   # rosas en óptimo para que un cuadrante sea "alta"
+
+envio:
+  metodo: supabase           # DEMO. carpeta | api | supabase (la app de la tablet lee de Supabase; claves en robot/.env)
+  fotos_bucket: fotos-rosas  # DEMO. bucket público de Supabase Storage para las fotos de las dudosas (null = sin fotos)
+  revisar_cada_s: 60
+  espera_max_min: 60         # los reintentos esperan 1, 2, 4, 8… min, hasta este máximo
+  # carpeta compartida del dashboard. ENVIO_CARPETA en robot/.env la reemplaza
+  # (en la simulación es una carpeta local que hace de dashboard).
+  carpeta_destino: datos/dashboard_simulado
+
+bateria:
+  volver_a_base_pct: 25
+
+datos_dir: datos

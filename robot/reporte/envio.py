@@ -101,16 +101,23 @@ class EnviadorSupabase:
     Usa `subir()` de robot/subir_reporte.py, que es del equipo de la app: no se
     cambia aquí. Solo sube el .json; el Excel se queda en el robot, en salida/.
     Si ese id_ronda ya estaba, Supabase lo reemplaza (no duplica).
+    Con `fotos` (un reporte.fotos.Storage), antes sube los recortes de las dudosas
+    y pone su dirección web en `foto` (el archivo de salida/ no se cambia).
     """
 
     extensiones = (".json",)
 
-    def __init__(self, url: str, clave: str):
-        self.url, self.clave = url, clave
+    def __init__(self, url: str, clave: str, fotos=None):
+        self.url, self.clave, self.fotos = url, clave, fotos
 
     def enviar(self, archivo: Path) -> None:
         from subir_reporte import subir
-        subir(json.loads(archivo.read_text(encoding="utf-8")), self.url, self.clave)
+        reporte = json.loads(archivo.read_text(encoding="utf-8"))
+        if self.fotos is not None:
+            from reporte.fotos import poner_fotos
+            # salida/reporte.json → rondas/<id_ronda>/ (ahí están las fotos y las cajas)
+            reporte = poner_fotos(reporte, archivo.parent.parent / "rondas" / reporte["id_ronda"], self.fotos)
+        subir(reporte, self.url, self.clave)
 
 
 class EnviadorApi:
@@ -208,7 +215,9 @@ def crear(cfg: dict, conexion_sim: ConexionSimulada | None = None):
         if not url or not clave:
             raise RuntimeError("envio.metodo = supabase, pero faltan SUPABASE_URL y "
                                "SUPABASE_SERVICE_ROLE_KEY en robot/.env (ver subir_reporte.py)")
-        enviador = EnviadorSupabase(url, clave)
+        from reporte.fotos import BUCKET, Storage
+        bucket = env.get("fotos_bucket", BUCKET)   # null en el config = sin fotos de dudosas
+        enviador = EnviadorSupabase(url, clave, Storage(url, clave, bucket) if bucket else None)
         conexion = ConexionApi(f"{url.rstrip('/')}/rest/v1/")
     else:
         raise NotImplementedError(f"envio.metodo = {metodo} todavía no está hecho (usar carpeta, api o supabase)")
@@ -243,8 +252,9 @@ def describir(resumen: dict) -> str:
 def main(argv=None) -> None:
     p = argparse.ArgumentParser(description="Envía los reportes de datos/salida/ al dashboard.")
     p.add_argument("--una-vez", action="store_true", help="Un solo intento y salir")
+    p.add_argument("--config", type=Path, help="Otro archivo de configuración (p. ej. config/demo.yaml)")
     args = p.parse_args(argv)
-    cfg = configuracion.cargar()
+    cfg = configuracion.cargar(args.config)
     bandeja, enviador, conexion = crear(cfg)
     while True:
         print(describir(bandeja.intentar(enviador, conexion)), flush=True)

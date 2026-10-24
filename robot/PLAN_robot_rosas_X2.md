@@ -478,6 +478,40 @@ Paradas cada **1,25 m** (decidido después de medir la cobertura en la simulaci�
 
 > **Batería:** las fichas dicen **~2 h a 0,5 m/s** (CONTEXTO.md 2.0.2). Con paradas cada 1,25 m la ronda (~2 h 10 min) **ya no cabe en una carga**: se parte en dos. A mitad de la ronda va a la base y se cambia la batería (es intercambiable) o se carga, y sigue desde el último tramo guardado (sección 15). Con 2,5 m cabía (~95 min), pero solo veía el 47 % de las rosas.
 
+### 4.5 Invernadero completo, medido en la simulación (paso 9, 2026-10-24)
+
+`python main.py --completo` (y `--continuar` después de cada vuelta por batería): 20 camas de 30 m, 6.031 rosas,
+21 caminos en serpiente, oráculo, semilla 7, con los obstáculos por defecto (el camino 2 se abandona en el metro 4,2).
+
+| | Con señalar (`accion.tipo: senalar`) | Sin señalar (`ninguna`) |
+|---|---|---|
+| Tiempo del robot | **286 min** (4 h 46 min) | **120 min** (2 h) |
+| Vueltas a la base por batería (25 %) | 2 (la ronda se hace en 3 partes) | 1 (a los 98 min, con el 86 % de las fotos) |
+| Fotos | 2.012 | 2.012 |
+| Rosas señaladas | 1.865 (23 fuera de alcance) | — |
+| Cobertura | 95,2 % | 95,3 % |
+| Duplicados / falsas | 0 % / 25 (0,4 %) | 0 % / 32 (0,5 %) |
+| Error de altura / metro | 0,5 cm / 0,9 cm | igual |
+| Tiempo de cómputo (CPU, sin ventana) | 29 min | 20 min |
+| Reporte | 120 cuadrantes, JSON 631 KB, Excel 622 KB | igual |
+
+- **Señalar suma ~5,3 s por rosa óptima** (166 min para 1.865 rosas): más que toda la ronda sin señalar. Con una
+  sola batería no cabe en una noche. Lo que pesa no es el foco (`accion.segundos: 1,5`) sino apuntar: girar,
+  medir y corregir hasta 6 veces con 1 s de espera. Bajar `accion.segundos` ahorra poco.
+- **Opciones (decidir con el equipo):**
+  1. Señalar solo en los N primeros cuadrantes del `orden` (los que se cosechan primero).
+  2. Marcar el cuadrante con la tira LED del pecho, sin apuntar (casi sin costo; es lo que trae el X2 real, sección 14.1).
+  3. Señalar solo en la demo, y en la ronda nocturna completa dejar `ninguna`.
+- **"Solo prioridad alta" no ahorra nada en esta escena:** los 120 cuadrantes salen `alta` (6 a 15 óptimas cada
+  uno, con `optimo_prioridad_alta: 3`). El umbral de 3 hay que acordarlo con la finca y medirlo con la proporción
+  real de óptimas; el `orden` igual sirve para ordenar.
+- **Rosas falsas:** 0,4 %, todas con una sola vista. Son rosas reales ubicadas con la profundidad de algo que las
+  tapa (entre 0,1 y 1 m de error, casi siempre más cerca de la cámara). Dos quedaron a 6 y 12 m: la profundidad
+  pasó por un hueco hasta el fondo. Con una escena de prueba de ~140 rosas el mismo porcentaje da 0 o 1, así que
+  no es un problema nuevo de la escala. Se puede filtrar con "vista al menos dos veces", pero perdería rosas vistas
+  una sola vez; queda para medir con la cámara RGB-D real.
+- **Visor (`--ventana`):** la escena completa tiene 52.486 piezas y el visor de MuJoCo 3.17 admite 100.000: se ve todo.
+
 ---
 
 ## 5. Caminar por un camino estrecho y difícil
@@ -775,6 +809,37 @@ cambiar nada de lo suyo. La versión anterior queda como `detector_rosas_v1_publ
   pasada. Lo que se pierde ahora es de RosaNet (sin cambios en este pull): 12 óptimas salen inmaduras, 8
   dudosas, y las pasadas casi siempre van a "dudosa" (17 de 19). Queda para el paso de las reglas de
   decisión, cuando llegue el RosaNet completo.
+
+### 7.12 Detector "noche" (pull del 2026-10-24, tarde)
+
+El equipo del modelo ajustó el detector con escenas de noche simuladas (`modelos/detector_rosas.pt`; el anterior
+quedó como `detector_rosas_dia.pt`). `ml/detect.py` ahora elige el umbral según el archivo de pesos (0,55 para el
+de noche, 0,25 para el de día). El robot crea el detector solo con los pesos, así que toma el umbral nuevo sin
+cambiar nada.
+
+**Medido con carteles (`--rosas cartel`), misma escena de prueba, 1920 px:**
+
+| | Detector día | **Detector noche (en uso)** |
+|---|---|---|
+| Cobertura | 72 % | 71 % |
+| Clase correcta | 69 % | 67 % |
+| Precisión / recall de "óptimo" | 40 % / 39 % | 37 % / 33 % |
+| Rosas falsas | 0 | 0 |
+
+- Casi igual (3–4 rosas de diferencia, menos que el ruido de una escena). En la simulación no se ve la mejora que
+  midió el equipo (de 22 % a 55 % de noche): los carteles salen bien iluminados por la linterna y la noche de MuJoCo
+  no se parece a la que ellos simularon. Se deja el de noche, porque la ronda real es de noche y aquí no pierde nada.
+- Esta medición se hizo con la RosaNet anterior. Después llegó **RosaNet + forma** (`ml/shape.py`,
+  `modelos/forma.joblib`, merge `66a2d9a`): falta medirla con `--rosas cartel`.
+- **Fotos de las dudosas para la app (hecho, `reporte/fotos.py`):** un experto revisa las dudosas en la tablet y
+  la app muestra la foto si `foto` es una dirección web. Con `envio.metodo: supabase`, antes de subir el reporte
+  el robot recorta cada dudosa con su caja de `detecciones.jsonl` (15 % de margen, mínimo 256 px), la sube al
+  bucket público `fotos-rosas` de Supabase Storage y pone esa dirección en `foto`. El archivo de `salida/` no
+  cambia. Si una foto falla, esa dudosa queda con la ruta local (la app muestra una de muestra) y el reporte se
+  sube igual. Para la demo: `python main.py --config config/demo.yaml` (cartel + Supabase + fotos).
+  Comprobado con un Storage falso y una ronda real: 25 de 25 dudosas con su recorte. **No se probó contra el
+  Supabase real** (falta `SUPABASE_SERVICE_ROLE_KEY` en `robot/.env`). Límite: el modo foto (`--enviar`) no sube
+  fotos, porque sus fotos no están en `datos/rondas/`.
 
 ### 7.5 Modo foto: para la demo en vivo
 
@@ -1447,6 +1512,9 @@ Ejemplo de precisión: el robot dice que hay 50 rosas en óptimo y 45 de verdad 
 ```
 precisión = 45 / 50 = 0,90 = 90%
 ```
+
+**Invernadero completo (paso 9):** 6.031 rosas, cobertura 95 %, 0 duplicados, 0,4 % falsas, error de altura 0,5 cm.
+La ronda dura 2 h sin señalar y 4 h 46 min señalando cada óptima (sección 4.5).
 
 > Las métricas con oráculo miden **el robot** (recorrido, ubicación, duplicados, reporte). Las métricas de RosaNet las mide la persona del modelo con `ml/evaluate.py`. Con carteles se mide **todo junto**, que es lo más honesto para el pitch.
 

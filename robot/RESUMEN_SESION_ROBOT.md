@@ -71,9 +71,18 @@ Salidas en `robot/datos/` (no se sube a git):
 - **Análisis en paralelo:** la ronda pasa de 62 s a 52 s, con el mismo reporte.
 - **Batería:** una ronda de prueba gasta ~10 %. Con `--bateria 30` vuelve a las 13 paradas y con `--continuar` termina (cobertura 92 %).
 
-## 4. En curso: paso 9, invernadero a escala completa (subido a medias)
+## 4. Paso 9, invernadero a escala completa (terminado)
 
-Estos cambios ya están en la rama `A` (commit "paso 9 a medias"), pero **el paso no está terminado** (ver sección 5):
+**Resultado (plan, sección 4.5):** 6.031 rosas, cobertura 95 %, 0 duplicados, 0,4 % falsas.
+- Sin señalar: 2 h de robot, 1 vuelta a la base por batería.
+- Señalando cada óptima: 4 h 46 min, 2 vueltas (~5,3 s por rosa). **No cabe en una noche con una batería: el equipo
+  tiene que elegir** entre señalar solo los primeros cuadrantes del `orden`, usar la tira LED del pecho, o señalar
+  solo en la demo.
+- Los 120 cuadrantes salen prioridad `alta` (umbral de 3 óptimas): hay que acordarlo con la finca.
+- El visor muestra todo (52.486 piezas; MuJoCo 3.17 admite 100.000).
+- Detector "noche" del equipo integrado (merge `3023aae`): en la simulación mide igual que el de día (plan 7.12).
+
+Cambios de código del paso 9 (commit "paso 9 a medias"):
 - `sim/escena_invernadero.py`: arma **dos modelos**.
   - Uno completo, para la cámara, el sensor y el visor.
   - Uno liviano, para la física: robot, piso y camas.
@@ -92,28 +101,21 @@ Estos cambios ya están en la rama `A` (commit "paso 9 a medias"), pero **el pas
 
 **Comprobado:** la ronda de prueba da exactamente el mismo reporte que antes (84 fotos, 90 %, 53/3/8).
 
-**Se estaba corriendo** la ronda completa (`main.py --completo` y después `--continuar`).
-- Log: `datos/logs/ronda_INV1_2026-10-24_044859.log`. Al escribir esto iba por el camino 7 de 21.
-- Hay otra ronda completa empezada con ventana y cortada en el camino 0 (`INV1_2026-10-24_045226`): se puede borrar o seguir.
+Rondas completas medidas: `INV1_2026-10-24_044859` (señalando) e `INV1_2026-10-24_082220` (sin señalar). La ronda
+`INV1_2026-10-24_045226` quedó cortada y se puede borrar.
 
 ## 5. Por dónde empezar en la próxima sesión
 
-1. **Terminar el paso 9.**
-   - Leer el resultado de la ronda completa: log y `metricas.json` de la carpeta de la ronda. Si no terminó, correr `main.py --completo` (y `--continuar` si se corta por batería), en segundo plano.
-   - Anotar en el plan (secciones 4.4 y 16):
-     - tiempo del robot, cuántas veces volvió por batería, cobertura, rosas falsas y repetidas;
-     - tamaño del reporte (120 cuadrantes) y tiempo de cómputo.
-   - **Ojo:** con ~6.000 rosas, señalar cada óptima (~5 s por rosa) puede sumar horas a la ronda. Medirlo comparando `accion.tipo: senalar` contra `ninguna`, y si no cabe en la noche, proponer opciones: señalar solo en los cuadrantes de prioridad alta, bajar `accion.segundos`, o marcar con la tira LED sin apuntar.
-   - Revisar si el visor (`--ventana`) muestra todas las rosas con el invernadero completo: el visor tiene su propio límite de 10.000 piezas.
-   - Correr las pruebas y **preguntar** antes de hacer el commit con los resultados en `A`.
+1. **Decidir con el equipo la acción física en la ronda completa** (sección 4) y dejarla en `accion` del config.
 2. **Paso 10: cierre para la presentación.** README del robot, guion de la demo (simulación + modo foto con webcam) y números para el pitch (cobertura, tiempo por noche, batería, obstáculos).
-3. **Al final, cuando llegue el RosaNet completo** (hacer pull y medir con `--rosas cartel`):
+3. **Conexión con la app (hecha, falta la clave):** `config/demo.yaml` (cartel + Supabase) y `reporte/fotos.py` (sube los recortes de las dudosas a Supabase Storage, plan 7.12). Cuando el compañero de la app pase `SUPABASE_SERVICE_ROLE_KEY`, ponerla en `robot/.env` y probar `python -m reporte.envio --una-vez --config config/demo.yaml`. Si se cambia `config.yaml`, cambiar también `demo.yaml` (una prueba avisa). Falta medir RosaNet + forma con `--rosas cartel`.
+4. **Al final, cuando llegue el RosaNet completo** (hacer pull y medir con `--rosas cartel`):
    - **Paso 3, reglas de decisión:**
      - el tamaño de la cabeza como segunda opinión (si la red dice óptimo pero la cabeza es chica → dudosa);
      - contar en la prioridad las dudosas cuya mejor clase es óptimo.
      - Se dejó en pausa porque depende de cómo se equivoque la red.
    - **Paso 7, "lista mañana" con historia:** reconocer la misma rosa de una noche a otra por su posición, medir cuánto creció y calcular los días que faltan. `percepcion/madurez.py` ya acepta `diametro_ayer_cm`.
-4. **Pendiente de otras personas:**
+5. **Pendiente de otras personas:**
    - **Equipo del modelo:**
      - RosaNet "noche" deja escapar óptimas en recortes chicos (70–100 px);
      - las pasadas salen dudosas;
