@@ -343,6 +343,12 @@ Las clases intermedias públicas (`mid-bud`, `2_Early_Bloom`) son rosas **más a
 | 2026-10-23 | Las cajas de la finca se extraen automáticamente de los círculos de los PDF (`robot/ml/finca_labels.py`); los casos difíciles van a test | Ahorra la anotación manual y separa una prueba de robustez |
 | 2026-10-23 | Robot = **AgiBot X2 Ultra**, con rondas **nocturnas o de madrugada** | No hay operarios en los pasillos; hace falta iluminación activa para la cámara |
 | 2026-10-23 | El robot trabaja **por cuadrantes**: identifica cada cuadrante, reporta su estado y lo señala físicamente | Da una unidad de gestión clara a la finca ("¿a dónde mando a cortar hoy?") y una acción visible del robot |
+| 2026-10-23 | **Un solo robot** para empezar y **un robot por campo** después | 11 robots no son rentables; la fase 2 se justifica con el piloto |
+| 2026-10-23 | El robot recorre **línea por línea**: no gira dentro de la línea, da la vuelta en la cabecera | Los pasillos son angostos; en las cabeceras hay espacio para girar |
+| 2026-10-23 | El campo tendrá **iluminación LED blanca** para la ronda nocturna; se asume que la energía del robot alcanza | Resuelve la cámara de noche y da color constante |
+| 2026-10-23 | La app vive en **tablets o pantallas comunes tipo turnero** (entrada del invernadero, sala de formación); el reporte del robot llega a todos los trabajadores registrados | Los operarios no usan celular en el cultivo |
+| 2026-10-23 | Los **drones de la finca quedan fuera**: solo hacen pruebas y no guardan datos | No sirven para el muestreo y no hay tiempo de integrarlos |
+| 2026-10-23 | El pitch vive en `pitch/` (guion, investigación, inversión y visión 360) | Una carpeta para el trabajo del pitch |
 
 ## 6. Bitácora de supuestos y aprendizajes (para el pitch de validación)
 | Supuesto inicial | ¿Se mantuvo? | Qué observamos |

@@ -12,4 +12,5 @@ Los operarios **no pueden usar celulares** en el cultivo, así que la solución 
 | [`app-tablet/`](app-tablet/) | App tipo juego en tablet para mecanizar el proceso estándar (muy pronto / punto óptimo / muy tarde) y la sanación de la planta después del corte | Operarios |
 | [`robot/`](robot/) | Robot que recorre el campo por sectores, detecta con la red neuronal (RosaNet) los botones listos y reporta a un dashboard (coordinadores y pantalla a la entrada del campo) | Coordinadores y operarios |
 
-Cada carpeta tiene su propio README con el detalle.
+Cada carpeta tiene su propio README con el detalle. El pitch, la inversión y la investigación
+están en [`pitch/`](pitch/).
